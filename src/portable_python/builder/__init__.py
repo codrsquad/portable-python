@@ -105,7 +105,7 @@ class BuildSetup:
             if path.name.endswith((".a", ".la")):
                 current = path.stat().st_mode & 0o777
                 if current != mode:
-                    path.lchmod(mode)
+                    path.chmod(mode)
 
     @property
     def is_linux(self):
