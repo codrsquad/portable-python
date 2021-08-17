@@ -300,16 +300,7 @@ class ModuleBuilder:
             return f"{prefix}{path}"
 
     def run(self, program, *args):
-        res = runez.run(program, *args, passthrough=True, fatal=False)
-        if self._log_handler:
-            msg = "output:\n%s\n-- stderr: --\n%s\n--------"
-            record = logging.LogRecord(__name__, logging.INFO, "", 0, msg, (res.output, res.error), None)
-            self._log_handler.emit(record)
-
-        if res.exit_code:
-            runez.abort("%s failed: %s exited with code %s" % (self, program, res.exit_code))
-
-        return res
+        runez.run(program, *args, passthrough=self._log_handler or True)
 
     def setenv(self, key, value):
         LOG.info("%s=%s" % (key, runez.short(value, size=2048)))

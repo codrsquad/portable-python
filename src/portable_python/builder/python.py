@@ -37,8 +37,7 @@ class Cpython(ModuleBuilder):
 
     def default_modules(self):
         """Default modules to compile"""
-        if self.version:
-            return "readline,openssl"
+        return "readline,openssl"
 
     def xenv_cflags(self):
         yield from super().xenv_cflags()
