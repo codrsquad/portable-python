@@ -27,7 +27,9 @@ def test_edge_cases(temp_folder, logged):
     sample.chmod(0o600)
     BuildSetup.fix_lib_permissions(runez.to_path("libs"))
 
-    setup = BuildSetup("3.9.6", modules="none")
+    assert str(BuildSetup.supported.cpython)
+    latest = BuildSetup.supported.cpython.latest
+    setup = BuildSetup(latest, modules="none")
     gdbm = Gdbm()
     gdbm.attach(setup)
     assert gdbm.skip_reason() == "needs readline"
@@ -42,9 +44,9 @@ def test_edge_cases(temp_folder, logged):
     xproto.attach(setup)
     assert xproto.skip_reason() == "linux only"
 
-    setup = BuildSetup("3.9.6", modules="readline")
+    setup = BuildSetup(latest, modules="readline")
     assert setup.prefix is None
-    assert str(setup) == "build/cpython-3.9.6"
+    assert str(setup) == "build/cpython-%s" % latest
     assert str(setup.module_builders) == "15 external module builders"
 
     setup.platform = "windows"

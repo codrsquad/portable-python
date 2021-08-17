@@ -8,12 +8,76 @@ import time
 import runez
 from runez.http import RestClient
 from runez.inspector import auto_import_siblings
-from runez.pyenv import PythonSpec
+from runez.pyenv import PythonSpec, Version
 
 from portable_python import LOG
 
 
 REST_CLIENT = RestClient()
+
+
+CPYTHON_VERSIONS = """
+3.9.6
+3.9.5
+3.8.9
+3.7.9
+3.6.9
+"""
+
+
+class PythonVersions:
+    """Known/supported versions for a given family (cpython, pypi, conda, ...) of pythons"""
+
+    def __init__(self, family, versions):
+        self.family = family
+        self.versions = [Version(v) for v in versions.split()]
+
+    def __repr__(self):
+        return "%s [%s]" % (self.family, runez.plural(self.versions, "version"))
+
+    @property
+    def latest(self) -> Version:
+        """Latest version for this family"""
+        return self.versions[0]
+
+
+class SupportedPythonVersions:
+    """
+    Supported python version - known to build correctly with this tool
+    We don't try and support the entire history of releases, just a handful of latest non-EOL versions
+
+    Cpython only for now, but could support more (pypi, conda?) in the future
+    """
+
+    def __init__(self):
+        self.family_list = []
+        self.family_by_name = {}
+        self.cpython = self._add("cpython", CPYTHON_VERSIONS)
+
+    def _add(self, name, versions):
+        fam = PythonVersions("cpython", CPYTHON_VERSIONS)
+        self.family_list.append(fam)
+        self.family_by_name[name] = fam
+        return fam
+
+    @property
+    def all_family_names(self):
+        return [x.family for x in self.family_list]
+
+    def family(self, family_name, fatal=True) -> PythonVersions:
+        fam = self.family_by_name.get(family_name)
+        if fatal and not fam:
+            runez.abort(f"Python family '{family_name}' is not yet supported")
+
+        return fam
+
+    def validate(self, python_spec: PythonSpec):
+        if not python_spec.version or not python_spec.version.is_valid:
+            runez.abort("Invalid python spec: %s" % runez.red(python_spec))
+
+        fam = self.family(python_spec.family)
+        if python_spec.version not in fam.versions:
+            LOG.warning("%s is not in the supported list, your mileage may vary" % python_spec)
 
 
 class AvailableBuilders:
@@ -39,17 +103,17 @@ class AvailableBuilders:
 
 
 class BuildSetup:
-    """General settings"""
+    """General build settings"""
 
-    python_builders = AvailableBuilders("python")
     module_builders = AvailableBuilders("external module")
+    python_builders = AvailableBuilders("python")
+    supported = SupportedPythonVersions()
     _log_counter = 0
 
     def __init__(self, python_spec, prefix=None, modules=None, build_folder="build", dist_folder="dist"):
-        self.python_spec = PythonSpec.to_spec(python_spec)
-        if not self.python_spec.version or not self.python_spec.version.is_valid:
-            runez.abort("Invalid python spec: %s" % runez.red(python_spec))
-
+        python_spec = PythonSpec.to_spec(python_spec)
+        self.supported.validate(python_spec)
+        self.python_spec = python_spec
         self.prefix = prefix
         self.architecture = platform.machine()
         self.platform = platform.system().lower()
@@ -62,9 +126,6 @@ class BuildSetup:
         self.anchors = {build_folder.parent, self.dist_folder.parent}
         auto_import_siblings()
         self.python_builder = self.python_builders.get_builder(self, self.python_spec.family)
-        if not self.python_builder:
-            runez.abort("No build implementation for %s" % runez.red(self.python_spec))
-
         modules = runez.flattened(modules or self.python_builder.default_modules(), keep_empty=None, split=",")
         if modules == ["none"]:
             modules = []

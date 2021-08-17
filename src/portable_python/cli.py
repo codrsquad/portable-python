@@ -52,6 +52,30 @@ def inspect(modules, pythons):
     print(runez.joined(inspector.report(), delimiter="\n"))
 
 
+@main.command()
+@click.argument("family", nargs=-1)
+def list(family):
+    """List supported versions"""
+    if not family:
+        family = BuildSetup.supported.all_family_names
+
+    indent = "" if len(family) == 1 else "  "
+    for family_name in family:
+        if indent:
+            if family_name != family[0]:
+                print()
+
+            print(f"{family_name}:")
+
+        fam = BuildSetup.supported.family(family_name, fatal=False)
+        if fam:
+            for v in fam.versions:
+                print(f"{indent}{v}")
+
+        else:
+            print("%s%s" % (indent, runez.red("not supported")))
+
+
 class PythonInspector:
 
     def __init__(self, specs, modules):

@@ -4,9 +4,13 @@ from unittest.mock import patch
 
 import runez
 
+from portable_python.builder import BuildSetup
 from portable_python.builder.python import Cpython
 
 from .conftest import dummy_tarball
+
+
+LATEST = str(BuildSetup.supported.cpython.latest)
 
 
 def test_module_invocation(cli):
@@ -14,37 +18,47 @@ def test_module_invocation(cli):
 
 
 def test_dryrun(cli):
-    cli.run("--dryrun", "build", "3.9.6")
+    cli.run("--dryrun", "build", LATEST)
     assert cli.succeeded
-    assert "Would tar build/cpython-3.9.6/3.9.6 -> dist/3.9.6.tar.gz" in cli.logged
+    assert "Would tar build/cpython-{v}/{v} -> dist/{v}.tar.gz".format(v=LATEST) in cli.logged
 
-    cli.run("--dryrun", "build", "3.9.6", "-mall")
+    cli.run("--dryrun", "build", LATEST, "-mall")
     assert cli.succeeded
 
-    cli.run("--dryrun", "build", "3.9.6", "--prefix", "/apps/foo{python_version}")
+    cli.run("--dryrun", "build", LATEST, "--prefix", "/apps/foo{python_version}")
     assert cli.succeeded
     assert "./configure --prefix=/apps/foo" in cli.logged
 
-    cli.run("--dryrun", "build", "3.9.6", "-mnone")
+    cli.run("--dryrun", "build", LATEST, "-mnone")
     assert cli.succeeded
     assert "Compiling 0 external modules" in cli.logged
 
+    cli.run("--dryrun", "build", "2.7.1", "-mnone")
+    assert cli.succeeded
+    assert "cpython:2.7.1 is not in the supported list" in cli.logged
+
+    cli.run("--dryrun", "list")
+    assert cli.succeeded
+
+    cli.run("--dryrun", "list", "conda", "cpython")
+    assert cli.succeeded
+
 
 def test_failed_run(cli):
+    build_path = runez.to_path("build/cpython-%s" % LATEST)
     runez.touch("sample/README", logger=None)
     runez.compress("sample/README", "build/downloads/readline-8.1.tar.gz", logger=None)
-    cli.run("build", "3.9.6", "-mreadline")
+    cli.run("build", LATEST, "-mreadline")
     assert cli.failed
     assert "./configure is not an executable" in cli.logged
-    assert os.path.exists("build/cpython-3.9.6/build/readline/README")
-    assert os.path.exists("build/cpython-3.9.6/logs/01-readline.log")
+    assert os.path.exists(build_path / "build/readline/README")
+    assert os.path.exists(build_path / "logs/01-readline.log")
 
 
 def test_finalization(cli):
-    version = "3.9.6"
-    dummy_tarball("Python-%s.tar.xz" % version)
-    base = runez.to_path("build/cpython-%s" % version)
-    bin = base / version / "bin"
+    dummy_tarball("Python-%s.tar.xz" % LATEST)
+    base = runez.to_path("build/cpython-%s" % LATEST)
+    bin = base / LATEST / "bin"
 
     # Triggers compilation skip
     runez.touch(base / "build/cpython/README", logger=None)
@@ -59,14 +73,14 @@ def test_finalization(cli):
     runez.write(bin / "pip", "#!.../bin/python3\nhello", logger=None)
     runez.write(bin / "pip3", "#!/bin/sh\nhello", logger=None)
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
-        cli.run("build", "3.9.6", "-mnone", "--x-finalize")
+        cli.run("build", LATEST, "-mnone", "--x-finalize")
         assert cli.succeeded
         assert "Compiling 0 external modules" in cli.logged
-        assert "Skipping compilation of cpython 3.9.6: build folder already there" in cli.logged
+        assert f"Skipping compilation of cpython {LATEST}: build folder already there" in cli.logged
         assert "INFO Cleaned up 1 build artifacts" in cli.logged
-        assert "Deleted build/cpython-3.9.6/3.9.6/bin/2to3" in cli.logged
+        assert f"Deleted build/cpython-{LATEST}/{LATEST}/bin/2to3" in cli.logged
         assert "Symlink foo-python <- python" in cli.logged
-        assert "Auto-corrected shebang for build/cpython-3.9.6/3.9.6/bin/pip" in cli.logged
+        assert f"Auto-corrected shebang for build/cpython-{LATEST}/{LATEST}/bin/pip" in cli.logged
 
     assert runez.readlines(bin / "pip", logger=None) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
     assert runez.readlines(bin / "pip3", logger=None) == ["#!/bin/sh", "hello"]
@@ -102,16 +116,16 @@ def test_inspect_module():
 def test_invalid(cli):
     cli.run("--dryrun", "build", "foo")
     assert cli.failed
-    assert "Invalid python spec: foo" in cli.logged
+    assert "Invalid python spec: ?foo" in cli.logged
 
-    cli.run("--dryrun", "build", "3.9.6", "-mfoo")
+    cli.run("--dryrun", "build", LATEST, "-mfoo")
     assert cli.failed
     assert "Unknown modules: foo" in cli.logged
 
-    cli.run("--dryrun", "build", "3.9.6", "--build", "foo bar")
+    cli.run("--dryrun", "build", LATEST, "--build", "foo bar")
     assert cli.failed
     assert "Refusing path with space" in cli.logged
 
     cli.run("--dryrun", "build", "conda:1.0")
     assert cli.failed
-    assert "No build implementation for conda:1.0" in cli.logged
+    assert "Python family 'conda' is not yet supported" in cli.logged

@@ -20,6 +20,7 @@ Portable python binaries
 
 This project is a python CLI that aims to make compiling portable python binaries automatable.
 
+
 What is a "portable python"?
 ----------------------------
 
@@ -33,8 +34,6 @@ The idea here is to allow for automated systems to:
 
 - Install versions of python from binary distributions on laptops/workstations,
   similarly to how pyenv_ does it, but without having to compile on target system.
-
-
 
 
 How it works
@@ -51,6 +50,14 @@ How it works
 
     /usr/bin/python3 -mvenv pp
     ./pp/bin/portable-python --help
+
+- From python::
+
+    from portable_python.builder import BuildSetup
+
+    setup = BuildSetup("3.9.6")
+    setup.compile()
+
 
 - From source::
 
