@@ -20,18 +20,8 @@ jobs:
     - run: tox -e py,docs,style
     - run: python setup.py sdist bdist_wheel
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        draft: false
-        prerelease: false
-
     - name: Publish sdist and wheel
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      run: twine upload dist/*
+      run: twine upload --non-interactive dist/*
