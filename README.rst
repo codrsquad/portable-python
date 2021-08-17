@@ -11,7 +11,7 @@ Portable python binaries
 
 .. image:: https://codecov.io/gh/codrsquad/portable-python/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/codrsquad/portable-python
-    :alt: Test code codecov
+    :alt: Test coverage
 
 .. image:: https://img.shields.io/pypi/pyversions/portable-python.svg
     :target: https://github.com/codrsquad/portable-python
