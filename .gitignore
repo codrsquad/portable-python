@@ -1,0 +1,26 @@
+# Various
+*~
+\#*#
+.\#*
+.*cache
+.DS_Store*
+*.lock
+*.swp
+.*version
+.idea/
+.vscode/
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# Build artifacts
+_Dockerfile*
+__pycache__/
+*.py[cod]
+*.egg*
+.tox/
+.venv*/
+build/
+dist/
+root/
+venv*/
