@@ -1,5 +1,4 @@
 import os
-import pathlib
 
 import runez
 
@@ -11,20 +10,24 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 class Cpython(ModuleBuilder):
     """Build CPython binaries"""
 
-    bin_folder: pathlib.Path = None
-    prefix: str = None
-    target: pathlib.Path = None
+    @property
+    def bin_folder(self):
+        return self.install_folder / self.prefix / "bin"
 
-    def attach(self, setup):
-        super().attach(setup)
-        self.target = self.setup.build_folder
-        self.prefix = self.version.text
+    @property
+    def install_folder(self):
+        folder = self.setup.build_folder
         if self.setup.prefix:
-            # Debian-style
-            self.target = self.target / "root"
-            self.prefix = self.setup.prefix.strip("/").format(python_version=self.version)
+            return folder / "root"
 
-        self.bin_folder = self.target / self.prefix / "bin"
+        return folder
+
+    @property
+    def prefix(self):
+        if self.setup.prefix:
+            return self.setup.prefix.strip("/").format(python_version=self.version)
+
+        return self.version.text
 
     @property
     def url(self):
@@ -37,41 +40,40 @@ class Cpython(ModuleBuilder):
 
     def default_modules(self):
         """Default modules to compile"""
-        return "readline,openssl"
+        if self.target.is_macos:
+            return "readline,openssl"
 
     def xenv_cflags(self):
         yield from super().xenv_cflags()
         yield self.checked_folder(self.deps / "include/uuid", prefix="-I")
         yield self.checked_folder(self.deps / "include/readline", prefix="-I")
-        yield "-Werror=unguarded-availability-new"
+        if self.target.is_macos:
+            yield "-Werror=unguarded-availability-new"
 
-    def _do_linux_compile(self):
-        extra = []
+        else:
+            yield "-m64"
+
+    @property
+    def c_configure_prefix(self):
+        """--prefix to use for the ./configure program"""
+        return self.prefix
+
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--with-ensurepip=upgrade"
+        yield "--enable-optimizations"
+        yield "--with-lto"
         if self.setup.is_active_module("openssl"):
-            extra.append(f"--with-openssl={self.deps}")
+            yield f"--with-openssl={self.deps}"
 
         if self.setup.is_active_module("tcl"):
-            extra.append("--with-tcltk-includes=-I%s/include" % self.deps)
-            extra.append("--with-tcltk-libs=-L%s/lib" % self.deps)
+            yield "--with-tcltk-includes=-I%s/include" % self.deps
+            yield "--with-tcltk-libs=-L%s/lib" % self.deps
 
-        if not self.setup.prefix:
-            extra.append("--disable-shared")
-
-        # if self.setup.is_macos:
-        #     extra.append("ac_cv_lib_intl_textdomain=no")
-        #     extra.append("ac_cv_func_preadv=no")
-        #     extra.append("ac_cv_func_pwritev=no")
-
-        self.run(
-            "./configure",
-            "--prefix=/%s" % self.prefix,
-            "--with-ensurepip=upgrade",
-            "--enable-optimizations",
-            "--with-lto",
-            *extra,
-        )
+    def _do_linux_compile(self):
+        self.run_configure()
         self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.target)
+        self.run("make", "install", "DESTDIR=%s" % self.install_folder)
         self.cleanup_build_artifacts()
         self.finalize()
 
@@ -84,53 +86,39 @@ class Cpython(ModuleBuilder):
         self.correct_symlinks()
         if not self.setup.prefix:
             path = self.bin_folder.parent
-            dest = "%s.tar.gz" % self.version
+            dest = "%s-%s-%s.tar.gz" % (self.setup.python_spec.family, self.version, self.target)
             dest = self.setup.dist_folder / dest
             runez.compress(path, dest)
 
     def cleanup_build_artifacts(self):
-        libs = []
-        cleanable = {"_bundled", "idle_test", "test", "tests"}  # Get rid of test suites
+        cleanable_folders = {"_bundled", "idle_test", "test", "tests"}  # Get rid of test suites
+        config_dupe = "config-%s.%s-" % (self.version.major, self.version.minor)  # Config folder with build artifacts
         if not self.setup.prefix:
-            cleanable.add("__pycache__")
+            cleanable_folders.add("__pycache__")
 
-        cleanedup = 0
+        cleaned = []
         for dirpath, dirnames, filenames in os.walk(self.bin_folder.parent):
             removed = []
             for name in dirnames:
-                if name in cleanable:
+                if name in cleanable_folders or name.startswith(config_dupe):
                     # Remove unnecessary file, to save on space
                     full_path = os.path.join(dirpath, name)
                     removed.append(name)
-                    cleanedup += 1
+                    cleaned.append(name)
                     runez.delete(full_path, logger=None)
 
             for name in removed:
                 dirnames.remove(name)
 
             for name in filenames:
-                full_path = os.path.join(dirpath, name)
-                if name.startswith("libpython"):
-                    libs.append(full_path)
+                if name in ("__phello__.foo.py",):
+                    full_path = os.path.join(dirpath, name)
+                    cleaned.append(name)
+                    runez.delete(full_path, logger=None)
 
-        if cleanedup:
-            LOG.info("Cleaned up %s build artifacts" % cleanedup)
-
-        if runez.DRYRUN:
-            mm = "%s.%s" % (self.version.major, self.version.minor)
-            pmm = "python%s" % mm
-            lp = "lib%s.a" % pmm
-            libs = ["lib/%s/config-%s-%s/%s" % (pmm, mm, self.setup.platform, lp), "lib/%s" % lp]
-
-        if len(libs) == 2:
-            shorter, longer = libs
-            if len(shorter) > len(longer):
-                shorter, longer = longer, shorter
-
-            shorter = runez.to_path(shorter)
-            longer = runez.to_path(longer)
-            if not shorter.is_symlink() and not longer.is_symlink():
-                runez.symlink(longer, shorter)
+        if cleaned:
+            names = runez.joined(sorted(set(cleaned)))
+            LOG.info("Cleaned %s: %s" % (runez.plural(cleaned, "build artifact"), runez.short(names)))
 
     @staticmethod
     def actual_basename(path):
@@ -147,8 +135,9 @@ class Cpython(ModuleBuilder):
             all_files = {}
             files = {}
             symlinks = {}
+            cleanable = ("2to3", "easy_install", "idle3", "pip", "pydoc", "wheel")
             for f in BuildSetup.ls_dir(self.bin_folder):
-                if f.name.startswith(("2to3", "easy_install", "idle3")):
+                if f.name.startswith(cleanable):
                     runez.delete(f)  # Get rid of old junk, can be pip installed if needed
                     continue
 

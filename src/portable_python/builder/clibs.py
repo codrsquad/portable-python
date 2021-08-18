@@ -13,7 +13,7 @@ class LibFFI(ModuleBuilder):
         return "3.4.2"
 
     def _do_linux_compile(self):
-        self.run("./configure", "--prefix=/deps", "--disable-shared")
+        self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
 
@@ -29,8 +29,12 @@ class Readline(ModuleBuilder):
     def version(self):
         return "8.1"
 
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--with-curses"
+
     def _do_linux_compile(self):
-        self.run("./configure", "--prefix=/deps", "--disable-shared", "--with-curses")
+        self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
 
@@ -46,15 +50,26 @@ class Openssl(ModuleBuilder):
     def version(self):
         return "1.1.1k"
 
-    @staticmethod
-    def compiler(setup):
-        if setup.platform == "darwin":
-            return "darwin64-%s-cc" % setup.architecture
+    @property
+    def c_configure_static(self):
+        return None
 
-        return "%s-%s" % (setup.platform, setup.architecture)
+    c_configure_program = "./Configure"
+
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--openssldir=/deps"
+        yield "-DPEDANTIC"
+        if self.target.is_macos:
+            yield "darwin64-%s-cc" % self.target.architecture
+
+        else:
+            yield "%s-%s" % (self.target.platform, self.target.architecture)
+
+        yield "no-shared"
 
     def _do_linux_compile(self):
-        self.run("./Configure", "--prefix=/deps", "--openssldir=/etc/ssl", self.compiler(self.setup), "no-shared")
+        self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
 
@@ -71,6 +86,6 @@ class Uuid(ModuleBuilder):
         return "1.0.3"
 
     def _do_linux_compile(self):
-        self.run("./configure", "--prefix=/deps", "--disable-shared")
+        self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)

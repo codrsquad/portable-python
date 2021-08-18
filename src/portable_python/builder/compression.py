@@ -31,18 +31,17 @@ class Xz(ModuleBuilder):
     def xenv_ccasflags(self):
         yield from self.xenv_cflags()
 
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--disable-xz"
+        yield "--disable-xzdec"
+        yield "--disable-lzmadec"
+        yield "--disable-lzmainfo"
+        yield "--disable-lzma-links"
+        yield "--disable-scripts"
+
     def _do_linux_compile(self):
-        self.run(
-            "./configure",
-            "--prefix=/deps",
-            "--disable-shared",
-            "--disable-xz",
-            "--disable-xzdec",
-            "--disable-lzmadec",
-            "--disable-lzmainfo",
-            "--disable-lzma-links",
-            "--disable-scripts",
-        )
+        self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
 
@@ -59,6 +58,6 @@ class Zlib(ModuleBuilder):
         return "1.2.11"
 
     def _do_linux_compile(self):
-        self.run("./configure", "--prefix=/deps")
+        self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)

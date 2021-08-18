@@ -2,7 +2,6 @@ import contextlib
 import logging
 import os
 import pathlib
-import platform
 import time
 
 import runez
@@ -102,21 +101,47 @@ class AvailableBuilders:
             return v
 
 
+class TargetSystem:
+    """Models target platform / architecture we're compiling for"""
+
+    def __init__(self, target=None):
+        import platform
+
+        arch = plat = None
+        if target:
+            plat, _, arch = target.partition("-")
+
+        self.architecture = arch or platform.machine()
+        self.platform = plat or platform.system().lower()
+
+    def __repr__(self):
+        return "%s-%s" % (self.platform, self.architecture)
+
+    @property
+    def is_linux(self):
+        return self.platform == "linux"
+
+    @property
+    def is_macos(self):
+        return self.platform == "darwin"
+
+
 class BuildSetup:
     """General build settings"""
 
     module_builders = AvailableBuilders("external module")
+    prefix = None
     python_builders = AvailableBuilders("python")
+    reuse_prev_build = False
+    static = False
     supported = SupportedPythonVersions()
     _log_counter = 0
 
-    def __init__(self, python_spec, prefix=None, modules=None, build_folder="build", dist_folder="dist"):
+    def __init__(self, python_spec, modules=None, build_folder="build", dist_folder="dist", target=None):
         python_spec = PythonSpec.to_spec(python_spec)
         self.supported.validate(python_spec)
         self.python_spec = python_spec
-        self.prefix = prefix
-        self.architecture = platform.machine()
-        self.platform = platform.system().lower()
+        self.target_system = TargetSystem(target)
         build_folder = runez.to_path(build_folder, no_spaces=True).absolute()
         self.build_folder = build_folder / str(self.python_spec).replace(":", "-")
         self.dist_folder = runez.to_path(dist_folder).absolute()
@@ -133,10 +158,9 @@ class BuildSetup:
         elif modules == ["all"]:
             modules = list(self.module_builders.available.keys())
 
-        # modules = [self.module_builders.get_builder(self, name) for name in modules]
-        self.active_modules = []
-        self.skipped_modules = []
-        self.unknown_modules = []
+        self.active_modules = []  # type: list[ModuleBuilder]
+        self.skipped_modules = []  # type: list[ModuleBuilder]
+        self.unknown_modules = []  # type: list[str]
         for name in modules:
             m = self.module_builders.get_builder(self, name)
             if not m:
@@ -168,14 +192,6 @@ class BuildSetup:
                 if current != mode:
                     path.chmod(mode)
 
-    @property
-    def is_linux(self):
-        return self.platform == "linux"
-
-    @property
-    def is_macos(self):
-        return self.platform == "darwin"
-
     def _get_logs_path(self, name):
         """Log file to use for a compilation, name is such that alphabetical sort conserves the order in which compilations occurred"""
         runez.ensure_folder(self.logs_folder, logger=None)
@@ -188,6 +204,15 @@ class BuildSetup:
     def is_active_module(self, name):
         return any(name == x.module_builder_name() for x in self.active_modules)
 
+    def _compile_module(self, module: "ModuleBuilder"):
+        self.fix_lib_permissions(self.deps_folder / "libs")
+        if self.reuse_prev_build and module.build_folder.is_dir():
+            # Skip compilation if possible with --x-finalize
+            LOG.info("Skipping compilation of %s: build folder already there" % module)
+            return
+
+        module.compile()
+
     def compile(self, clean=True):
         with runez.Anchored(*self.anchors):
             runez.ensure_folder(self.build_folder, clean=clean)
@@ -196,9 +221,9 @@ class BuildSetup:
 
             LOG.info("Compiling %s" % runez.plural(self.active_modules, "external module"))
             for m in self.active_modules:
-                m.compile()
+                self._compile_module(m)
 
-            self.python_builder.compile()
+            self._compile_module(self.python_builder)
             self.python_builder.finalize()
 
 
@@ -208,8 +233,8 @@ class ModuleBuilder:
     setup: BuildSetup = None
     build_folder: pathlib.Path = None
 
+    c_configure_program = "./configure"
     needs_platforms: list = None
-    needs_modules: list = None
 
     _log_handler = None
 
@@ -223,6 +248,10 @@ class ModuleBuilder:
     @classmethod
     def module_builder_name(cls):
         return cls.__name__.lower()
+
+    @property
+    def target(self):
+        return self.setup.target_system
 
     @property
     def url(self):
@@ -252,37 +281,17 @@ class ModuleBuilder:
 
     def skip_reason(self):
         """Reason we're skipping compilation of this module, if any"""
-        if self.needs_platforms and self.setup.platform not in self.needs_platforms:
+        if self.needs_platforms and self.target.platform not in self.needs_platforms:
             return "%s only" % runez.joined(self.needs_platforms, delimiter="/")
 
-        if self.needs_modules:
-            for m in self.needs_modules:
-                if not self.setup.is_active_module(m):
-                    return "needs %s" % m
-
-    # def common_flags(self):
-    #     if self.setup.is_macos:
-    #         yield "-arch"
-    #         yield self.setup.architecture
-    #         yield "-mmacosx-version-min=10.14"
-    #         yield "-isysroot"
-    #         yield "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
-
     def xenv_cflags(self):
-        # yield from self.common_flags()
-        yield "-fPIC"
         yield self.checked_folder(self.deps / "include", prefix="-I")
 
-    def xenv_cppflags(self):
-        if self.xenv_cflags:
-            yield from self.xenv_cflags()
-
     def xenv_ldflags(self):
-        # yield from self.common_flags()
         yield self.checked_folder(self.deps / "lib", prefix="-L")
 
     def xenv_macosx_deployment_target(self):
-        if self.setup.is_macos:
+        if self.target.is_macos:
             yield "10.14"
 
     def xenv_pkg_config_path(self):
@@ -300,10 +309,38 @@ class ModuleBuilder:
             return f"{prefix}{path}"
 
     def run(self, program, *args):
-        runez.run(program, *args, passthrough=self._log_handler or True)
+        return runez.run(program, *args, passthrough=self._log_handler or True)
 
-    def setenv(self, key, value):
-        LOG.info("%s=%s" % (key, runez.short(value, size=2048)))
+    @property
+    def c_configure_prefix(self):
+        """--prefix to use for the ./configure program"""
+        return "deps"
+
+    @property
+    def c_configure_static(self):
+        """CLI arg to pass to ./configure related to directing it to generate a static lib"""
+        if self.setup.static:
+            return "--disable-shared"
+
+    def c_configure_args(self):
+        """CLI args to pass to pass to ./configure"""
+        prefix = self.c_configure_prefix
+        if prefix:
+            yield "--prefix=/%s" % prefix.strip("/")
+
+        yield self.c_configure_static
+
+    def run_configure(self):
+        """
+        Calling ./configure is similar across all components.
+        This allows to have descendants customize each part relatively elegantly
+        """
+        args = runez.flattened(self.c_configure_program.split(), self.c_configure_args(), keep_empty=None)
+        return self.run(*args)
+
+    @staticmethod
+    def setenv(key, value):
+        LOG.info("env %s=%s" % (key, runez.short(value, size=2048)))
         os.environ[key] = value
 
     def setup_env(self):
@@ -337,22 +374,17 @@ class ModuleBuilder:
                 self._log_handler = None
 
     def compile(self):
-        if self.build_folder.is_dir():  # Compile only when folder isn't there (it's never there, unless --x-finalize)
-            LOG.info("Skipping compilation of %s: build folder already there" % self)
-            return
-
         started = time.time()
         with self.captured_logs():
             self.unpack()
             with runez.CurrentFolder(self.build_folder):
                 self.setup_env()
-                func = getattr(self, "_do_%s_compile" % self.setup.platform, None)
+                func = getattr(self, "_do_%s_compile" % self.target.platform, None)
                 if not func:
-                    runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.setup.platform))
+                    runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
 
                 func()
 
-            BuildSetup.fix_lib_permissions(self.deps / "libs")
             LOG.info("Compiled %s %s in %s" % (self.module_builder_name(), self.version, runez.represented_duration(time.time() - started)))
 
     def download(self):

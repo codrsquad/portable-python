@@ -35,11 +35,16 @@ def main(debug):
 @click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compiled binary tarball")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Build a shared-libs python targeting given prefix folder")
+@click.option("--static", is_flag=True, help="Try building a static executable (python makefiles don't really respect this yet)")
+@click.option("--target", help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
 @click.option("--x-finalize", hidden=True, is_flag=True, help="Internal, for debugger runs")
-@click.argument("pytarget")
-def build(build, dist, modules, prefix, x_finalize, pytarget):
+@click.argument("python_spec")
+def build(build, dist, modules, prefix, static, x_finalize, target, python_spec):
     """Build a python binary"""
-    setup = BuildSetup(pytarget, prefix=prefix, modules=modules, build_folder=build, dist_folder=dist)
+    setup = BuildSetup(python_spec, modules=modules, build_folder=build, dist_folder=dist, target=target)
+    setup.prefix = prefix
+    setup.reuse_prev_build = x_finalize
+    setup.static = static
     setup.compile(clean=not x_finalize)
 
 

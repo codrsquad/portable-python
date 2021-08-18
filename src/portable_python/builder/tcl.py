@@ -1,18 +1,32 @@
 import runez
 
+from portable_python import LOG
 from portable_python.builder import BuildSetup, ModuleBuilder
 
 
-@BuildSetup.module_builders.declare
-class Tcl(ModuleBuilder):  # pragma: no cover
-
-    @property
-    def url(self):
-        return f"https://prdownloads.sourceforge.net/tcl/tcl{self.version}-src.tar.gz"
+class TclTkModule(ModuleBuilder):
+    """Common Tcl/Tk stuff"""
 
     @property
     def version(self):
         return "8.6.10"
+
+    @property
+    def c_configure_static(self):
+        if self.setup.static:
+            yield "--enable-shared=no"
+
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--enable-threads"
+
+
+@BuildSetup.module_builders.declare
+class Tcl(TclTkModule):
+
+    @property
+    def url(self):
+        return f"https://prdownloads.sourceforge.net/tcl/tcl{self.version}-src.tar.gz"
 
     def _do_linux_compile(self):
         for path in BuildSetup.ls_dir(self.build_folder / "pkgs"):
@@ -21,43 +35,43 @@ class Tcl(ModuleBuilder):  # pragma: no cover
                 runez.delete(path)
 
         with runez.CurrentFolder("unix"):
-            patch_file("Makefile.in", "--enable-shared ", "--enable-shared=no ")
-            self.run("./configure", "--prefix=/deps", "--enable-shared=no", "--enable-threads")
+            if self.setup.static:
+                patch_file("Makefile.in", "--enable-shared ", "--enable-shared=no ")
+
+            self.run_configure()
             self.run("make")
             self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
             self.run("make", "install-private-headers", "DESTDIR=%s" % self.deps.parent)
 
 
 @BuildSetup.module_builders.declare
-class Tk(ModuleBuilder):  # pragma: no cover
+class Tk(TclTkModule):
 
     @property
     def url(self):
         return f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz"
 
-    @property
-    def version(self):
-        return "8.6.10"
-
-    def _do_linux_compile(self):
-        extra = []
-        if self.setup.is_macos:
-            extra.append("--enable-aqua=yes")
-            extra.append("--without-x")
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield f"--with-tcl={self.deps}/lib"
+        if self.target.is_macos:
+            yield "--enable-aqua=yes"
+            yield "--without-x"
 
         else:
-            extra.append(f"--x-includes={self.deps}/include")
-            extra.append(f"--x-libraries={self.deps}/lib")
+            yield f"--x-includes={self.deps}/include"
+            yield f"--x-libraries={self.deps}/lib"
 
+    def _do_linux_compile(self):
         with runez.CurrentFolder("unix"):
-            self.run("./configure", "--prefix=/deps", f"--with-tcl={self.deps}/lib", "--enable-shared=no", "--enable-threads", *extra)
+            self.run_configure()
             self.run("make")
             self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
             self.run("make", "install-private-headers", "DESTDIR=%s" % self.deps.parent)
 
 
 @BuildSetup.module_builders.declare
-class Tix(ModuleBuilder):  # pragma: no cover
+class Tix(TclTkModule):
 
     @property
     def url(self):
@@ -71,36 +85,39 @@ class Tix(ModuleBuilder):  # pragma: no cover
         yield from super().xenv_cflags()
         yield "-DUSE_INTERP_RESULT"  # -DUSE_INTERP_RESULT is to allow tix to use deprecated fields or something like that
 
-    def _do_linux_compile(self):
-        args = [f"--with-tcl={self.deps}/lib", f"--with-tk={self.deps}/lib", "--enable-shared=no"]
-        if self.setup.is_macos:
-            args.append("--without-x")
+    c_configure_program = "/bin/sh configure"
+
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield f"--with-tcl={self.deps}/lib"
+        yield f"--with-tk={self.deps}/lib"
+        if self.target.is_macos:
+            yield "--without-x"
 
         else:
-            args.append("--x-includes=/deps/include")
-            args.append("--x-libraries=/deps/lib")
+            yield f"--x-includes={self.deps}/include"
+            yield f"--x-libraries={self.deps}/lib"
 
-        self.run("/bin/sh", "configure", "--prefix=/deps", *args)
+    def _do_linux_compile(self):
+        self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
 
 
-def patch_file(path, old, new):  # pragma: no cover
-    if runez.DRYRUN:
-        print("Would patch %s" % runez.short(path))
-        return
-
+def patch_file(path, old, new):
     path = runez.to_path(path).absolute()
-    with runez.TempFolder():
-        changed = 0
-        with open("patched", "wt") as fout:
-            with open(path) as fin:
-                for line in fin:
-                    if old in line:
-                        line = line.replace(old, new)
-                        changed += 1
+    if path.exists():
+        with runez.TempFolder():
+            changed = 0
+            with open("patched", "wt") as fout:
+                with open(path) as fin:
+                    for line in fin:
+                        if old in line:
+                            line = line.replace(old, new)
+                            changed += 1
 
-                    fout.write(line)
+                        fout.write(line)
 
-        if changed:
-            runez.move("patched", path)
+            if changed:
+                LOG.info("Patched %s" % runez.short(path))
+                runez.move("patched", path)
