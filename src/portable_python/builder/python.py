@@ -45,8 +45,6 @@ class Cpython(ModuleBuilder):
 
     def xenv_cflags(self):
         yield from super().xenv_cflags()
-        yield self.checked_folder(self.deps / "include/uuid", prefix="-I")
-        yield self.checked_folder(self.deps / "include/readline", prefix="-I")
         if self.target.is_macos:
             yield "-Werror=unguarded-availability-new"
 

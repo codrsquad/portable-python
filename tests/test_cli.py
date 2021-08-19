@@ -27,6 +27,7 @@ def test_build(cli):
 
     # Simulate some tcl/tk setup, to help coverage
     bf = runez.to_path(f"build/cpython-{v}")
+    runez.touch(bf / "deps/bin/bzcat", logger=None)
     runez.touch(bf / "deps/include/readline/readline.h", logger=None)
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
     runez.write(bf / "build/tcl/Makefile.in", "--enable-shared foo", logger=None)

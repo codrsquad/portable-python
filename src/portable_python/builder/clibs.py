@@ -77,6 +77,8 @@ class Openssl(ModuleBuilder):
 @BuildSetup.module_builders.declare
 class Uuid(ModuleBuilder):
 
+    needs_platforms = ["linux"]
+
     @property
     def url(self):
         return f"https://sourceforge.net/projects/libuuid/files/libuuid-{self.version}.tar.gz"

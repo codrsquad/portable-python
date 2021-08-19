@@ -285,26 +285,28 @@ class ModuleBuilder:
             return "%s only" % runez.joined(self.needs_platforms, delimiter="/")
 
     def xenv_cflags(self):
-        yield self.checked_folder(self.deps / "include", prefix="-I")
+        yield self.checked_deps_folder("include", prefix="-I")
+        yield self.checked_deps_folder("include/readline", prefix="-I")
+        yield self.checked_deps_folder("include/uuid", prefix="-I")
+        yield self.checked_deps_folder("include/openssl", prefix="-I")
 
     def xenv_ldflags(self):
-        yield self.checked_folder(self.deps / "lib", prefix="-L")
+        yield self.checked_deps_folder("lib", prefix="-L")
 
     def xenv_macosx_deployment_target(self):
         if self.target.is_macos:
             yield "10.14"
 
     def xenv_pkg_config_path(self):
-        yield self.checked_folder(self.deps / "share/pkgconfig")
-        yield self.checked_folder(self.deps / "lib/pkgconfig")
+        yield self.checked_deps_folder("lib/pkgconfig")
 
     def xenv_path(self):
-        yield self.checked_folder(self.deps / "bin")
+        yield self.checked_deps_folder("bin")
         yield "/usr/bin"
         yield "/bin"
 
-    @staticmethod
-    def checked_folder(path, prefix=""):
+    def checked_deps_folder(self, path, prefix=""):
+        path = self.deps / path
         if path.is_dir():
             return f"{prefix}{path}"
 
