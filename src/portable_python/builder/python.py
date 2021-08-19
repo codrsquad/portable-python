@@ -3,45 +3,17 @@ import os
 import runez
 
 from portable_python import LOG
-from portable_python.builder import BuildSetup, ModuleBuilder
+from portable_python.builder import BuildSetup, PythonBuilder
 
 
 @BuildSetup.python_builders.declare
-class Cpython(ModuleBuilder):
+class Cpython(PythonBuilder):
     """Build CPython binaries"""
-
-    @property
-    def bin_folder(self):
-        return self.install_folder / self.prefix / "bin"
-
-    @property
-    def install_folder(self):
-        folder = self.setup.build_folder
-        if self.setup.prefix:
-            return folder / "root"
-
-        return folder
-
-    @property
-    def prefix(self):
-        if self.setup.prefix:
-            return self.setup.prefix.strip("/").format(python_version=self.version)
-
-        return self.version.text
 
     @property
     def url(self):
         """Url of source tarball"""
         return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
-
-    @property
-    def version(self):
-        return self.setup.python_spec.version
-
-    def default_modules(self):
-        """Default modules to compile"""
-        if self.target.is_macos:
-            return "readline,openssl"
 
     def xenv_cflags(self):
         yield from super().xenv_cflags()

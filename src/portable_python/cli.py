@@ -1,13 +1,9 @@
-import json
 import logging
-import os
 
 import click
 import runez
-from runez.pyenv import PythonDepot
-from runez.render import PrettyTable
 
-from portable_python import LOG
+from portable_python import LOG, PythonInspector
 from portable_python.builder import BuildSetup
 
 
@@ -35,17 +31,20 @@ def main(debug):
 @click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compiled binary tarball")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Build a shared-libs python targeting given prefix folder")
-@click.option("--static", is_flag=True, help="Try building a static executable (python makefiles don't really respect this yet)")
+@click.option("--static", is_flag=True, help="Try building a static executable (experimental, work in progress)")
 @click.option("--target", help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
-@click.option("--x-finalize", hidden=True, is_flag=True, help="Internal, for debugger runs")
+@click.option("--x-debug", hidden=True, is_flag=True, help="For debugging, allows to build one module at a time")
 @click.argument("python_spec")
-def build(build, dist, modules, prefix, static, x_finalize, target, python_spec):
+def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
     """Build a python binary"""
     setup = BuildSetup(python_spec, modules=modules, build_folder=build, dist_folder=dist, target=target)
     setup.prefix = prefix
-    setup.reuse_prev_build = x_finalize
     setup.static = static
-    setup.compile(clean=not x_finalize)
+    setup.compile(x_debug=x_debug)
+    folder = setup.python_builder.install_folder
+    if folder.is_dir():
+        inspector = PythonInspector(folder, modules)
+        print(inspector.report())
 
 
 @main.command()
@@ -54,7 +53,7 @@ def build(build, dist, modules, prefix, static, x_finalize, target, python_spec)
 def inspect(modules, pythons):
     """Overview of python internals"""
     inspector = PythonInspector(pythons, modules)
-    print(runez.joined(inspector.report(), delimiter="\n"))
+    print(inspector.report())
 
 
 @main.command()
@@ -79,73 +78,6 @@ def list(family):
 
         else:
             print("%s%s" % (indent, runez.red("not supported")))
-
-
-class PythonInspector:
-
-    def __init__(self, specs, modules):
-        self.inspector_path = os.path.join(os.path.dirname(__file__), "_inspect.py")
-        self.specs = runez.flattened(specs, keep_empty=None, split=",")
-        self.modules = modules
-        self.depot = PythonDepot(use_path=False)
-        self.reports = [self.inspection_report(p) for p in self.specs]
-
-    def report(self):
-        for r in self.reports:
-            if r.report:
-                if r.python.problem:
-                    yield runez.short("%s: %s" % (runez.blue(r.spec), runez.red(r.python.problem)))
-
-                else:
-                    yield "%s:" % runez.blue(r.python)
-                    yield r.represented() or ""
-
-    def inspection_report(self, spec):
-        python = self.depot.find_python(spec)
-        report = None
-        if python.problem:
-            report = dict(problem=python.problem)
-
-        else:
-            r = runez.run(python.executable, self.inspector_path, self.modules, fatal=False, logger=print if runez.DRYRUN else LOG.debug)
-            if not runez.DRYRUN:
-                report = json.loads(r.output) if r.succeeded else dict(exit_code=r.exit_code, error=r.error, output=r.output)
-
-        return InspectionReport(spec, python, report)
-
-
-class InspectionReport:
-
-    def __init__(self, spec, python, report):
-        self.spec = spec
-        self.python = python
-        self.report = report
-
-    def __repr__(self):
-        return str(self.python)
-
-    @staticmethod
-    def color(text):
-        if text.startswith("*"):
-            return runez.orange(text)
-
-        if text == "built-in":
-            return runez.blue(text)
-
-        if text.startswith(("lib/", "lib64/")):
-            return runez.green(text)
-
-        return text
-
-    def represented(self):
-        if self.report:
-            t = PrettyTable(2)
-            t.header[0].align = "right"
-            for k, v in sorted(self.report.items()):
-                v = runez.short(v or "*empty*")
-                t.add_row(k, self.color(v))
-
-            return "%s\n" % t
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
+from portable_python import InspectionReport
 from portable_python.builder import BuildSetup, ModuleBuilder
-from portable_python.cli import InspectionReport
 
 
 def test_edge_cases():

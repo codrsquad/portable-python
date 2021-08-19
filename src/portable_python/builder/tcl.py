@@ -1,6 +1,5 @@
 import runez
 
-from portable_python import LOG
 from portable_python.builder import BuildSetup, ModuleBuilder
 
 
@@ -10,11 +9,6 @@ class TclTkModule(ModuleBuilder):
     @property
     def version(self):
         return "8.6.10"
-
-    @property
-    def c_configure_static(self):
-        if self.setup.static:
-            yield "--enable-shared=no"
 
     def c_configure_args(self):
         yield from super().c_configure_args()
@@ -35,9 +29,6 @@ class Tcl(TclTkModule):
                 runez.delete(path)
 
         with runez.CurrentFolder("unix"):
-            if self.setup.static:
-                patch_file("Makefile.in", "--enable-shared ", "--enable-shared=no ")
-
             self.run_configure()
             self.run("make")
             self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
@@ -73,6 +64,8 @@ class Tk(TclTkModule):
 @BuildSetup.module_builders.declare
 class Tix(TclTkModule):
 
+    c_configure_program = "/bin/sh configure"
+
     @property
     def url(self):
         return f"https://github.com/python/cpython-source-deps/archive/tix-{self.version}.tar.gz"
@@ -84,8 +77,6 @@ class Tix(TclTkModule):
     def xenv_cflags(self):
         yield from super().xenv_cflags()
         yield "-DUSE_INTERP_RESULT"  # -DUSE_INTERP_RESULT is to allow tix to use deprecated fields or something like that
-
-    c_configure_program = "/bin/sh configure"
 
     def c_configure_args(self):
         yield from super().c_configure_args()
@@ -102,22 +93,3 @@ class Tix(TclTkModule):
         self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
-
-
-def patch_file(path, old, new):
-    path = runez.to_path(path).absolute()
-    if path.exists():
-        with runez.TempFolder():
-            changed = 0
-            with open("patched", "wt") as fout:
-                with open(path) as fin:
-                    for line in fin:
-                        if old in line:
-                            line = line.replace(old, new)
-                            changed += 1
-
-                        fout.write(line)
-
-            if changed:
-                LOG.info("Patched %s" % runez.short(path))
-                runez.move("patched", path)

@@ -16,7 +16,7 @@ def test_module_invocation(cli):
 
 def test_build(cli):
     v = BuildSetup.supported.cpython.latest
-    cli.run("--dryrun", "build", "2.7.1", "--target=foo-bar")
+    cli.run("--dryrun", "build", "2.7.1", "-mnone", "--target=foo-bar")
     assert cli.failed
     assert "cpython:2.7.1 is not in the supported list" in cli.logged
     assert "Compiling 0 external modules" in cli.logged
@@ -30,11 +30,9 @@ def test_build(cli):
     runez.touch(bf / "deps/bin/bzcat", logger=None)
     runez.touch(bf / "deps/include/readline/readline.h", logger=None)
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
-    runez.write(bf / "build/tcl/Makefile.in", "--enable-shared foo", logger=None)
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--static")
     assert cli.succeeded
     assert "Skipping xorgproto" in cli.logged
-    assert f"Patched build/cpython-{v}/build/tcl/Makefile.in" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
@@ -51,19 +49,18 @@ def test_build(cli):
 
 def test_failed_run(cli):
     v = BuildSetup.supported.cpython.latest
+    dummy_tarball("readline-8.1.tar.gz")
     build_path = runez.to_path(f"build/cpython-{v}")
-    runez.touch("sample/README", logger=None)
-    runez.compress("sample/README", "build/downloads/readline-8.1.tar.gz", logger=None)
     cli.run("build", v, "-mreadline")
     assert cli.failed
     assert "./configure is not an executable" in cli.logged
-    assert os.path.exists(build_path / "build/readline/README")
     assert os.path.exists(build_path / "logs/01-readline.log")
 
 
 def test_finalization(cli):
     v = BuildSetup.supported.cpython.latest
     dummy_tarball(f"Python-{v}.tar.xz")
+    dummy_tarball("readline-8.1.tar.gz")
     base = runez.to_path(f"build/cpython-{v}")
     bin = base / f"{v}/bin"
 
@@ -81,10 +78,9 @@ def test_finalization(cli):
     runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
     runez.write(bin / "some-exe3", "#!/bin/sh\nhello", logger=None)
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
-        cli.run("build", v, "-mnone", "--x-finalize")
+        cli.run("build", v, "-mreadline", "--x-debug")
         assert cli.succeeded
-        assert "Compiling 0 external modules" in cli.logged
-        assert f"Skipping compilation of cpython {v}: build folder already there" in cli.logged
+        assert "Compiling 1 external module" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
         assert f"Deleted build/cpython-{v}/{v}/bin/2to3" in cli.logged
         assert "Symlink foo-python <- python" in cli.logged

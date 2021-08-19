@@ -53,10 +53,10 @@ class SupportedPythonVersions:
         self.family_by_name = {}
         self.cpython = self._add("cpython", CPYTHON_VERSIONS)
 
-    def _add(self, name, versions):
-        fam = PythonVersions("cpython", CPYTHON_VERSIONS)
+    def _add(self, family_name, versions):
+        fam = PythonVersions(family_name, versions)
         self.family_list.append(fam)
-        self.family_by_name[name] = fam
+        self.family_by_name[family_name] = fam
         return fam
 
     @property
@@ -94,6 +94,14 @@ class AvailableBuilders:
         return decorated
 
     def get_builder(self, setup, name):
+        """
+        Args:
+            setup (BuildSetup): Attached setup object
+            name (str): Name of module builder
+
+        Returns:
+            (PythonBuilder): Associated module builder, if any
+        """
         v = self.available.get(name)
         if v:
             v = v()
@@ -132,7 +140,6 @@ class BuildSetup:
     module_builders = AvailableBuilders("external module")
     prefix = None
     python_builders = AvailableBuilders("python")
-    reuse_prev_build = False
     static = False
     supported = SupportedPythonVersions()
     _log_counter = 0
@@ -184,9 +191,8 @@ class BuildSetup:
         if path.is_dir():
             yield from path.iterdir()
 
-    @staticmethod
-    def fix_lib_permissions(libs, mode=0o644):
-        for path in BuildSetup.ls_dir(libs):
+    def fix_lib_permissions(self, mode=0o644):
+        for path in self.ls_dir(self.deps_folder / "libs"):
             if path.name.endswith((".a", ".la")):
                 current = path.stat().st_mode & 0o777
                 if current != mode:
@@ -204,27 +210,17 @@ class BuildSetup:
     def is_active_module(self, name):
         return any(name == x.module_builder_name() for x in self.active_modules)
 
-    def _compile_module(self, module: "ModuleBuilder"):
-        self.fix_lib_permissions(self.deps_folder / "libs")
-        if self.reuse_prev_build and module.build_folder.is_dir():
-            # Skip compilation if possible with --x-finalize
-            LOG.info("Skipping compilation of %s: build folder already there" % module)
-            return
-
-        module.compile()
-
-    def compile(self, clean=True):
+    def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
-            runez.ensure_folder(self.build_folder, clean=clean)
+            runez.ensure_folder(self.build_folder, clean=not x_debug)
             if self.unknown_modules:
                 return runez.abort("Unknown modules: %s" % runez.joined(self.unknown_modules, delimiter=", ", stringify=runez.red))
 
             LOG.info("Compiling %s" % runez.plural(self.active_modules, "external module"))
             for m in self.active_modules:
-                self._compile_module(m)
+                m.compile(x_debug)
 
-            self._compile_module(self.python_builder)
-            self.python_builder.finalize()
+            self.python_builder.compile(x_debug)
 
 
 class ModuleBuilder:
@@ -318,19 +314,11 @@ class ModuleBuilder:
         """--prefix to use for the ./configure program"""
         return "deps"
 
-    @property
-    def c_configure_static(self):
-        """CLI arg to pass to ./configure related to directing it to generate a static lib"""
-        if self.setup.static:
-            return "--disable-shared"
-
     def c_configure_args(self):
         """CLI args to pass to pass to ./configure"""
         prefix = self.c_configure_prefix
         if prefix:
             yield "--prefix=/%s" % prefix.strip("/")
-
-        yield self.c_configure_static
 
     def run_configure(self):
         """
@@ -342,7 +330,7 @@ class ModuleBuilder:
 
     @staticmethod
     def setenv(key, value):
-        LOG.info("env %s=%s" % (key, runez.short(value, size=2048)))
+        LOG.debug("env %s=%s" % (key, runez.short(value, size=2048)))
         os.environ[key] = value
 
     def setup_env(self):
@@ -375,19 +363,25 @@ class ModuleBuilder:
                 logging.root.removeHandler(self._log_handler)
                 self._log_handler = None
 
-    def compile(self):
+    def compile(self, x_debug):
         started = time.time()
         with self.captured_logs():
-            self.unpack()
-            with runez.CurrentFolder(self.build_folder):
-                self.setup_env()
-                func = getattr(self, "_do_%s_compile" % self.target.platform, None)
-                if not func:
-                    runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
+            if not x_debug or not self.build_folder.is_dir():
+                # Build folder would exist only if we're doing an --x-debug run
+                self.unpack()
+                with runez.CurrentFolder(self.build_folder):
+                    self.setup_env()
+                    func = getattr(self, "_do_%s_compile" % self.target.platform, None)
+                    if not func:
+                        runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
 
-                func()
+                    func()
 
+            self.finalize()
             LOG.info("Compiled %s %s in %s" % (self.module_builder_name(), self.version, runez.represented_duration(time.time() - started)))
+
+    def finalize(self):
+        self.setup.fix_lib_permissions()
 
     def download(self):
         if self.download_path.exists():
@@ -406,3 +400,34 @@ class ModuleBuilder:
 
     def _do_linux_compile(self):
         """Compile on linux variants"""
+
+
+class PythonBuilder(ModuleBuilder):
+
+    @property
+    def bin_folder(self):
+        return self.install_folder / self.prefix / "bin"
+
+    @property
+    def install_folder(self):
+        folder = self.setup.build_folder
+        if self.setup.prefix:
+            return folder / "root"
+
+        return folder
+
+    @property
+    def prefix(self):
+        if self.setup.prefix:
+            return self.setup.prefix.strip("/").format(python_version=self.version)
+
+        return self.version.text
+
+    @property
+    def version(self):
+        return self.setup.python_spec.version
+
+    def default_modules(self):
+        """Default modules to compile"""
+        if self.target.is_macos:
+            return "readline,openssl"

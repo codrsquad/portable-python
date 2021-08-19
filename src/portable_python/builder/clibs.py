@@ -42,6 +42,8 @@ class Readline(ModuleBuilder):
 @BuildSetup.module_builders.declare
 class Openssl(ModuleBuilder):
 
+    c_configure_program = "./Configure"
+
     @property
     def url(self):
         return f"https://www.openssl.org/source/openssl-{self.version}.tar.gz"
@@ -49,12 +51,6 @@ class Openssl(ModuleBuilder):
     @property
     def version(self):
         return "1.1.1k"
-
-    @property
-    def c_configure_static(self):
-        return None
-
-    c_configure_program = "./Configure"
 
     def c_configure_args(self):
         yield from super().c_configure_args()

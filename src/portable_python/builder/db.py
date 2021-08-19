@@ -29,6 +29,8 @@ class Gdbm(ModuleBuilder):
 class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
+    c_configure_program = "../dist/configure"
+
     @property
     def url(self):
         return f"https://ftp.osuosl.org/pub/blfs/conglomeration/db/db-{self.version}.tar.gz"
@@ -36,8 +38,6 @@ class Bdb(ModuleBuilder):
     @property
     def version(self):
         return "6.2.32"
-
-    c_configure_program = "../dist/configure"
 
     def c_configure_args(self):
         yield from super().c_configure_args()
