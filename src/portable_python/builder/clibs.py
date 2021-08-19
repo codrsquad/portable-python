@@ -21,8 +21,6 @@ class LibFFI(ModuleBuilder):
 @BuildSetup.module_builders.declare
 class Readline(ModuleBuilder):
 
-    needs_platforms = ["linux"]
-
     @property
     def url(self):
         return f"https://ftp.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
