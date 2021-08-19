@@ -38,11 +38,12 @@ class PythonInspector:
         return InspectionReport(spec, python, report)
 
     def _python_report(self, exe):
-        r = runez.run(exe, self.inspector_path, self.modules, fatal=False, dryrun=False)
-        if r.succeeded and r.output and r.output.startswith("{"):
-            return json.loads(r.output)
+        r = runez.run(exe, self.inspector_path, self.modules, fatal=False, logger=print if runez.DRYRUN else LOG.debug)
+        if not runez.DRYRUN:
+            if r.succeeded and r.output and r.output.startswith("{"):
+                return json.loads(r.output)
 
-        return dict(exit_code=r.exit_code, error=r.error, output=r.output)
+            return dict(exit_code=r.exit_code, error=r.error, output=r.output)
 
 
 class InspectionReport:
