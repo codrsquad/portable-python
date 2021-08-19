@@ -12,12 +12,12 @@ LOG = logging.getLogger(__name__)
 
 class PythonInspector:
 
-    def __init__(self, specs, modules):
+    def __init__(self, specs, modules=None):
         self.inspector_path = os.path.join(os.path.dirname(__file__), "_inspect.py")
         self.specs = runez.flattened(specs, keep_empty=None, split=",")
         self.modules = modules
         self.depot = PythonDepot(use_path=False)
-        self.reports = [self.inspection_report(p) for p in self.specs]
+        self.reports = [self._spec_report(p) for p in self.specs]
 
     def report(self):
         return runez.joined(self.report_rows(), delimiter="\n")
@@ -32,18 +32,17 @@ class PythonInspector:
                     yield "%s:" % runez.blue(r.python)
                     yield r.represented() or ""
 
-    def inspection_report(self, spec):
+    def _spec_report(self, spec):
         python = self.depot.find_python(spec)
-        report = None
-        if python.problem:
-            report = dict(problem=python.problem)
-
-        else:
-            r = runez.run(python.executable, self.inspector_path, self.modules, fatal=False, logger=print if runez.DRYRUN else LOG.debug)
-            if not runez.DRYRUN:
-                report = json.loads(r.output) if r.succeeded else dict(exit_code=r.exit_code, error=r.error, output=r.output)
-
+        report = dict(problem=python.problem) if python.problem else self._python_report(python.executable)
         return InspectionReport(spec, python, report)
+
+    def _python_report(self, exe):
+        r = runez.run(exe, self.inspector_path, self.modules, fatal=False, dryrun=False)
+        if r.succeeded and r.output and r.output.startswith("{"):
+            return json.loads(r.output)
+
+        return dict(exit_code=r.exit_code, error=r.error, output=r.output)
 
 
 class InspectionReport:

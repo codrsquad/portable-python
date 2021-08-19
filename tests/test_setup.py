@@ -1,4 +1,4 @@
-from portable_python import InspectionReport
+from portable_python import PythonInspector
 from portable_python.builder import BuildSetup, ModuleBuilder
 
 
@@ -15,8 +15,12 @@ def test_edge_cases():
     assert not mb.url
     assert not mb.version
 
-    report = InspectionReport("foo", "python", {})
-    assert str(report) == "python"
-    assert report.color("*absent*")
-    assert report.color("built-in")
-    assert report.color("foo")
+    inspector = PythonInspector("0.1.2")
+    r0 = inspector.reports[0]
+    assert str(r0) == "0.1.2 [not available]"
+    assert r0.color("*absent*")
+    assert r0.color("built-in")
+    assert r0.color("foo")
+
+    r = inspector._python_report("no-such-exe")
+    assert r["exit_code"]

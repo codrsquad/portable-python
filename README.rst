@@ -36,12 +36,38 @@ The idea here is to allow for automated systems to:
   similarly to how pyenv_ does it, but without having to compile on target system.
 
 
+Guiding principles
+------------------
+
+- Only the last few non-EOL versions of python are supported (no historical stuff)
+
+- Code is 100% properly packaged python
+
+  - Can be ran in a debugger, 100% test coverage
+
+  - ``--dryrun`` mode to help with testing / debugging / seeing what would be done quickly
+
+  - No shell scripts (those are hard to maintain/test/debug)
+
+- ``portable-python`` is designed to be used as a tool to produce binary pythons
+  that can easily be deployed, and then published somewhere (internally at a company),
+  not designed to be used directly on laptops/workstations
+
+- C compilation is done as simply as possible: no "patching" of any sort,
+  (rely completely on the upstream make/configure scripts as-is)
+
+- Cpython is initially supported, but aiming to compile any flavor in the future
+  (pypi, conda, ...)
+
+- Cross-compilation would be cool, but only if upstream supports it
+
+
 How it works
 ------------
 
 ``portable-python`` is a regular python CLI, it can be installed with:
 
-- With pickley_::
+- pickley_::
 
     pickley install portable-python
     portable-python --help
@@ -49,9 +75,12 @@ How it works
 - Using ``pip install``::
 
     /usr/bin/python3 -mvenv pp
+    ./pp/bin/python -mpip install portable-python
     ./pp/bin/portable-python --help
 
 - From python::
+
+    # pip install portable-python
 
     from portable_python.builder import BuildSetup
 
@@ -72,10 +101,10 @@ Once you've installed ``portable-python``, you can get going like so::
     # Build a binary (for current platform)
     cd some-temp-folder
     portable-python build 3.9.6
-    ls -l dist/3.9.6.tar.gz
+    ls -l dist/cpython-*.tar.gz
 
     # Unpack it somewhere
-    tar -C ~/.pyenv/versions/ -xf dist/3.9.6.tar.gz
+    tar -C ~/.pyenv/versions/ -xf dist/cpython-3.9.6-darwin-x86_64.tar.gz
     ls -l ~/.pyenv/versions/
 
     # It's ready to be used
@@ -89,9 +118,8 @@ Note that you can use ``--dryrun`` mode to inspect what would be done without do
     Would create build/cpython-3.9.2
     ...
     Would untar build/downloads/readline-8.1.tar.gz -> build/cpython-3.9.2/build/readline
-    INFO CFLAGS=-fPIC
     ...
-    Would run: ./configure --prefix=/deps --disable-shared --with-curses
+    Would run: ./configure --prefix=/deps
     Would run: /usr/bin/make
     Would run: /usr/bin/make install DESTDIR=build/cpython-3.9.2
     ...
@@ -109,9 +137,9 @@ Build folder structure
             deps/           # --prefix=/deps passed to all ./configure scripts
             logs/           # Logs for each module build are here, in order of build
         downloads/
-            openssl-1.1.1k.tar.gz   # Downloaded artifacts (downloaded only once)
+            openssl-1.1.1k.tar.gz           # Downloaded artifacts (downloaded only once)
     dist/
-        3.9.6.tar.gz        # Ready-to-go binary tarball
+        cpython-3.9.6-darwin-x86_64.tar.gz  # Ready-to-go binary tarball
 
 
 

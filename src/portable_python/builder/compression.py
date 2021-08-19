@@ -57,10 +57,6 @@ class Zlib(ModuleBuilder):
     def version(self):
         return "1.2.11"
 
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--archs=%s" % self.target.architecture
-
     def _do_linux_compile(self):
         self.run_configure()
         self.run("make")
