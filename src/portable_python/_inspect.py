@@ -18,7 +18,11 @@ def module_representation(module_name, mod):
         for f in fields:
             v = getattr(mod, f, None)
             if v:
-                return "%s=%s" % (f, v)
+                v = "%s=%s" % (f, v)
+                if hasattr(mod, "__file__"):
+                    v += " %s" % mod.__file__
+
+                return v
 
     for f in ("__file__", "__spec__"):
         v = getattr(mod, f, None)

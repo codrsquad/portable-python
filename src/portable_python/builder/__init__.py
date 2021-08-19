@@ -281,29 +281,35 @@ class ModuleBuilder:
         if self.needs_platforms and self.target.platform not in self.needs_platforms:
             return "%s only" % runez.joined(self.needs_platforms, delimiter="/")
 
-    def xenv_cflags(self):
-        yield self.checked_deps_folder("include", prefix="-I")
-        yield self.checked_deps_folder("include/readline", prefix="-I")
-        yield self.checked_deps_folder("include/uuid", prefix="-I")
-        yield self.checked_deps_folder("include/openssl", prefix="-I")
+    def xenv_archflags(self):
+        """Help some components figure out architecture"""
+        yield "-arch", self.target.architecture
 
-    # def xenv_ldflags(self):
-    #     yield self.checked_deps_folder("lib", prefix="-L")
+    def xenv_cpath(self):
+        """Both gcc and clang accept CPATH to point to extra include folders to look at"""
+        yield self.checked_deps_folder("include")
+        yield self.checked_deps_folder("include/readline")
+        yield self.checked_deps_folder("include/uuid")
+        yield self.checked_deps_folder("include/openssl")
+
+    def xenv_library_path(self):
+        yield self.checked_deps_folder("lib")
+
+    def xenv_ld_library_path(self):
+        """Not sure if both LIBRARY_PATH and LD_LIBRARY_PATH are needed, or if one is enough"""
+        yield self.checked_deps_folder("lib")
 
     def xenv_macosx_deployment_target(self):
         if self.target.is_macos:
             yield "10.14"
 
-    def xenv_ld_library_path(self):
-        yield self.checked_deps_folder("lib")
-
-    def xenv_pkg_config_path(self):
-        yield self.checked_deps_folder("lib/pkgconfig")
-
     def xenv_path(self):
         yield self.checked_deps_folder("bin")
         yield "/usr/bin"
         yield "/bin"
+
+    def xenv_pkg_config_path(self):
+        yield self.checked_deps_folder("lib/pkgconfig")
 
     def checked_deps_folder(self, path, prefix=""):
         path = self.deps / path

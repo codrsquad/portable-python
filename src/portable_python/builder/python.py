@@ -10,19 +10,18 @@ from portable_python.builder import BuildSetup, PythonBuilder
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
+    base_url = "https://www.python.org/ftp/python"
+
     def default_modules(self):
         return "openssl"
 
     @property
     def url(self):
         """Url of source tarball"""
-        return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
+        return f"{self.base_url}/{self.version}/Python-{self.version}.tar.xz"
 
     def xenv_cflags(self):
-        yield from super().xenv_cflags()
         yield "-Wno-unused-command-line-argument"
-        if self.target.is_linux:
-            yield "-m64"
 
     @property
     def c_configure_prefix(self):
@@ -45,15 +44,15 @@ class Cpython(PythonBuilder):
         self.run_configure()
         self.run("make")
         self.run("make", "install", "DESTDIR=%s" % self.install_folder)
-        self.cleanup_build_artifacts()
+        self.cleanup_distribution()
         self.finalize()
 
     def finalize(self):
         # For some reason, pip upgrade doesn't work unless ensurepip/_bundled was cleaned up, so run it after cleanup
-        self.cleanup_build_artifacts()
+        self.cleanup_distribution()
         self.run(self.bin_folder / "python3", "-mpip", "install", "-U", "pip", "setuptools", "wheel")
         # Then clean up again (to remove the artifacts done by the pip run)
-        self.cleanup_build_artifacts()
+        self.cleanup_distribution()
         self.correct_symlinks()
         if not self.setup.prefix:
             path = self.bin_folder.parent
@@ -61,17 +60,39 @@ class Cpython(PythonBuilder):
             dest = self.setup.dist_folder / dest
             runez.compress(path, dest)
 
-    def cleanup_build_artifacts(self):
-        cleanable_folders = {"_bundled", "idle_test", "test", "tests"}  # Get rid of test suites
-        config_dupe = "config-%s.%s-" % (self.version.major, self.version.minor)  # Config folder with build artifacts
+    @runez.cached_property
+    def cleanable_basenames(self):
+        """Folders that are not useful in deliverable (test suites etc)"""
+        r = {
+            "__phello__.foo.py",
+            "_bundled",
+            "idle_test",
+            f"libpython{self.version.major}.{self.version.minor}.a",
+            "test",
+            "tests",
+        }
         if not self.setup.prefix:
-            cleanable_folders.add("__pycache__")
+            # No setup.prefix == portable python, remove __pycache__ (it'll be recreated on first run on target machine)
+            r.add("__pycache__")
 
+        return r
+
+    @runez.cached_property
+    def cleanable_prefixes(self):
+        """Files/folders that are not useful in deliverable, but name varies, can be identified by their prefix"""
+        return {
+            "config-%s.%s-" % (self.version.major, self.version.minor),
+        }
+
+    def should_clean(self, basename):
+        return basename in self.cleanable_basenames or any(basename.startswith(x) for x in self.cleanable_prefixes)
+
+    def cleanup_distribution(self):
         cleaned = []
         for dirpath, dirnames, filenames in os.walk(self.bin_folder.parent):
             removed = []
             for name in dirnames:
-                if name in cleanable_folders or name.startswith(config_dupe):
+                if self.should_clean(name):
                     # Remove unnecessary file, to save on space
                     full_path = os.path.join(dirpath, name)
                     removed.append(name)
@@ -82,7 +103,7 @@ class Cpython(PythonBuilder):
                 dirnames.remove(name)
 
             for name in filenames:
-                if name in ("__phello__.foo.py",):
+                if self.should_clean(name):
                     full_path = os.path.join(dirpath, name)
                     cleaned.append(name)
                     runez.delete(full_path, logger=None)

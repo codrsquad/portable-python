@@ -67,6 +67,12 @@ class InspectionReport:
         if text.startswith(("lib/", "lib64/")):
             return runez.green(text)
 
+        if "lib/" in text:
+            i = text.index("lib/")
+            after = text[i:]
+            before = text[:i].rpartition(" ")[0]
+            text = "%s %s" % (before, runez.green(after))
+
         return text
 
     def represented(self):

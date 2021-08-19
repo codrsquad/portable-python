@@ -74,9 +74,9 @@ class Tix(TclTkModule):
     def version(self):
         return "8.4.3.6"
 
-    def xenv_cflags(self):
-        yield from super().xenv_cflags()
-        yield "-DUSE_INTERP_RESULT"  # -DUSE_INTERP_RESULT is to allow tix to use deprecated fields or something like that
+    # def xenv_cflags(self):
+    #     yield from super().xenv_cflags()
+    #     yield "-DUSE_INTERP_RESULT"  # -DUSE_INTERP_RESULT is to allow tix to use deprecated fields or something like that
 
     def c_configure_args(self):
         yield from super().c_configure_args()

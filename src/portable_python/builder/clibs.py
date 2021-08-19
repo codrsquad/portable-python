@@ -20,6 +20,11 @@ class LibFFI(ModuleBuilder):
 
 @BuildSetup.module_builders.declare
 class Readline(ModuleBuilder):
+    """
+    TODO: readline is not getting picked up
+    macos: fails with Symbol not found: _rl_catch_signals (or earlier: _free_history_entry)
+    linux: builds OK, but version is incorrect (system readline, instead of the one we compiled)
+    """
 
     @property
     def url(self):
@@ -29,11 +34,6 @@ class Readline(ModuleBuilder):
     def version(self):
         return "8.1"
 
-    def xenv_cflags(self):
-        yield from super().xenv_cflags()
-        # yield "-fPIC"
-        # yield "-arch", self.target.architecture
-
     def c_configure_args(self):
         yield from super().c_configure_args()
         yield "--disable-install-examples"
@@ -41,8 +41,13 @@ class Readline(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure()
-        # self.setup.patch_file(self.build_folder / "readline.pc", "Requires.private:", "# Requires.private:")
-        self.run("make", "SHLIB_LIBS=-lcurses")
+        args = []
+        if self.target.is_linux:
+            # See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb
+            args.append("SHLIB_LIBS=-lcurses")
+            # self.setup.patch_file(self.build_folder / "readline.pc", "Requires.private:", "# Requires.private:")
+
+        self.run("make", *args)
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
 
 

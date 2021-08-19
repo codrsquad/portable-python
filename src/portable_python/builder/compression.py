@@ -28,9 +28,6 @@ class Xz(ModuleBuilder):
     def version(self):
         return "5.2.5"
 
-    def xenv_ccasflags(self):
-        yield from self.xenv_cflags()
-
     def c_configure_args(self):
         yield from super().c_configure_args()
         yield "--disable-xz"
