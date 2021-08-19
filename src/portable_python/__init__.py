@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 
 import runez
 from runez.pyenv import PythonDepot
@@ -57,6 +58,28 @@ class InspectionReport:
         return str(self.python)
 
     @staticmethod
+    def lib_version_via_otool(path):
+        aliases = {"tkinter": "tcl"}
+        if path and os.path.exists(path):
+            r = runez.run("otool", "-L", path, fatal=False, logger=None)
+            if r.succeeded:
+                m = re.match(r"^_?([^.]+).*$", os.path.basename(path))
+                if m:
+                    name = m.group(1).lower()
+                    name = aliases.get(name, name)
+                    for line in r.output.splitlines():
+                        m = re.match(r"^\s*(\S+).+current version ([0-9.]+).*$", line)
+                        if m:
+                            lb = m.group(1).lower()
+                            if name in lb:
+                                return m.group(2)
+
+    @staticmethod
+    def lib_version(path):
+        v = InspectionReport.lib_version_via_otool(path)
+        return v
+
+    @staticmethod
     def color(text):
         if text.startswith("*"):
             return runez.orange(text)
@@ -64,14 +87,19 @@ class InspectionReport:
         if text == "built-in":
             return runez.blue(text)
 
-        if text.startswith(("lib/", "lib64/")):
-            return runez.green(text)
+        m = re.match(r"^(.*?)\s*(\S+/(lib(64)?/.*))$", text)
+        if m:
+            before = m.group(1)
+            version = InspectionReport.lib_version(m.group(2))
+            text = runez.green(m.group(3))
+            if version:
+                text = "%s %s" % (text, runez.blue(version))
 
-        if "lib/" in text:
-            i = text.index("lib/")
-            after = text[i:]
-            before = text[:i].rpartition(" ")[0]
-            text = "%s %s" % (before, runez.green(after))
+            if before:
+                text = "%s %s" % (before, text)
+
+        else:
+            text = runez.short(text)
 
         return text
 
@@ -80,7 +108,6 @@ class InspectionReport:
             t = PrettyTable(2)
             t.header[0].align = "right"
             for k, v in sorted(self.report.items()):
-                v = runez.short(v or "*empty*")
-                t.add_row(k, self.color(v))
+                t.add_row(k, self.color(v or "*empty*"))
 
             return "%s\n" % t

@@ -1,7 +1,6 @@
 import json
 import sys
 
-BASE_PREFIX = getattr(sys, "base_prefix", getattr(sys, "real_prefix", sys.prefix))
 INSIGHTS = dict(
     _dbm="library",
     _tkinter="TCL_VERSION TK_VERSION",
@@ -24,17 +23,13 @@ def module_representation(module_name, mod):
 
                 return v
 
-    for f in ("__file__", "__spec__"):
-        v = getattr(mod, f, None)
+    if hasattr(mod, "__file__"):
+        return mod.__file__
+
+    if hasattr(mod, "__spec__"):
+        v = getattr(mod.__spec__, "origin")
         if v:
-            if isinstance(v, str) and v.startswith(BASE_PREFIX):
-                v = v[len(BASE_PREFIX) + 1:]
-
-            else:
-                v = getattr(v, "origin", None)
-
-            if v:
-                return str(v)
+            return str(v)
 
     return str(dir(mod))
 
