@@ -192,11 +192,12 @@ class BuildSetup:
             yield from path.iterdir()
 
     def fix_lib_permissions(self, mode=0o644):
-        for path in self.ls_dir(self.deps_folder / "libs"):
-            if path.name.endswith((".a", ".la")):
-                current = path.stat().st_mode & 0o777
-                if current != mode:
-                    path.chmod(mode)
+        """Some libs get funky permissions for some reason"""
+        # for path in self.ls_dir(self.deps_folder / "libs"):
+        #     if path.name.endswith((".a", ".la")):
+        #         current = path.stat().st_mode & 0o777
+        #         if current != mode:
+        #             path.chmod(mode)
 
     def _get_logs_path(self, name):
         """Log file to use for a compilation, name is such that alphabetical sort conserves the order in which compilations occurred"""
@@ -286,12 +287,15 @@ class ModuleBuilder:
         yield self.checked_deps_folder("include/uuid", prefix="-I")
         yield self.checked_deps_folder("include/openssl", prefix="-I")
 
-    def xenv_ldflags(self):
-        yield self.checked_deps_folder("lib", prefix="-L")
+    # def xenv_ldflags(self):
+    #     yield self.checked_deps_folder("lib", prefix="-L")
 
     def xenv_macosx_deployment_target(self):
         if self.target.is_macos:
             yield "10.14"
+
+    def xenv_ld_library_path(self):
+        yield self.checked_deps_folder("lib")
 
     def xenv_pkg_config_path(self):
         yield self.checked_deps_folder("lib/pkgconfig")
@@ -381,6 +385,7 @@ class ModuleBuilder:
             LOG.info("Compiled %s %s in %s" % (self.module_builder_name(), self.version, runez.represented_duration(time.time() - started)))
 
     def finalize(self):
+        """Called after (a possibly skipped) compile(), useful for --x-debug"""
         self.setup.fix_lib_permissions()
 
     def download(self):
@@ -429,5 +434,3 @@ class PythonBuilder(ModuleBuilder):
 
     def default_modules(self):
         """Default modules to compile"""
-        if self.target.is_macos:
-            return "readline,openssl"

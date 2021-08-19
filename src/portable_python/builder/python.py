@@ -10,6 +10,9 @@ from portable_python.builder import BuildSetup, PythonBuilder
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
+    def default_modules(self):
+        return "openssl"
+
     @property
     def url(self):
         """Url of source tarball"""
@@ -17,10 +20,8 @@ class Cpython(PythonBuilder):
 
     def xenv_cflags(self):
         yield from super().xenv_cflags()
-        if self.target.is_macos:
-            yield "-Werror=unguarded-availability-new"
-
-        else:
+        yield "-Wno-unused-command-line-argument"
+        if self.target.is_linux:
             yield "-m64"
 
     @property

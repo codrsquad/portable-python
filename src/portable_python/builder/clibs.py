@@ -21,6 +21,8 @@ class LibFFI(ModuleBuilder):
 @BuildSetup.module_builders.declare
 class Readline(ModuleBuilder):
 
+    needs_platforms = ["linux"]
+
     @property
     def url(self):
         return f"https://ftp.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
@@ -29,13 +31,20 @@ class Readline(ModuleBuilder):
     def version(self):
         return "8.1"
 
+    def xenv_cflags(self):
+        yield from super().xenv_cflags()
+        # yield "-fPIC"
+        # yield "-arch", self.target.architecture
+
     def c_configure_args(self):
         yield from super().c_configure_args()
+        yield "--disable-install-examples"
         yield "--with-curses"
 
     def _do_linux_compile(self):
         self.run_configure()
-        self.run("make")
+        # self.setup.patch_file(self.build_folder / "readline.pc", "Requires.private:", "# Requires.private:")
+        self.run("make", "SHLIB_LIBS=-lcurses")
         self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
 
 
