@@ -42,9 +42,8 @@ def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
     setup.prefix = prefix
     setup.static = static
     setup.compile(x_debug=x_debug)
-    bin_folder = setup.python_builder.bin_folder
-    if bin_folder.is_dir():
-        inspector = PythonInspector(bin_folder.parent)
+    if setup.python_builder.bin_folder.is_dir():
+        inspector = PythonInspector(setup.python_builder.bin_folder.parent)
         print(inspector.report())
 
 

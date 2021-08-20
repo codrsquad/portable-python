@@ -24,6 +24,7 @@ def test_build(cli):
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64")
     assert cli.succeeded
+    assert f"./configure --prefix=/{v} " in cli.logged
 
     # Simulate some tcl/tk setup, to help coverage
     bf = runez.to_path(f"build/cpython-{v}")
@@ -36,8 +37,7 @@ def test_build(cli):
 
     cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
     assert cli.succeeded
-    assert f"Would run: ./configure --prefix=/apps/foo{v} --with-ensurepip=upgrade" in cli.logged
-    assert "Would tar " not in cli.logged
+    assert f"Would run: ./configure --prefix=/apps/foo{v} " in cli.logged
 
     cli.run("--dryrun", "list")
     assert cli.succeeded
@@ -66,7 +66,7 @@ def test_finalization(cli):
     # Triggers compilation skip
     runez.touch(base / "build/cpython/README", logger=None)
 
-    # Create some files to be groomed by finalize()
+    # Create some files to be groomed by _finalize()
     runez.touch(base / "deps/libs/foo.a", logger=None)
     os.chmod(base / "deps/libs/foo.a", 0o600)
     runez.touch(bin.parent / "lib/idle_test/foo", logger=None)

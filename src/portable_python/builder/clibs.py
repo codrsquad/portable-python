@@ -22,11 +22,6 @@ class LibFFI(ModuleBuilder):
         if self.target.is_macos:
             yield "-isysroot", self.target.sdk_folder
 
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
-
 
 @BuildSetup.module_builders.declare
 class Readline(ModuleBuilder):
@@ -51,16 +46,10 @@ class Readline(ModuleBuilder):
         yield "--disable-install-examples"
         yield "--with-curses"
 
-    def _do_linux_compile(self):
-        self.run_configure()
-        args = []
+    def make_args(self):
         if self.target.is_linux:
             # See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb
-            args.append("SHLIB_LIBS=-lcurses")
-            # self.setup.patch_file(self.build_folder / "readline.pc", "Requires.private:", "# Requires.private:")
-
-        self.run("make", *args)
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
+            yield "SHLIB_LIBS=-lcurses"
 
 
 @BuildSetup.module_builders.declare
@@ -89,11 +78,6 @@ class Openssl(ModuleBuilder):
 
         yield "no-shared"
 
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
-
 
 @BuildSetup.module_builders.declare
 class Uuid(ModuleBuilder):
@@ -108,8 +92,3 @@ class Uuid(ModuleBuilder):
     @property
     def version(self):
         return "1.0.3"
-
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)

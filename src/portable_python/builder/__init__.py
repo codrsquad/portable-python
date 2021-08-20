@@ -264,6 +264,7 @@ class ModuleBuilder:
     setup: BuildSetup = None
     build_folder: pathlib.Path = None
 
+    c_configure_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
     c_configure_program = "./configure"
     needs_platforms: list = None
     telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
@@ -378,15 +379,31 @@ class ModuleBuilder:
         Calling ./configure is similar across all components.
         This allows to have descendants customize each part relatively elegantly
         """
-        args = runez.flattened(self.c_configure_program.split(), self.c_configure_args(), keep_empty=None)
-        return self.run(*args)
+        if self.c_configure_program:
+            args = runez.flattened(self.c_configure_program.split(), self.c_configure_args(), keep_empty=None)
+            return self.run(*args)
+
+    @property
+    def install_destdir(self):
+        """Folder to use for make install DESTDIR="""
+        return self.deps.parent
+
+    def make_args(self):
+        """Optional args to pass to make"""
+
+    def run_make_install(self):
+        if self.make_args:
+            make_args = runez.flattened(self.make_args(), keep_empty=None)
+            self.run("make", *make_args)
+
+        self.run("make", "install", "DESTDIR=%s" % self.install_destdir)
 
     @staticmethod
     def setenv(key, value):
         LOG.debug("env %s=%s" % (key, runez.short(value, size=2048)))
         os.environ[key] = value
 
-    def setup_env(self):
+    def _setup_env(self):
         for func_name in self.exported_env_vars():
             name = func_name[5:].upper()
             delimiter = os.pathsep if name.endswith("PATH") else " "
@@ -423,18 +440,21 @@ class ModuleBuilder:
             if not x_debug or not self.build_folder.is_dir():
                 # Build folder would exist only if we're doing an --x-debug run
                 self.unpack()
-                with runez.CurrentFolder(self.build_folder):
-                    self.setup_env()
-                    func = getattr(self, "_do_%s_compile" % self.target.platform, None)
-                    if not func:
-                        runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
+                self._setup_env()
+                self._prepare()
+                func = getattr(self, "_do_%s_compile" % self.target.platform, None)
+                if not func:
+                    runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
 
-                    func()
+                func()
 
-            self.finalize()
+            self._finalize()
             LOG.info("Compiled %s %s in %s" % (self.module_builder_name(), self.version, runez.represented_duration(time.time() - started)))
 
-    def finalize(self):
+    def _prepare(self):
+        """Ran at the beginning of compile()"""
+
+    def _finalize(self):
         """Called after (a possibly skipped) compile(), useful for --x-debug"""
         self.setup.fix_lib_permissions()
 
@@ -455,28 +475,42 @@ class ModuleBuilder:
 
     def _do_linux_compile(self):
         """Compile on linux variants"""
+        folder = self.build_folder
+        if self.c_configure_cwd:
+            folder = folder / self.c_configure_cwd
+
+        with runez.CurrentFolder(folder):
+            self.run_configure()
+            self.run_make_install()
 
 
 class PythonBuilder(ModuleBuilder):
 
     @property
-    def bin_folder(self):
-        return self.install_folder / self.prefix / "bin"
-
-    @property
-    def install_folder(self):
-        folder = self.setup.build_folder
-        if self.setup.prefix:
-            return folder / "root"
-
-        return folder
-
-    @property
-    def prefix(self):
+    def c_configure_prefix(self):
         if self.setup.prefix:
             return self.setup.prefix.strip("/").format(python_version=self.version)
 
         return self.version.text
+
+    @property
+    def bin_folder(self):
+        """Folder where compiled python exe resides"""
+        return self.install_destdir / self.c_configure_prefix / "bin"
+
+    @property
+    def install_destdir(self):
+        """Folder to use for make install DESTDIR="""
+        folder = self.setup.build_folder
+        if self.setup.prefix:
+            folder = folder / "root"
+
+        return folder
+
+    @property
+    def tarball_path(self):
+        dest = "%s-%s-%s.tar.gz" % (self.setup.python_spec.family, self.version, self.target)
+        return self.setup.dist_folder / dest
 
     @property
     def version(self):

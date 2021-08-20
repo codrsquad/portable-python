@@ -1,5 +1,3 @@
-import runez
-
 from portable_python.builder import BuildSetup, ModuleBuilder
 
 
@@ -28,16 +26,12 @@ class Gdbm(ModuleBuilder):
         yield from super().c_configure_args()
         yield "--enable-libgdbm-compat"
 
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
-
 
 @BuildSetup.module_builders.declare
 class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
+    c_configure_cwd = "build_unix"
     c_configure_program = "../dist/configure"
 
     @property
@@ -52,12 +46,6 @@ class Bdb(ModuleBuilder):
         yield from super().c_configure_args()
         yield "--enable-dbm"
 
-    def _do_linux_compile(self):
-        with runez.CurrentFolder("build_unix"):
-            self.run_configure()
-            self.run("make")
-            self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
-
 
 @BuildSetup.module_builders.declare
 class Sqlite(ModuleBuilder):
@@ -71,8 +59,3 @@ class Sqlite(ModuleBuilder):
     @property
     def version(self):
         return "3.36.0"
-
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)

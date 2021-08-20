@@ -20,11 +20,6 @@ class Cpython(PythonBuilder):
     def xenv_cflags(self):
         yield "-Wno-unused-command-line-argument"
 
-    @property
-    def c_configure_prefix(self):
-        """--prefix to use for the ./configure program"""
-        return self.prefix
-
     def c_configure_args(self):
         yield from super().c_configure_args()
         yield "--with-ensurepip=upgrade"
@@ -37,49 +32,47 @@ class Cpython(PythonBuilder):
             yield "--with-tcltk-includes=-I%s/include" % self.deps
             yield "--with-tcltk-libs=-L%s/lib" % self.deps
 
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.install_folder)
+    def _finalize(self):
         self.cleanup_distribution()
-        self.finalize()
+        main_python = self.correct_symlinks()
 
-    def finalize(self):
-        # For some reason, pip upgrade doesn't work unless ensurepip/_bundled was cleaned up, so run it after cleanup
+        # For some reason, pip upgrade doesn't work unless ensurepip/_bundled was cleaned up, so run it after 1st cleanup
+        self.run(self.bin_folder / main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
+
+        # Clean up again to remove pip _bundled stuff
         self.cleanup_distribution()
-        self.run(self.bin_folder / "python3", "-mpip", "install", "-U", "pip", "setuptools", "wheel")
-        # Then clean up again (to remove the artifacts done by the pip run)
-        self.cleanup_distribution()
-        self.correct_symlinks()
-        if not self.setup.prefix:
-            path = self.bin_folder.parent
-            dest = "%s-%s-%s.tar.gz" % (self.setup.python_spec.family, self.version, self.target)
-            dest = self.setup.dist_folder / dest
-            runez.compress(path, dest)
+
+        # Regenerate __pycache__
+        self.run(self.bin_folder / main_python, "-mcompileall")
+
+        # Create tarball
+        runez.compress(self.bin_folder.parent, self.tarball_path)
 
     @runez.cached_property
     def cleanable_basenames(self):
         """Folders that are not useful in deliverable (test suites etc)"""
         r = {
             "__phello__.foo.py",
+            "__pycache__",  # Clear it because lots of unneeded stuff is in there initially, -mcompileall regenerates it
             "_bundled",
             "idle_test",
-            f"libpython{self.version.major}.{self.version.minor}.a",
             "test",
             "tests",
         }
-        if not self.setup.prefix:
-            # No setup.prefix == portable python, remove __pycache__ (it'll be recreated on first run on target machine)
-            r.add("__pycache__")
+        if not self.setup.static:
+            # Don't keep static compilation file unless --static
+            r.add(f"libpython{self.version.major}.{self.version.minor}.a")
 
         return r
 
     @runez.cached_property
     def cleanable_prefixes(self):
         """Files/folders that are not useful in deliverable, but name varies, can be identified by their prefix"""
-        return {
-            "config-%s.%s-" % (self.version.major, self.version.minor),
-        }
+        r = set()
+        if not self.setup.static:
+            r.add("config-%s.%s-" % (self.version.major, self.version.minor))
+
+        return r
 
     def should_clean(self, basename):
         return basename in self.cleanable_basenames or any(basename.startswith(x) for x in self.cleanable_prefixes)
@@ -118,9 +111,9 @@ class Cpython(PythonBuilder):
         return path.name
 
     def correct_symlinks(self):
-        expected_main_python = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
         with runez.CurrentFolder(self.bin_folder):
             main_python = None  # Basename of main python executable
+            main_python_candidates = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
             all_files = {}
             files = {}
             symlinks = {}
@@ -130,7 +123,7 @@ class Cpython(PythonBuilder):
                     runez.delete(f)  # Get rid of old junk, can be pip installed if needed
                     continue
 
-                if not main_python and f.name in expected_main_python:
+                if not main_python and f.name in main_python_candidates:
                     main_python = self.actual_basename(f)
 
                 all_files[f.name] = f
@@ -147,6 +140,8 @@ class Cpython(PythonBuilder):
                 for f in files.values():
                     if f.name != main_python:
                         self._auto_correct_shebang(main_python, f)
+
+            return main_python or "python"
 
     def _auto_correct_shebang(self, main_python, path):
         lines = []

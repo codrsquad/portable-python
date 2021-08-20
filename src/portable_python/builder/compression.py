@@ -5,7 +5,9 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 class Bzip2(ModuleBuilder):
     """See https://docs.python.org/3/library/bz2.html"""
 
+    c_configure_program = None
     telltale = "{include}/bzlib.h"
+    make_args = None
 
     @property
     def url(self):
@@ -14,9 +16,6 @@ class Bzip2(ModuleBuilder):
     @property
     def version(self):
         return "1.0.8"
-
-    def _do_linux_compile(self):
-        self.run("make", "install", "PREFIX=%s" % self.deps)
 
 
 @BuildSetup.module_builders.declare
@@ -41,11 +40,6 @@ class Xz(ModuleBuilder):
         yield "--disable-lzma-links"
         yield "--disable-scripts"
 
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
-
 
 @BuildSetup.module_builders.declare
 class Zlib(ModuleBuilder):
@@ -59,8 +53,3 @@ class Zlib(ModuleBuilder):
     @property
     def version(self):
         return "1.2.11"
-
-    def _do_linux_compile(self):
-        self.run_configure()
-        self.run("make")
-        self.run("make", "install", "DESTDIR=%s" % self.deps.parent)
