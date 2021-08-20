@@ -23,21 +23,29 @@ def test_build(cli):
     assert "Compiling 0 external modules" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64")
-    assert cli.succeeded
-    assert f"./configure --prefix=/{v} " in cli.logged
-
     # Simulate presence of some key files to verify code that is detecting them is hit
     bf = runez.to_path(f"build/cpython-{v}")
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
     runez.touch(bf / "deps/bin/bzcat", logger=None)
     runez.touch(bf / "deps/include/readline/readline.h", logger=None)
+    lib_static = f"libpython{mm}.a"
+    lp = bf / f"{v}/lib"
+    lpc = lp / f"python{mm}/config-{mm}-darwin"
+    lib1 = lp / lib_static
+    lib2 = lpc / lib_static
     runez.touch(bf / f"{v}/bin/python", logger=None)
-    runez.touch(bf / f"{v}/lib/libpython{mm}.a", logger=None)
+    runez.touch(lib1, logger=None)
+    runez.touch(lib2, logger=None)
+
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "--static")
+    assert cli.succeeded
+    assert f"./configure --prefix=/{v} " in cli.logged
+    assert f"Would symlink {lib2} <- {lib1}" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
     assert cli.succeeded
-    assert f"Cleaned 1 build artifact: libpython{mm}.a" in cli.logged
+    assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
+    assert f"Would symlink {lib2}" not in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")

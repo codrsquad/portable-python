@@ -34,6 +34,9 @@ class Cpython(PythonBuilder):
 
     def _finalize(self):
         self.cleanup_distribution()
+        if self.setup.static:
+            self._symlink_static_libs()
+
         main_python = self.correct_symlinks()
 
         # For some reason, pip upgrade doesn't work unless ensurepip/_bundled was cleaned up, so run it after 1st cleanup
@@ -47,6 +50,21 @@ class Cpython(PythonBuilder):
 
         # Create tarball
         runez.compress(self.bin_folder.parent, self.tarball_path)
+
+    def _symlink_static_libs(self):
+        """Symlink libpython*.a to save space"""
+        libs = []
+        for dirpath, dirnames, filenames in os.walk(self.bin_folder.parent / "lib"):
+            for name in filenames:
+                if name.startswith("libpython"):
+                    libs.append(os.path.join(dirpath, name))
+
+        if len(libs) == 2:
+            shorter, longer = sorted(libs, key=lambda x: len(x))
+            shorter_size = runez.to_path(shorter).stat().st_size
+            longer_size = runez.to_path(longer).stat().st_size
+            if shorter_size == longer_size:  # Double-check that they are the same size (they should be identical)
+                runez.symlink(longer, shorter)
 
     @runez.cached_property
     def cleanable_basenames(self):
