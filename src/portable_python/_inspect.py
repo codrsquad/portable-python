@@ -2,11 +2,13 @@ import json
 import sys
 
 INSIGHTS = dict(
+    _curses="version __version__",
     _dbm="library",
     _tkinter="TCL_VERSION TK_VERSION",
     _sqlite3="sqlite_version version",
     _ssl="OPENSSL_VERSION",
     readline="_READLINE_LIBRARY_VERSION",
+    zlib="ZLIB_VERSION ZLIB_RUNTIME_VERSION",
 )
 
 
@@ -17,6 +19,9 @@ def module_representation(module_name, mod):
         for f in fields:
             v = getattr(mod, f, None)
             if v:
+                if isinstance(v, bytes):
+                    v = v.decode("utf-8")
+
                 v = "%s=%s" % (f, v)
                 if hasattr(mod, "__file__"):
                     v += " %s" % mod.__file__
@@ -52,10 +57,10 @@ def get_report(modules):
 
 
 def get_modules(args):
-    mods = "_asyncio,_bz2,_curses,_dbm,_gdbm,_tkinter,_sqlite3,_ssl,_uuid,readline,zlib"
+    mods = "_bz2,_curses,_dbm,_gdbm,_tkinter,_sqlite3,_ssl,_uuid,readline,zlib"
     if len(args) > 1 and args[1]:
         if args[1] == "all":
-            mods += ",_functools,_tracemalloc"
+            mods += ",_asyncio,_functools,_tracemalloc"
 
         elif args[1][0] == "+":
             mods += ",%s" % args[1][1:]
