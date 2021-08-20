@@ -117,7 +117,7 @@ class AvailableBuilders:
     def without_telltale(self, target):
         """Module builder names which don't have a tell-tale file on 'target'"""
         for name, module in self.available.items():
-            if module.telltale and not module.existing_telltale(target):
+            if module.telltale and target.is_applicable(module) and not module.existing_telltale(target):
                 yield name
 
 
@@ -138,9 +138,14 @@ class TargetSystem:
         return "%s-%s" % (self.platform, self.architecture)
 
     @runez.cached_property
-    def sys_include(self):
+    def sdk_folder(self):
         if self.is_macos:
-            return "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include"
+            return "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+
+    @runez.cached_property
+    def sys_include(self):
+        if self.sdk_folder:
+            return f"{self.sdk_folder}/usr/include"
 
         return "/usr/include"
 
@@ -151,6 +156,10 @@ class TargetSystem:
     @property
     def is_macos(self):
         return self.platform == "darwin"
+
+    def is_applicable(self, module):
+        """Is module applicable to this target system?"""
+        return not module.needs_platforms or self.platform in module.needs_platforms
 
 
 class BuildSetup:
@@ -176,16 +185,7 @@ class BuildSetup:
         self.logs_folder = self.build_folder / "logs"
         self.anchors = {build_folder.parent, self.dist_folder.parent}
         self.python_builder = self.python_builders.get_builder(self, self.python_spec.family)
-        modules = runez.flattened(modules, keep_empty=None, split=",")
-        if modules == ["none"]:
-            modules = []
-
-        elif modules == ["all"]:
-            modules = list(self.module_builders.available.keys())
-
-        elif not modules:
-            modules = self.module_builders.without_telltale(self.target_system)
-
+        modules = self.resolved_module_names(modules)
         self.active_modules = []  # type: list[ModuleBuilder]
         self.skipped_modules = []  # type: list[ModuleBuilder]
         self.unknown_modules = []  # type: list[str]
@@ -205,6 +205,18 @@ class BuildSetup:
 
     def __repr__(self):
         return runez.short(self.build_folder)
+
+    def resolved_module_names(self, module_names):
+        if module_names == "none":
+            return []
+
+        if module_names == "all":
+            return list(self.module_builders.available.keys())
+
+        if not module_names:
+            return self.module_builders.without_telltale(self.target_system)
+
+        return runez.flattened(module_names, keep_empty=None, split=",")
 
     @staticmethod
     def ls_dir(path):
@@ -235,6 +247,7 @@ class BuildSetup:
     def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
             runez.ensure_folder(self.build_folder, clean=not x_debug)
+            runez.ensure_folder(self.logs_folder, clean=not x_debug)
             if self.unknown_modules:
                 return runez.abort("Unknown modules: %s" % runez.joined(self.unknown_modules, delimiter=", ", stringify=runez.red))
 
@@ -253,7 +266,7 @@ class ModuleBuilder:
 
     c_configure_program = "./configure"
     needs_platforms: list = None
-    telltale: str = None  # File(s) that tell us OS already has a usable equivalent of this module
+    telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
 
     _log_handler = None
 
@@ -308,7 +321,7 @@ class ModuleBuilder:
 
     def skip_reason(self):
         """Reason we're skipping compilation of this module, if any"""
-        if self.needs_platforms and self.target.platform not in self.needs_platforms:
+        if self.needs_platforms and not self.target.is_applicable(self):
             return "%s only" % runez.joined(self.needs_platforms, delimiter="/")
 
     def xenv_archflags(self):

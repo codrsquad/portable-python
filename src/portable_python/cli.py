@@ -92,12 +92,15 @@ def scan(target):
     for name in sorted(BuildSetup.module_builders.available):
         mod = BuildSetup.module_builders.available.get(name)
         if not mod.telltale:
-            report = runez.orange("has no telltale")
+            report = runez.brown("has no telltale file")
+
+        elif not ts.is_applicable(mod):
+            report = runez.brown(f"not applicable to {ts}")
 
         else:
             path = mod.existing_telltale(ts)
             if path:
-                report = runez.dim("has %s" % runez.short(path))
+                report = "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
 
             else:
                 report = "%s, no %s" % (runez.green("needed"), mod.telltale)

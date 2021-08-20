@@ -5,7 +5,14 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 
 @BuildSetup.module_builders.declare
 class Gdbm(ModuleBuilder):
+    """
+    Does not compile on macos:
+    Undefined symbols for architecture x86_64:
+      "_history_list", referenced from:
+          _input_history_handler in input-rl.o
+    """
 
+    needs_platforms = ["linux"]
     telltale = "{include}/gdbm.h"
 
     @property

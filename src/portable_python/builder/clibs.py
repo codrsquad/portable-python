@@ -4,6 +4,7 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 @BuildSetup.module_builders.declare
 class LibFFI(ModuleBuilder):
 
+    # telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
     telltale = "/usr/share/doc/libffi-dev"
 
     @property
@@ -12,7 +13,12 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        return "3.4.2"
+        return "3.3"
+
+    def xenv_cflags(self):
+        yield "-fPIC"
+        if self.target.is_macos:
+            yield "-isysroot", self.target.sdk_folder
 
     def _do_linux_compile(self):
         self.run_configure()
