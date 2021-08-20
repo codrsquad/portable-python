@@ -5,6 +5,8 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 class Bzip2(ModuleBuilder):
     """See https://docs.python.org/3/library/bz2.html"""
 
+    telltale = "{include}/bzlib.h"
+
     @property
     def url(self):
         return f"https://sourceware.org/pub/bzip2/bzip2-{self.version}.tar.gz"
@@ -19,6 +21,8 @@ class Bzip2(ModuleBuilder):
 
 @BuildSetup.module_builders.declare
 class Xz(ModuleBuilder):
+
+    telltale = "{include}/lzma.h"
 
     @property
     def url(self):
@@ -45,6 +49,8 @@ class Xz(ModuleBuilder):
 
 @BuildSetup.module_builders.declare
 class Zlib(ModuleBuilder):
+
+    telltale = "{include}/zlib.h"
 
     @property
     def url(self):

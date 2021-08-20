@@ -6,6 +6,8 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 @BuildSetup.module_builders.declare
 class Gdbm(ModuleBuilder):
 
+    telltale = "{include}/gdbm.h"
+
     @property
     def url(self):
         return f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
@@ -52,6 +54,8 @@ class Bdb(ModuleBuilder):
 
 @BuildSetup.module_builders.declare
 class Sqlite(ModuleBuilder):
+
+    telltale = "{include}/sqlite3.h"
 
     @property
     def url(self):

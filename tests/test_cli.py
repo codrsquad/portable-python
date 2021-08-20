@@ -134,3 +134,11 @@ def test_invalid(cli):
     cli.run("--dryrun", "build", "conda:1.0")
     assert cli.failed
     assert "Python family 'conda' is not yet supported" in cli.logged
+
+
+def test_scan(cli):
+    cli.run("scan", "darwin-x86_64")
+    assert cli.succeeded
+
+    cli.run("scan", "linux-x86_64")
+    assert cli.succeeded

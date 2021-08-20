@@ -3,6 +3,7 @@ import sys
 
 INSIGHTS = dict(
     _curses="version __version__",
+    _ctypes="__version__",
     _dbm="library",
     _tkinter="TCL_VERSION TK_VERSION",
     _sqlite3="sqlite_version version",
@@ -62,7 +63,7 @@ def get_report(modules):
 
 
 def get_modules(args):
-    mods = "_bz2,_curses,_dbm,_gdbm,_tkinter,_sqlite3,_ssl,_uuid,readline,zlib"
+    mods = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,readline,zlib"
     if len(args) > 1 and args[1]:
         if args[1] == "all":
             mods += ",_asyncio,_functools,_tracemalloc"

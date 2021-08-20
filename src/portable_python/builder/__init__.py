@@ -8,6 +8,7 @@ import runez
 from runez.http import RestClient
 from runez.inspector import auto_import_siblings
 from runez.pyenv import PythonSpec, Version
+from runez.render import Header
 
 from portable_python import LOG
 
@@ -93,6 +94,10 @@ class AvailableBuilders:
         self.available[name] = decorated
         return decorated
 
+    def ensure_imported(self):
+        """Ensure all module builders using the decorator were imported"""
+        auto_import_siblings()
+
     def get_builder(self, setup, name):
         """
         Args:
@@ -102,11 +107,18 @@ class AvailableBuilders:
         Returns:
             (PythonBuilder): Associated module builder, if any
         """
+        self.ensure_imported()
         v = self.available.get(name)
         if v:
             v = v()
             v.attach(setup)
             return v
+
+    def without_telltale(self, target):
+        """Module builder names which don't have a tell-tale file on 'target'"""
+        for name, module in self.available.items():
+            if module.telltale and not module.existing_telltale(target):
+                yield name
 
 
 class TargetSystem:
@@ -124,6 +136,13 @@ class TargetSystem:
 
     def __repr__(self):
         return "%s-%s" % (self.platform, self.architecture)
+
+    @runez.cached_property
+    def sys_include(self):
+        if self.is_macos:
+            return "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include"
+
+        return "/usr/include"
 
     @property
     def is_linux(self):
@@ -156,14 +175,16 @@ class BuildSetup:
         self.downloads_folder = build_folder / "downloads"
         self.logs_folder = self.build_folder / "logs"
         self.anchors = {build_folder.parent, self.dist_folder.parent}
-        auto_import_siblings()
         self.python_builder = self.python_builders.get_builder(self, self.python_spec.family)
-        modules = runez.flattened(modules or list(self.python_builder.default_modules()), keep_empty=None, split=",")
+        modules = runez.flattened(modules, keep_empty=None, split=",")
         if modules == ["none"]:
             modules = []
 
         elif modules == ["all"]:
             modules = list(self.module_builders.available.keys())
+
+        elif not modules:
+            modules = self.module_builders.without_telltale(self.target_system)
 
         self.active_modules = []  # type: list[ModuleBuilder]
         self.skipped_modules = []  # type: list[ModuleBuilder]
@@ -232,6 +253,7 @@ class ModuleBuilder:
 
     c_configure_program = "./configure"
     needs_platforms: list = None
+    telltale: str = None  # File(s) that tell us OS already has a usable equivalent of this module
 
     _log_handler = None
 
@@ -259,6 +281,14 @@ class ModuleBuilder:
     def version(self):
         """Version to use"""
         return ""
+
+    @classmethod
+    def existing_telltale(cls, target):
+        """Tell-tale file that this module is already available on 'target', if any"""
+        for telltale in runez.flattened(cls.telltale, keep_empty=None):
+            path = telltale.format(include=target.sys_include)
+            if os.path.exists(path):
+                return path
 
     @property
     def deps(self):
@@ -375,6 +405,7 @@ class ModuleBuilder:
 
     def compile(self, x_debug):
         started = time.time()
+        print(Header.aerated(self.module_builder_name()))
         with self.captured_logs():
             if not x_debug or not self.build_folder.is_dir():
                 # Build folder would exist only if we're doing an --x-debug run
@@ -437,6 +468,3 @@ class PythonBuilder(ModuleBuilder):
     @property
     def version(self):
         return self.setup.python_spec.version
-
-    def default_modules(self):
-        """Default modules to compile"""

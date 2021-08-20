@@ -6,6 +6,8 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 class TclTkModule(ModuleBuilder):
     """Common Tcl/Tk stuff"""
 
+    telltale = ["{include}/tk", "{include}/tk.h"]
+
     @property
     def version(self):
         return "8.6.10"

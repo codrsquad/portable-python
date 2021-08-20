@@ -4,6 +4,8 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 @BuildSetup.module_builders.declare
 class LibFFI(ModuleBuilder):
 
+    telltale = "/usr/share/doc/libffi-dev"
+
     @property
     def url(self):
         return f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
@@ -25,6 +27,8 @@ class Readline(ModuleBuilder):
     macos: fails with Symbol not found: _rl_catch_signals (or earlier: _free_history_entry)
     linux: builds OK, but version is incorrect (system readline, instead of the one we compiled)
     """
+
+    telltale = "{include}/readline/readline.h"
 
     @property
     def url(self):
@@ -55,6 +59,7 @@ class Readline(ModuleBuilder):
 class Openssl(ModuleBuilder):
 
     c_configure_program = "./Configure"
+    telltale = "{include}/openssl/ssl.h"
 
     @property
     def url(self):
@@ -86,6 +91,7 @@ class Openssl(ModuleBuilder):
 class Uuid(ModuleBuilder):
 
     needs_platforms = ["linux"]
+    telltale = "{include}/uuid/uuid.h"
 
     @property
     def url(self):

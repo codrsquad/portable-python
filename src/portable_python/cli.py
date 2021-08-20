@@ -2,9 +2,10 @@ import logging
 
 import click
 import runez
+from runez.render import PrettyTable
 
 from portable_python import LOG, PythonInspector
-from portable_python.builder import BuildSetup
+from portable_python.builder import BuildSetup, TargetSystem
 
 
 @runez.click.group()
@@ -78,6 +79,32 @@ def list(family):
 
         else:
             print("%s%s" % (indent, runez.red("not supported")))
+
+
+@main.command()
+@click.argument("target", required=False)
+def scan(target):
+    """Scan all buildable modules, see if system already has equivalent"""
+    ts = TargetSystem(target)
+    BuildSetup.module_builders.ensure_imported()
+    table = PrettyTable(2)
+    table.header[0].align = "right"
+    for name in sorted(BuildSetup.module_builders.available):
+        mod = BuildSetup.module_builders.available.get(name)
+        if not mod.telltale:
+            report = runez.orange("has no telltale")
+
+        else:
+            path = mod.existing_telltale(ts)
+            if path:
+                report = runez.dim("has %s" % runez.short(path))
+
+            else:
+                report = "%s, no %s" % (runez.green("needed"), mod.telltale)
+
+        table.add_row(name, report)
+
+    print(table)
 
 
 if __name__ == "__main__":

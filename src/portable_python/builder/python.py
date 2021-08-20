@@ -12,9 +12,6 @@ class Cpython(PythonBuilder):
 
     base_url = "https://www.python.org/ftp/python"
 
-    def default_modules(self):
-        yield "openssl"
-
     @property
     def url(self):
         """Url of source tarball"""
