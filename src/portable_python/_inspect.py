@@ -12,20 +12,25 @@ INSIGHTS = dict(
 )
 
 
+def represented(key, value, source):
+    if value:
+        if isinstance(value, bytes):
+            value = value.decode("utf-8")
+
+        value = "%s=%s" % (key, value)
+        if hasattr(source, "__file__"):
+            value += " %s" % source.__file__
+
+        return value
+
+
 def module_representation(module_name, mod):
     fields = INSIGHTS.get(module_name)
     if fields:
         fields = fields.split()
         for f in fields:
-            v = getattr(mod, f, None)
+            v = represented(f, getattr(mod, f, None), mod)
             if v:
-                if isinstance(v, bytes):
-                    v = v.decode("utf-8")
-
-                v = "%s=%s" % (f, v)
-                if hasattr(mod, "__file__"):
-                    v += " %s" % mod.__file__
-
                 return v
 
     if hasattr(mod, "__file__"):

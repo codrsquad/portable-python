@@ -32,7 +32,6 @@ def test_build(cli):
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--static")
     assert cli.succeeded
-    assert "Skipping xorgproto" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
@@ -111,6 +110,7 @@ def test_inspect_module():
     assert with_foo == base + ["foo"]
 
     assert portable_python._inspect.get_report(["readline", "sys", "zlib"])
+    assert portable_python._inspect.represented("key", b"foo", None) == "key=foo"
 
     # Verify edge cases don't crash
     assert portable_python._inspect.module_report("foo-bar") == "*absent*"

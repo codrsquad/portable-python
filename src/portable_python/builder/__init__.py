@@ -158,7 +158,7 @@ class BuildSetup:
         self.anchors = {build_folder.parent, self.dist_folder.parent}
         auto_import_siblings()
         self.python_builder = self.python_builders.get_builder(self, self.python_spec.family)
-        modules = runez.flattened(modules or self.python_builder.default_modules(), keep_empty=None, split=",")
+        modules = runez.flattened(modules or list(self.python_builder.default_modules()), keep_empty=None, split=",")
         if modules == ["none"]:
             modules = []
 

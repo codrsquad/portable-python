@@ -13,7 +13,7 @@ class Cpython(PythonBuilder):
     base_url = "https://www.python.org/ftp/python"
 
     def default_modules(self):
-        return "openssl"
+        yield "openssl"
 
     @property
     def url(self):
