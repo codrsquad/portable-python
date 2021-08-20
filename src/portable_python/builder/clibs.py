@@ -3,9 +3,11 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 
 @BuildSetup.module_builders.declare
 class LibFFI(ModuleBuilder):
+    """
+    TODO: Link problem: Image not found on macos
+    """
 
-    # telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
-    telltale = "/usr/share/doc/libffi-dev"
+    telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
 
     @property
     def url(self):
