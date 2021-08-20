@@ -168,7 +168,7 @@ class BuildSetup:
     module_builders = AvailableBuilders("external module")
     prefix = None
     python_builders = AvailableBuilders("python")
-    static = False
+    static = True
     supported = SupportedPythonVersions()
     _log_counter = 0
 

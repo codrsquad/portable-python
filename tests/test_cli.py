@@ -16,6 +16,7 @@ def test_module_invocation(cli):
 
 def test_build(cli):
     v = BuildSetup.supported.cpython.latest
+    mm = f"{v.major}.{v.minor}"
     cli.run("--dryrun", "build", "2.7.1", "-mnone", "--target=foo-bar")
     assert cli.failed
     assert "cpython:2.7.1 is not in the supported list" in cli.logged
@@ -26,13 +27,17 @@ def test_build(cli):
     assert cli.succeeded
     assert f"./configure --prefix=/{v} " in cli.logged
 
-    # Simulate some tcl/tk setup, to help coverage
+    # Simulate presence of some key files to verify code that is detecting them is hit
     bf = runez.to_path(f"build/cpython-{v}")
+    runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
     runez.touch(bf / "deps/bin/bzcat", logger=None)
     runez.touch(bf / "deps/include/readline/readline.h", logger=None)
-    runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--static")
+    runez.touch(bf / f"{v}/bin/python", logger=None)
+    runez.touch(bf / f"{v}/lib/libpython{mm}.a", logger=None)
+
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
     assert cli.succeeded
+    assert f"Cleaned 1 build artifact: libpython{mm}.a" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
