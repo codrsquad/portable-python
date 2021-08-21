@@ -7,7 +7,6 @@ class Bzip2(ModuleBuilder):
 
     c_configure_program = None
     telltale = "{include}/bzlib.h"
-    make_args = None
 
     @property
     def url(self):
@@ -16,6 +15,9 @@ class Bzip2(ModuleBuilder):
     @property
     def version(self):
         return "1.0.8"
+
+    def run_make_install(self):
+        self.run("make", "install", "PREFIX=%s" % self.deps)
 
 
 @BuildSetup.module_builders.declare

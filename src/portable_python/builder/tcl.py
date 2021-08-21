@@ -4,13 +4,17 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 
 
 class TclTkModule(ModuleBuilder):
-    """Common Tcl/Tk stuff"""
+    """
+    Common Tcl/Tk stuff
+    TODO: doesn't compile/link properly yet
+    linux: undefined symbol: Tcl_AddErrorInfo
+    """
 
     telltale = ["{include}/tk", "{include}/tk.h"]
 
     @property
     def version(self):
-        return "8.6.10"
+        return "8.5.9"
 
     def c_configure_args(self):
         yield from super().c_configure_args()

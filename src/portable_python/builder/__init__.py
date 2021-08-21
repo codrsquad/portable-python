@@ -247,6 +247,9 @@ class BuildSetup:
     def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
             runez.ensure_folder(self.build_folder, clean=not x_debug)
+            runez.ensure_folder(self.deps_folder / "bin", clean=not x_debug)
+            runez.ensure_folder(self.deps_folder / "include", clean=not x_debug)
+            runez.ensure_folder(self.deps_folder / "lib", clean=not x_debug)
             runez.ensure_folder(self.logs_folder, clean=not x_debug)
             if self.unknown_modules:
                 return runez.abort("Unknown modules: %s" % runez.joined(self.unknown_modules, delimiter=", ", stringify=runez.red))

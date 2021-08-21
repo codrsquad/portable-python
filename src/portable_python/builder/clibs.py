@@ -4,7 +4,9 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 @BuildSetup.module_builders.declare
 class LibFFI(ModuleBuilder):
     """
-    TODO: Link problem: Image not found on macos
+    TODO: doesn't compile/link properly yet
+    macos: fails to link: Image not found
+    linux: undefined symbol: ffi_prep_cif
     """
 
     telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
