@@ -247,10 +247,6 @@ class BuildSetup:
     def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
             runez.ensure_folder(self.build_folder, clean=not x_debug)
-            runez.ensure_folder(self.deps_folder / "bin", clean=not x_debug)
-            runez.ensure_folder(self.deps_folder / "include", clean=not x_debug)
-            runez.ensure_folder(self.deps_folder / "lib", clean=not x_debug)
-            runez.ensure_folder(self.logs_folder, clean=not x_debug)
             if self.unknown_modules:
                 return runez.abort("Unknown modules: %s" % runez.joined(self.unknown_modules, delimiter=", ", stringify=runez.red))
 
@@ -369,13 +365,13 @@ class ModuleBuilder:
     @property
     def c_configure_prefix(self):
         """--prefix to use for the ./configure program"""
-        return "deps"
+        return self.deps
 
     def c_configure_args(self):
         """CLI args to pass to pass to ./configure"""
         prefix = self.c_configure_prefix
         if prefix:
-            yield "--prefix=/%s" % prefix.strip("/")
+            yield "--prefix=/%s" % str(prefix).strip("/")
 
     def run_configure(self):
         """
@@ -386,20 +382,20 @@ class ModuleBuilder:
             args = runez.flattened(self.c_configure_program.split(), self.c_configure_args(), keep_empty=None)
             return self.run(*args)
 
-    @property
-    def install_destdir(self):
-        """Folder to use for make install DESTDIR="""
-        return self.deps.parent
-
     def make_args(self):
         """Optional args to pass to make"""
 
+    def make_install_args(self):
+        """Optional args to pass to make install"""
+
     def run_make_install(self):
         if self.make_args:
-            make_args = runez.flattened(self.make_args(), keep_empty=None)
-            self.run("make", *make_args)
+            args = runez.flattened(self.make_args(), keep_empty=None)
+            self.run("make", *args)
 
-        self.run("make", "install", "DESTDIR=%s" % self.install_destdir)
+        if self.make_install_args:
+            args = runez.flattened(self.make_install_args(), keep_empty=None)
+            self.run("make", "install", *args)
 
     @staticmethod
     def setenv(key, value):
@@ -488,6 +484,9 @@ class ModuleBuilder:
 
 
 class PythonBuilder(ModuleBuilder):
+
+    def make_install_args(self):
+        yield f"DESTDIR={self.install_destdir}"
 
     @property
     def c_configure_prefix(self):

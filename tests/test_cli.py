@@ -23,8 +23,18 @@ def test_build(cli):
     assert "Compiling 0 external modules" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
-    # Simulate presence of some key files to verify code that is detecting them is hit
     bf = runez.to_path(f"build/cpython-{v}")
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone")
+    assert cli.succeeded
+    assert f"./configure --prefix=/{v} " in cli.logged
+    assert f"make install DESTDIR={bf}" in cli.logged
+
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone", "--prefix", "/apps/python")
+    assert cli.succeeded
+    assert "./configure --prefix=/apps/python " in cli.logged
+    assert f"make install DESTDIR={bf}/root" in cli.logged
+
+    # Simulate presence of some key files to verify code that is detecting them is hit
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
     runez.touch(bf / "deps/bin/bzcat", logger=None)
     runez.touch(bf / "deps/include/readline/readline.h", logger=None)
@@ -39,7 +49,6 @@ def test_build(cli):
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "--static")
     assert cli.succeeded
-    assert f"./configure --prefix=/{v} " in cli.logged
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
@@ -124,6 +133,7 @@ def test_inspect_module():
 
     assert portable_python._inspect.get_report(["readline", "sys", "zlib"])
     assert portable_python._inspect.represented("key", b"foo", None) == "key=foo"
+    assert portable_python._inspect.represented("key", (1, 2), None) == "key=1.2"
 
     # Verify edge cases don't crash
     assert portable_python._inspect.module_report("foo-bar") == "*absent*"

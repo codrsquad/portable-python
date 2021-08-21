@@ -5,6 +5,7 @@ INSIGHTS = dict(
     _curses="version __version__",
     _ctypes="__version__",
     _dbm="library",
+    _gdbm="_GDBM_VERSION",
     _tkinter="TCL_VERSION TK_VERSION",
     _sqlite3="sqlite_version version",
     _ssl="OPENSSL_VERSION",
@@ -17,6 +18,9 @@ def represented(key, value, source):
     if value:
         if isinstance(value, bytes):
             value = value.decode("utf-8")
+
+        if isinstance(value, tuple):
+            value = ".".join(str(x) for x in value)
 
         value = "%s=%s" % (key, value)
         if hasattr(source, "__file__"):

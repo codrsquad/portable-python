@@ -3,9 +3,13 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 
 @BuildSetup.module_builders.declare
 class Bzip2(ModuleBuilder):
-    """See https://docs.python.org/3/library/bz2.html"""
+    """
+    See https://docs.python.org/3/library/bz2.html
+    TODO: verify it is indeed included (version shown by 'inspect' is suspicious)
+    """
 
     c_configure_program = None
+    make_args = None
     telltale = "{include}/bzlib.h"
 
     @property
@@ -16,8 +20,8 @@ class Bzip2(ModuleBuilder):
     def version(self):
         return "1.0.8"
 
-    def run_make_install(self):
-        self.run("make", "install", "PREFIX=%s" % self.deps)
+    def make_install_args(self):
+        yield f"PREFIX={self.deps}"
 
 
 @BuildSetup.module_builders.declare

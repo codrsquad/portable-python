@@ -5,7 +5,6 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 class LibFFI(ModuleBuilder):
     """
     TODO: doesn't compile/link properly yet
-    macos: fails to link: Image not found
     linux: undefined symbol: ffi_prep_cif
     """
 
@@ -21,15 +20,19 @@ class LibFFI(ModuleBuilder):
 
     def xenv_cflags(self):
         yield "-fPIC"
-        if self.target.is_macos:
-            yield "-isysroot", self.target.sdk_folder
+
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--with-pic=yes"
+        yield "--enable-portable-binary"
+        yield "--disable-multi-os-directory"
+        yield "--disable-docs"
 
 
 @BuildSetup.module_builders.declare
 class Readline(ModuleBuilder):
     """
     TODO: readline is not getting picked up
-    macos: fails with Symbol not found: _rl_catch_signals (or earlier: _free_history_entry)
     linux: builds OK, but version is incorrect (system readline, instead of the one we compiled)
     """
 
@@ -48,10 +51,11 @@ class Readline(ModuleBuilder):
         yield "--disable-install-examples"
         yield "--with-curses"
 
-    def make_args(self):
-        if self.target.is_linux:
-            # See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb
-            yield "SHLIB_LIBS=-lcurses"
+    # TODO: check linux again
+    # def make_args(self):
+    #     if self.target.is_linux:
+    #         # See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb
+    #         yield "SHLIB_LIBS=-lcurses"
 
 
 @BuildSetup.module_builders.declare
@@ -70,15 +74,13 @@ class Openssl(ModuleBuilder):
 
     def c_configure_args(self):
         yield from super().c_configure_args()
-        yield "--openssldir=/deps"
+        yield f"--openssldir={self.deps}"
         yield "-DPEDANTIC"
         if self.target.is_macos:
             yield "darwin64-%s-cc" % self.target.architecture
 
         else:
             yield "%s-%s" % (self.target.platform, self.target.architecture)
-
-        yield "no-shared"
 
 
 @BuildSetup.module_builders.declare

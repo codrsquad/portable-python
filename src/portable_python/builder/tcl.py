@@ -14,7 +14,7 @@ class TclTkModule(ModuleBuilder):
 
     @property
     def version(self):
-        return "8.5.9"
+        return "8.6.10"
 
     def c_configure_args(self):
         yield from super().c_configure_args()
@@ -23,7 +23,7 @@ class TclTkModule(ModuleBuilder):
     def run_make_install(self):
         super().run_make_install()
         if self.__class__ is not Tix:
-            self.run("make", "install-private-headers", "DESTDIR=%s" % self.deps.parent)
+            self.run("make", "install-private-headers")
 
 
 @BuildSetup.module_builders.declare
