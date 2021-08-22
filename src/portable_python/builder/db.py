@@ -15,6 +15,7 @@ class Gdbm(ModuleBuilder):
             return False, runez.brown("not needed on macos")
 
         return super().auto_use_with_reason(target)
+
     @property
     def url(self):
         return f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
