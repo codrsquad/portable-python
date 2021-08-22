@@ -5,7 +5,7 @@ import runez
 from runez.render import PrettyTable
 
 from portable_python import LOG, PythonInspector
-from portable_python.builder import BuildSetup, TargetSystem
+from portable_python.builder import BuildSetup, ModuleCollection, TargetSystem
 
 
 @runez.click.group()
@@ -85,27 +85,11 @@ def list(family):
 def scan(target):
     """Scan all buildable modules, see if system already has equivalent"""
     ts = TargetSystem(target)
-    BuildSetup.module_builders.ensure_imported()
+    collection = ModuleCollection(ts)
     table = PrettyTable(2)
     table.header[0].align = "right"
-    for name in sorted(BuildSetup.module_builders.available):
-        mod = BuildSetup.module_builders.available.get(name)
-        if not mod.telltale:
-            report = runez.brown("has no telltale file")
-
-        elif not ts.is_applicable(mod):
-            report = runez.brown(f"not applicable to {ts}")
-
-        else:
-            path = mod.existing_telltale(ts)
-            if path:
-                report = "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
-
-            else:
-                report = "%s, no %s" % (runez.green("needed"), mod.telltale)
-
-        table.add_row(name, report)
-
+    rows = sorted(collection.reason.items())
+    table.add_rows(*rows)
     print(table)
 
 

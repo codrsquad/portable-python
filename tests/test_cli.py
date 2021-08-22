@@ -85,8 +85,7 @@ def test_finalization(cli):
     base = runez.to_path(f"build/cpython-{v}")
     bin = base / f"{v}/bin"
 
-    # Triggers compilation skip
-    runez.touch(base / "build/cpython/README", logger=None)
+    runez.touch(base / "build/cpython/README", logger=None)  # Triggers compilation skip with --x-debug
 
     # Create some files to be groomed by _finalize()
     runez.touch(base / "deps/libs/foo.a", logger=None)
@@ -146,9 +145,9 @@ def test_invalid(cli):
     assert cli.failed
     assert "Invalid python spec: ?foo" in cli.logged
 
-    cli.run("--dryrun", "build", v, "-mfoo")
+    cli.run("--dryrun", "build", v, "-mfoo,bar")
     assert cli.failed
-    assert "Unknown modules: foo" in cli.logged
+    assert "Unknown module 'foo'" in cli.logged
 
     cli.run("--dryrun", "build", v, "--build", "foo bar")
     assert cli.failed

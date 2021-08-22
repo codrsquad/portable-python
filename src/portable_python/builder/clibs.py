@@ -78,7 +78,6 @@ class Openssl(ModuleBuilder):
 @BuildSetup.module_builders.declare
 class Uuid(ModuleBuilder):
 
-    needs_platforms = ["linux"]
     telltale = "{include}/uuid/uuid.h"
 
     @property

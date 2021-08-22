@@ -94,31 +94,17 @@ class AvailableBuilders:
         self.available[name] = decorated
         return decorated
 
-    def ensure_imported(self):
-        """Ensure all module builders using the decorator were imported"""
+    def get_builder(self, name, setup=None):
         auto_import_siblings()
-
-    def get_builder(self, setup, name):
-        """
-        Args:
-            setup (BuildSetup): Attached setup object
-            name (str): Name of module builder
-
-        Returns:
-            (PythonBuilder): Associated module builder, if any
-        """
-        self.ensure_imported()
         v = self.available.get(name)
-        if v:
+        if not v:
+            runez.abort("Unknown module '%s'" % runez.red(name))
+
+        if setup:
             v = v()
             v.attach(setup)
-            return v
 
-    def without_telltale(self, target):
-        """Module builder names which don't have a tell-tale file on 'target'"""
-        for name, module in self.available.items():
-            if module.telltale and target.is_applicable(module) and not module.existing_telltale(target):
-                yield name
+        return v
 
 
 class TargetSystem:
@@ -157,9 +143,35 @@ class TargetSystem:
     def is_macos(self):
         return self.platform == "darwin"
 
-    def is_applicable(self, module):
-        """Is module applicable to this target system?"""
-        return not module.needs_platforms or self.platform in module.needs_platforms
+
+class ModuleCollection:
+
+    def __init__(self, target: TargetSystem, module_names=None):
+        auto_import_siblings()
+        self.target = target
+        self.selected = []  # Module classes, either auto-detected or as stated/implied by 'module_names'
+        self.reason = {}  # type: dict[str, str] # Reason each module was selected, if auto-detected
+        if module_names == "none":
+            self.selected = []
+
+        elif module_names == "all":
+            self.selected = list(BuildSetup.module_builders.available.values())
+
+        elif module_names:
+            self.selected = runez.flattened(module_names, keep_empty=None, split=",", transform=BuildSetup.module_builders.get_builder)
+
+        else:
+            for mod in BuildSetup.module_builders.available.values():
+                should_use, reason = mod.auto_use_with_reason(target)
+                self.reason[mod.module_builder_name()] = reason
+                if should_use:
+                    self.selected.append(mod)
+
+    def attached(self, setup):
+        for mod in self.selected:
+            mod = mod()
+            mod.attach(setup)
+            yield mod
 
 
 class BuildSetup:
@@ -184,39 +196,12 @@ class BuildSetup:
         self.downloads_folder = build_folder / "downloads"
         self.logs_folder = self.build_folder / "logs"
         self.anchors = {build_folder.parent, self.dist_folder.parent}
-        self.python_builder = self.python_builders.get_builder(self, self.python_spec.family)
-        modules = self.resolved_module_names(modules)
-        self.active_modules = []  # type: list[ModuleBuilder]
-        self.skipped_modules = []  # type: list[ModuleBuilder]
-        self.unknown_modules = []  # type: list[str]
-        for name in modules:
-            m = self.module_builders.get_builder(self, name)
-            if not m:
-                self.unknown_modules.append(name)
-                continue
-
-            skip_reason = m.skip_reason()
-            if skip_reason:
-                LOG.info("Skipping %s: %s" % (m, skip_reason))
-                self.skipped_modules.append(m)
-
-            else:
-                self.active_modules.append(m)
+        self.python_builder = self.python_builders.get_builder(self.python_spec.family, setup=self)
+        self.modules = ModuleCollection(self.target_system, module_names=modules)
+        self.active_modules = list(self.modules.attached(self))
 
     def __repr__(self):
         return runez.short(self.build_folder)
-
-    def resolved_module_names(self, module_names):
-        if module_names == "none":
-            return []
-
-        if module_names == "all":
-            return list(self.module_builders.available.keys())
-
-        if not module_names:
-            return self.module_builders.without_telltale(self.target_system)
-
-        return runez.flattened(module_names, keep_empty=None, split=",")
 
     @staticmethod
     def ls_dir(path):
@@ -249,10 +234,7 @@ class BuildSetup:
     def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
             runez.ensure_folder(self.build_folder, clean=not x_debug)
-            if self.unknown_modules:
-                return runez.abort("Unknown modules: %s" % runez.joined(self.unknown_modules, delimiter=", ", stringify=runez.red))
-
-            LOG.info("Compiling %s" % runez.plural(self.active_modules, "external module"))
+            LOG.debug("Compiling %s" % runez.plural(self.active_modules, "external module"))
             for m in self.active_modules:
                 m.compile(x_debug)
 
@@ -267,7 +249,6 @@ class ModuleBuilder:
 
     c_configure_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
     c_configure_program = "./configure"
-    needs_platforms: list = None
     telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
 
     _log_handler = None
@@ -283,6 +264,18 @@ class ModuleBuilder:
     def module_builder_name(cls):
         return cls.__name__.lower()
 
+    @classmethod
+    def auto_use_with_reason(cls, target: TargetSystem):
+        if not cls.telltale:
+            return False, runez.brown("has no telltale file")
+
+        for telltale in runez.flattened(cls.telltale, keep_empty=None):
+            path = telltale.format(include=target.sys_include)
+            if os.path.exists(path):
+                return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
+
+        return True, "%s, no %s" % (runez.green("needed"), cls.telltale)
+
     @property
     def target(self):
         return self.setup.target_system
@@ -296,14 +289,6 @@ class ModuleBuilder:
     def version(self):
         """Version to use"""
         return ""
-
-    @classmethod
-    def existing_telltale(cls, target):
-        """Tell-tale file that this module is already available on 'target', if any"""
-        for telltale in runez.flattened(cls.telltale, keep_empty=None):
-            path = telltale.format(include=target.sys_include)
-            if os.path.exists(path):
-                return path
 
     @property
     def deps(self):
@@ -321,11 +306,6 @@ class ModuleBuilder:
             if name.startswith("xenv_"):
                 yield name
 
-    def skip_reason(self):
-        """Reason we're skipping compilation of this module, if any"""
-        if self.needs_platforms and not self.target.is_applicable(self):
-            return "%s only" % runez.joined(self.needs_platforms, delimiter="/")
-
     def xenv_archflags(self):
         """Help some components figure out architecture"""
         yield "-arch", self.target.architecture
@@ -333,9 +313,6 @@ class ModuleBuilder:
     def xenv_cpath(self):
         """Both gcc and clang accept CPATH to point to extra include folders to look at"""
         yield self.checked_deps_folder("include")
-        yield self.checked_deps_folder("include/readline")
-        yield self.checked_deps_folder("include/uuid")
-        yield self.checked_deps_folder("include/openssl")
 
     def xenv_library_path(self):
         yield self.checked_deps_folder("lib")
