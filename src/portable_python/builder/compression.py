@@ -5,7 +5,6 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 class Bzip2(ModuleBuilder):
     """
     See https://docs.python.org/3/library/bz2.html
-    TODO: verify it is indeed included (version shown by 'inspect' is suspicious)
     """
 
     c_configure_program = None

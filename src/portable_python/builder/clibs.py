@@ -3,10 +3,6 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 
 @BuildSetup.module_builders.declare
 class LibFFI(ModuleBuilder):
-    """
-    TODO: doesn't compile/link properly yet
-    linux: undefined symbol: ffi_prep_cif
-    """
 
     telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
 
@@ -31,10 +27,6 @@ class LibFFI(ModuleBuilder):
 
 @BuildSetup.module_builders.declare
 class Readline(ModuleBuilder):
-    """
-    TODO: readline is not getting picked up
-    linux: builds OK, but version is incorrect (system readline, instead of the one we compiled)
-    """
 
     telltale = "{include}/readline/readline.h"
 

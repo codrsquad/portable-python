@@ -4,11 +4,7 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 
 
 class TclTkModule(ModuleBuilder):
-    """
-    Common Tcl/Tk stuff
-    TODO: doesn't compile/link properly yet
-    linux: undefined symbol: Tcl_AddErrorInfo
-    """
+    """Common Tcl/Tk stuff"""
 
     telltale = ["{include}/tk", "{include}/tk.h"]
 

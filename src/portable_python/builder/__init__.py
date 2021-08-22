@@ -241,8 +241,10 @@ class BuildSetup:
         runez.delete(path, logger=None)
         return path
 
-    def is_active_module(self, name):
-        return any(name == x.module_builder_name() for x in self.active_modules)
+    def get_module(self, name):
+        for module in self.active_modules:
+            if name == module.module_builder_name():
+                return module
 
     def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
@@ -419,7 +421,7 @@ class ModuleBuilder:
     def captured_logs(self):
         try:
             logs_path = self.setup._get_logs_path(self.module_builder_name())
-            if logs_path.parent.is_dir():
+            if not runez.DRYRUN:
                 self._log_handler = logging.FileHandler(logs_path)
                 self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
                 self._log_handler.setLevel(logging.DEBUG)

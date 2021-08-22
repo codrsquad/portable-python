@@ -1,6 +1,7 @@
 import os
 
 import runez
+from runez.pyenv import Version
 
 from portable_python import LOG
 from portable_python.builder import BuildSetup, PythonBuilder
@@ -25,12 +26,18 @@ class Cpython(PythonBuilder):
         yield "--with-ensurepip=upgrade"
         yield "--enable-optimizations"
         yield "--with-lto"
-        if self.setup.is_active_module("openssl"):
+        if self.setup.get_module("openssl"):
             yield f"--with-openssl={self.deps}"
 
-        if self.setup.is_active_module("tcl"):
+        tcl = self.setup.get_module("tcl")
+        if tcl:
             yield "--with-tcltk-includes=-I%s/include" % self.deps
-            yield "--with-tcltk-libs=-L%s/lib" % self.deps
+            tcl_version = tcl.version
+            if not isinstance(tcl_version, Version):
+                tcl_version = Version(tcl_version)
+
+            mm = "%s.%s" % (tcl_version.major, tcl_version.minor)
+            yield f'--with-tcltk-libs="-L{self.deps}/lib -ltcl{mm} -ltk{mm}"'
 
     def _finalize(self):
         self.cleanup_distribution()
