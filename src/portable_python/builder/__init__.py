@@ -155,7 +155,8 @@ class ModuleCollection:
             self.selected = []
 
         elif module_names == "all":
-            self.selected = list(BuildSetup.module_builders.available.values())
+            module_names = "libffi,readline,uuid,bzip2,xz,zlib,openssl,sqlite,bdb,gdbm,tcl,tk,tix".split(",")
+            self.selected = [BuildSetup.module_builders.get_builder(x) for x in module_names]
 
         elif module_names:
             self.selected = runez.flattened(module_names, keep_empty=None, split=",", transform=BuildSetup.module_builders.get_builder)
@@ -313,6 +314,9 @@ class ModuleBuilder:
     def xenv_cpath(self):
         """Both gcc and clang accept CPATH to point to extra include folders to look at"""
         yield self.checked_deps_folder("include")
+        yield self.checked_deps_folder("include/readline")
+        yield self.checked_deps_folder("include/openssl")
+        yield self.checked_deps_folder("include/uuid")
 
     def xenv_library_path(self):
         yield self.checked_deps_folder("lib")

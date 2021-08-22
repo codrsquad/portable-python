@@ -21,13 +21,6 @@ class Cpython(PythonBuilder):
     def xenv_cflags(self):
         yield "-Wno-unused-command-line-argument"
 
-    def xenv_cpath(self):
-        """Both gcc and clang accept CPATH to point to extra include folders to look at"""
-        yield from super().xenv_cpath()
-        yield self.checked_deps_folder("include/readline")
-        yield self.checked_deps_folder("include/openssl")
-        yield self.checked_deps_folder("include/uuid")
-
     def c_configure_args(self):
         yield from super().c_configure_args()
         yield "--with-ensurepip=upgrade"

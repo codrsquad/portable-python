@@ -8,6 +8,14 @@ class TclTkModule(ModuleBuilder):
 
     telltale = ["{include}/tk", "{include}/tk.h"]
 
+    @classmethod
+    def auto_use_with_reason(cls, target):
+        if target.is_macos:
+            # Fails to build on macos, and not needed there (builds fine with system tcl/tk)
+            return False, runez.brown("not needed on macos")
+
+        return super().auto_use_with_reason(target)
+
     @property
     def version(self):
         return "8.6.10"

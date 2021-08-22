@@ -1,3 +1,5 @@
+import runez
+
 from portable_python.builder import BuildSetup, ModuleBuilder
 
 
@@ -6,6 +8,13 @@ class Gdbm(ModuleBuilder):
 
     telltale = "{include}/gdbm.h"
 
+    @classmethod
+    def auto_use_with_reason(cls, target):
+        if target.is_macos:
+            # Fails to build on macos, and not needed there (builds fine with system tcl/tk)
+            return False, runez.brown("not needed on macos")
+
+        return super().auto_use_with_reason(target)
     @property
     def url(self):
         return f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
