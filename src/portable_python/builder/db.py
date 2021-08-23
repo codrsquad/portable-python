@@ -11,7 +11,7 @@ class Gdbm(ModuleBuilder):
     @classmethod
     def auto_use_with_reason(cls, target):
         if target.is_macos:
-            return False, runez.brown("not needed on macos")  # Can build, but waste of time
+            return False, runez.brown("only on demand on macos")  # Can build, but waste of time
 
         return super().auto_use_with_reason(target)
 
@@ -68,7 +68,7 @@ class Sqlite(ModuleBuilder):
     @classmethod
     def auto_use_with_reason(cls, target):
         if not runez.which("tclsh"):  # pragma: no cover
-            return None, "requires tclsh"
+            return None, runez.brown("requires tclsh")
 
         return super().auto_use_with_reason(target)
 

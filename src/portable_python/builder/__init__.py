@@ -277,7 +277,7 @@ class ModuleBuilder:
     @classmethod
     def auto_use_with_reason(cls, target: TargetSystem):
         if not cls.telltale:
-            return False, runez.brown("has no telltale file")
+            return False, runez.brown("only on demand (no auto-detection available)")
 
         for telltale in runez.flattened(cls.telltale, keep_empty=None):
             path = telltale.format(include=target.sys_include)

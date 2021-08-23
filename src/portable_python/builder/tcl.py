@@ -1,3 +1,5 @@
+import os
+
 import runez
 
 from portable_python.builder import BuildSetup, ModuleBuilder
@@ -10,6 +12,13 @@ class TclTkModule(ModuleBuilder):
     """
 
     telltale = ["{include}/tk", "{include}/tk.h"]
+
+    @classmethod
+    def auto_use_with_reason(cls, target):
+        if not target.is_macos and not os.path.isdir("/usr/include/X11"):
+            return False, runez.brown("requires libx11-dev")
+
+        return super().auto_use_with_reason(target)
 
     @property
     def version(self):
