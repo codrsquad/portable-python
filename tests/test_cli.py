@@ -52,7 +52,7 @@ def test_build(cli):
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "--static")
     assert cli.succeeded
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
-    assert "Would delete build/cpython-3.9.6/deps/lib/libssl.so" in cli.logged
+    assert f"Would move build/cpython-{v}/deps/lib/libssl.so -> build/cpython-{v}/deps/_moved/libssl.so" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
     assert cli.succeeded

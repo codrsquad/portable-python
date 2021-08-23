@@ -54,7 +54,7 @@ class Cpython(PythonBuilder):
         """Remove shared libs to force static libs to be used (dynamic libs are not relocatable)"""
         for f in self.setup.ls_dir(self.deps / "lib"):
             if ".so" in f.name or ".dylib" in f.name:
-                runez.delete(f)
+                runez.move(f, self.deps / "_moved" / f.name)
 
     def _finalize(self):
         if self.setup.get_module("openssl"):

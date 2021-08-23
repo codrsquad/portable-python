@@ -20,6 +20,7 @@ class Bzip2(ModuleBuilder):
         return "1.0.8"
 
     def make_install_args(self):
+        yield "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64"
         yield f"PREFIX={self.deps}"
 
 
