@@ -76,8 +76,10 @@ class InspectionReport:
 
     @staticmethod
     def lib_version(path):
-        v = InspectionReport.lib_version_via_otool(path)
-        return v
+        if path and path.endswith(".so"):
+            v = InspectionReport.lib_version_via_otool(path)
+            if v:
+                return v
 
     @staticmethod
     def color(text):
@@ -96,6 +98,10 @@ class InspectionReport:
                 text = "%s %s" % (text, runez.blue(version))
 
             if before:
+                v = re.sub(r"\w*version\w*=", "", before, flags=re.IGNORECASE)
+                if v != before:
+                    before = runez.bold(v)
+
                 text = "%s %s" % (before, text)
 
         else:

@@ -38,6 +38,8 @@ def test_build(cli):
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
     runez.touch(bf / "deps/bin/bzcat", logger=None)
     runez.touch(bf / "deps/include/readline/readline.h", logger=None)
+    runez.touch(bf / "deps/lib/libssl.a", logger=None)
+    runez.touch(bf / "deps/lib/libssl.so", logger=None)
     lib_static = f"libpython{mm}.a"
     lp = bf / f"{v}/lib"
     lpc = lp / f"python{mm}/config-{mm}-darwin"
@@ -50,6 +52,7 @@ def test_build(cli):
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "--static")
     assert cli.succeeded
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
+    assert "Would delete build/cpython-3.9.6/deps/lib/libssl.so" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
     assert cli.succeeded
@@ -87,7 +90,7 @@ def test_finalization(cli):
 
     runez.touch(base / "build/cpython/README", logger=None)  # Triggers compilation skip with --x-debug
 
-    # Create some files to be groomed by _finalize()
+    # Create some files to be groomed by CPython
     runez.touch(base / "deps/libs/foo.a", logger=None)
     os.chmod(base / "deps/libs/foo.a", 0o600)
     runez.touch(bin.parent / "lib/idle_test/foo", logger=None)

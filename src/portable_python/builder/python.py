@@ -1,7 +1,6 @@
 import os
 
 import runez
-from runez.pyenv import Version
 
 from portable_python import LOG
 from portable_python.builder import BuildSetup, PythonBuilder
@@ -19,43 +18,54 @@ class Cpython(PythonBuilder):
         return f"{self.base_url}/{self.version}/Python-{self.version}.tar.xz"
 
     def xenv_cflags(self):
+        yield self.checked_deps_folder("include", prefix="-I")
+        yield self.checked_deps_folder("include/readline", prefix="-I")
+        yield self.checked_deps_folder("include/openssl", prefix="-I")
+        yield self.checked_deps_folder("include/uuid", prefix="-I")
         yield "-Wno-unused-command-line-argument"
+
+    def xenv_ldflags(self):
+        yield self.checked_deps_folder("lib", prefix="-L")
 
     def c_configure_args(self):
         yield from super().c_configure_args()
-        yield "--with-ensurepip=upgrade"
+        openssl = self.setup.get_module("openssl")
+        yield "--with-ensurepip=%s" % ("upgrade" if openssl else "install")
         yield "--enable-optimizations"
         yield "--with-lto"
-        if self.setup.get_module("openssl"):
+        if openssl:
             yield f"--with-openssl={self.deps}"
 
         tcl = self.setup.get_module("tcl")
         if tcl:
-            yield "--with-tcltk-includes=-I%s/include" % self.deps
-            tcl_version = tcl.version
-            if not isinstance(tcl_version, Version):
-                tcl_version = Version(tcl_version)
+            yield f"--with-tcltk-includes=-I{self.deps}/include"
+            yield f"--with-tcltk-libs=-L{self.deps}/lib"
 
-            mm = "%s.%s" % (tcl_version.major, tcl_version.minor)
-            yield f'--with-tcltk-libs="-L{self.deps}/lib -ltcl{mm} -ltk{mm}"'
+    @runez.cached_property
+    def main_python(self):
+        main_python_candidates = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
+        for f in BuildSetup.ls_dir(self.bin_folder):
+            if f.name in main_python_candidates:
+                return self.actual_basename(f)
+
+        return "python"
+
+    def _prepare(self):
+        """Remove shared libs to force static libs to be used (dynamic libs are not relocatable)"""
+        for f in self.setup.ls_dir(self.deps / "lib"):
+            if ".so" in f.name or ".dylib" in f.name:
+                runez.delete(f)
 
     def _finalize(self):
-        self.cleanup_distribution()
+        if self.setup.get_module("openssl"):
+            self.run(self.bin_folder / self.main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
+
         if self.setup.static:
             self._symlink_static_libs()
 
-        main_python = self.correct_symlinks()
-
-        # For some reason, pip upgrade doesn't work unless ensurepip/_bundled was cleaned up, so run it after 1st cleanup
-        self.run(self.bin_folder / main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
-
-        # Clean up again to remove pip _bundled stuff
+        self.correct_symlinks()
         self.cleanup_distribution()
-
-        # Regenerate __pycache__
-        self.run(self.bin_folder / main_python, "-mcompileall")
-
-        # Create tarball
+        self.run(self.bin_folder / self.main_python, "-mcompileall")
         runez.compress(self.bin_folder.parent, self.tarball_path)
 
     def _symlink_static_libs(self):
@@ -137,8 +147,6 @@ class Cpython(PythonBuilder):
 
     def correct_symlinks(self):
         with runez.CurrentFolder(self.bin_folder):
-            main_python = None  # Basename of main python executable
-            main_python_candidates = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
             all_files = {}
             files = {}
             symlinks = {}
@@ -148,9 +156,6 @@ class Cpython(PythonBuilder):
                     runez.delete(f)  # Get rid of old junk, can be pip installed if needed
                     continue
 
-                if not main_python and f.name in main_python_candidates:
-                    main_python = self.actual_basename(f)
-
                 all_files[f.name] = f
                 if f.is_symlink():
                     symlinks[f.name] = f
@@ -158,17 +163,14 @@ class Cpython(PythonBuilder):
                 else:
                     files[f.name] = f
 
-            if main_python:
-                if "python" not in all_files:
-                    runez.symlink(main_python, "python")
+            if "python" not in all_files:
+                runez.symlink(self.main_python, "python")
 
-                for f in files.values():
-                    if f.name != main_python:
-                        self._auto_correct_shebang(main_python, f)
+            for f in files.values():
+                if f.name != self.main_python:
+                    self._auto_correct_shebang(f)
 
-            return main_python or "python"
-
-    def _auto_correct_shebang(self, main_python, path):
+    def _auto_correct_shebang(self, path):
         lines = []
         with open(path) as fh:
             for line in fh:
@@ -180,7 +182,7 @@ class Cpython(PythonBuilder):
 
                 else:
                     lines.append("#!/bin/sh\n")
-                    lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % main_python)
+                    lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % self.main_python)
 
         LOG.info("Auto-corrected shebang for %s" % runez.short(path))
         with open(path, "wt") as fh:

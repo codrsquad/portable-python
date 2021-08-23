@@ -4,17 +4,12 @@ from portable_python.builder import BuildSetup, ModuleBuilder
 
 
 class TclTkModule(ModuleBuilder):
-    """Common Tcl/Tk stuff"""
+    """
+    Common Tcl/Tk stuff
+    TODO: macos build fails with Symbol not found: _TclBN_mp_clear
+    """
 
     telltale = ["{include}/tk", "{include}/tk.h"]
-
-    @classmethod
-    def auto_use_with_reason(cls, target):
-        if target.is_macos:
-            # Fails to build on macos, and not needed there (builds fine with system tcl/tk)
-            return False, runez.brown("not needed on macos")
-
-        return super().auto_use_with_reason(target)
 
     @property
     def version(self):
@@ -58,13 +53,7 @@ class Tk(TclTkModule):
     def c_configure_args(self):
         yield from super().c_configure_args()
         yield f"--with-tcl={self.deps}/lib"
-        if self.target.is_macos:
-            yield "--enable-aqua=yes"
-            yield "--without-x"
-
-        else:
-            yield f"--x-includes={self.deps}/include"
-            yield f"--x-libraries={self.deps}/lib"
+        yield "--without-x"
 
 
 @BuildSetup.module_builders.declare
@@ -88,9 +77,4 @@ class Tix(TclTkModule):
         yield from super().c_configure_args()
         yield f"--with-tcl={self.deps}/lib"
         yield f"--with-tk={self.deps}/lib"
-        if self.target.is_macos:
-            yield "--without-x"
-
-        else:
-            yield f"--x-includes={self.deps}/include"
-            yield f"--x-libraries={self.deps}/lib"
+        yield "--without-x"

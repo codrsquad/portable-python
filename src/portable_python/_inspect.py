@@ -9,7 +9,10 @@ INSIGHTS = dict(
     _tkinter="TCL_VERSION TK_VERSION",
     _sqlite3="sqlite_version version",
     _ssl="OPENSSL_VERSION",
+    pip="__version__",
     readline="_READLINE_LIBRARY_VERSION",
+    setuptools="__version__",
+    wheel="__version__",
     zlib="ZLIB_VERSION ZLIB_RUNTIME_VERSION",
 )
 
@@ -67,7 +70,7 @@ def get_report(modules):
 
 
 def get_modules(args):
-    mods = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,readline,zlib"
+    mods = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
     if len(args) > 1 and args[1]:
         if args[1] == "all":
             mods += ",_asyncio,_functools,_tracemalloc"
