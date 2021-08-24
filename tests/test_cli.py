@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import runez
 
-from portable_python.builder import BuildSetup
 from portable_python.builder.python import Cpython
+from portable_python.versions import PythonVersions
 
 from .conftest import dummy_tarball
 
@@ -15,7 +15,7 @@ def test_module_invocation(cli):
 
 
 def test_build(cli):
-    v = BuildSetup.supported.cpython.latest
+    v = PythonVersions.cpython.latest
     mm = f"{v.major}.{v.minor}"
     cli.run("--dryrun", "build", "2.7.1", "-mnone", "--target=foo-bar")
     assert cli.failed
@@ -70,7 +70,7 @@ def test_build(cli):
 
 
 def test_failed_run(cli):
-    v = BuildSetup.supported.cpython.latest
+    v = PythonVersions.cpython.latest
     dummy_tarball("readline-8.1.tar.gz")
     build_path = runez.to_path(f"build/cpython-{v}")
     cli.run("build", v, "-mreadline")
@@ -80,7 +80,7 @@ def test_failed_run(cli):
 
 
 def test_finalization(cli):
-    v = BuildSetup.supported.cpython.latest
+    v = PythonVersions.cpython.latest
     dummy_tarball(f"Python-{v}.tar.xz")
     dummy_tarball("readline-8.1.tar.gz")
     base = runez.to_path(f"build/cpython-{v}")
@@ -141,7 +141,7 @@ def test_inspect_module():
 
 
 def test_invalid(cli):
-    v = BuildSetup.supported.cpython.latest
+    v = PythonVersions.cpython.latest
     cli.run("--dryrun", "build", "foo")
     assert cli.failed
     assert "Invalid python spec: ?foo" in cli.logged

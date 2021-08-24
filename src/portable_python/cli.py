@@ -6,6 +6,7 @@ from runez.render import PrettyTable
 
 from portable_python import LOG, PythonInspector
 from portable_python.builder import BuildSetup, ModuleCollection, TargetSystem
+from portable_python.versions import PythonVersions
 
 
 @runez.click.group()
@@ -61,7 +62,7 @@ def inspect(modules, pythons):
 def list(family):
     """List supported versions"""
     if not family:
-        family = BuildSetup.supported.all_family_names
+        family = list(PythonVersions.families.keys())
 
     indent = "" if len(family) == 1 else "  "
     for family_name in family:
@@ -71,7 +72,7 @@ def list(family):
 
             print(f"{family_name}:")
 
-        fam = BuildSetup.supported.family(family_name, fatal=False)
+        fam = PythonVersions.family(family_name, fatal=False)
         if fam:
             for v in fam.versions:
                 print(f"{indent}{v}")
