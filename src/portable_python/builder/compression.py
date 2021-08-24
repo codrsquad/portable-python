@@ -19,9 +19,8 @@ class Bzip2(ModuleBuilder):
     def version(self):
         return "1.0.8"
 
-    def make_install_args(self):
-        yield "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64"
-        yield f"PREFIX={self.deps}"
+    def run_make_install(self):
+        self.run("make", "install", f"PREFIX={self.deps}", "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64")
 
 
 @BuildSetup.module_builders.declare
@@ -66,6 +65,6 @@ class Zlib(ModuleBuilder):
         return "1.2.11"
 
     def c_configure_args(self):
-        yield from super().c_configure_args()
+        yield f"--prefix={self.c_configure_prefix}"
         yield "--64"
         yield "--static"

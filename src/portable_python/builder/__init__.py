@@ -255,7 +255,7 @@ class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
     setup: BuildSetup = None
-    build_folder: pathlib.Path = None
+    m_src_build: pathlib.Path = None  # Folder where this module's source code is unpacked and built
 
     c_configure_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
     c_configure_program = "./configure"
@@ -268,7 +268,7 @@ class ModuleBuilder:
 
     def attach(self, setup):
         self.setup = setup
-        self.build_folder = setup.build_folder / "build" / self.module_builder_name()
+        self.m_src_build = setup.build_folder / "build" / self.module_builder_name()
 
     @classmethod
     def module_builder_name(cls):
@@ -344,9 +344,7 @@ class ModuleBuilder:
 
     def c_configure_args(self):
         """CLI args to pass to pass to ./configure"""
-        prefix = self.c_configure_prefix
-        if prefix:
-            yield "--prefix=/%s" % str(prefix).strip("/")
+        yield f"--prefix={self.c_configure_prefix}"
 
     def run_configure(self):
         """
@@ -357,20 +355,9 @@ class ModuleBuilder:
             args = runez.flattened(self.c_configure_program.split(), self.c_configure_args(), keep_empty=None)
             return self.run(*args)
 
-    def make_args(self):
-        """Optional args to pass to make"""
-
-    def make_install_args(self):
-        """Optional args to pass to make install"""
-
     def run_make_install(self):
-        if self.make_args:
-            args = runez.flattened(self.make_args(), keep_empty=None)
-            self.run("make", *args)
-
-        if self.make_install_args:
-            args = runez.flattened(self.make_install_args(), keep_empty=None)
-            self.run("make", "install", *args)
+        self.run("make")
+        self.run("make", "install")
 
     @staticmethod
     def setenv(key, value):
@@ -411,7 +398,7 @@ class ModuleBuilder:
         started = time.time()
         print(Header.aerated(self.module_builder_name()))
         with self.captured_logs():
-            if not x_debug or not self.build_folder.is_dir():
+            if not x_debug or not self.m_src_build.is_dir():
                 # Build folder would exist only if we're doing an --x-debug run
                 self.unpack()
                 self._setup_env()
@@ -441,7 +428,7 @@ class ModuleBuilder:
 
     def unpack(self):
         self.download()
-        runez.decompress(self.download_path, self.build_folder)
+        runez.decompress(self.download_path, self.m_src_build)
 
     def _do_darwin_compile(self):
         """Compile on macos variants"""
@@ -449,7 +436,7 @@ class ModuleBuilder:
 
     def _do_linux_compile(self):
         """Compile on linux variants"""
-        folder = self.build_folder
+        folder = self.m_src_build
         if self.c_configure_cwd:
             folder = folder / self.c_configure_cwd
 
@@ -460,29 +447,31 @@ class ModuleBuilder:
 
 class PythonBuilder(ModuleBuilder):
 
-    def make_install_args(self):
-        yield f"DESTDIR={self.install_destdir}"
-
     @property
     def c_configure_prefix(self):
         if self.setup.prefix:
-            return self.setup.prefix.strip("/").format(python_version=self.version)
+            return self.setup.prefix.format(python_version=self.version)
 
-        return self.version.text
+        return f"/{self.version.text}"
 
     @property
     def bin_folder(self):
         """Folder where compiled python exe resides"""
-        return self.install_destdir / self.c_configure_prefix / "bin"
+        return self.install_folder / "bin"
 
     @property
-    def install_destdir(self):
-        """Folder to use for make install DESTDIR="""
+    def build_base(self):
+        """Base folder where we'll compile python, with optional prefixed-layour (for debian-like packaging)"""
         folder = self.setup.build_folder
         if self.setup.prefix:
             folder = folder / "root"
 
         return folder
+
+    @property
+    def install_folder(self):
+        """Folder where the python we compile gets installed"""
+        return self.build_base / self.c_configure_prefix.strip("/")
 
     @property
     def tarball_path(self):
@@ -492,3 +481,7 @@ class PythonBuilder(ModuleBuilder):
     @property
     def version(self):
         return self.setup.python_spec.version
+
+    def run_make_install(self):
+        self.run("make")
+        self.run("make", "install", f"DESTDIR={self.build_base}")

@@ -11,6 +11,7 @@ class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
     base_url = "https://www.python.org/ftp/python"
+    _main_python = None
 
     @property
     def url(self):
@@ -18,11 +19,11 @@ class Cpython(PythonBuilder):
         return f"{self.base_url}/{self.version}/Python-{self.version}.tar.xz"
 
     def xenv_cflags(self):
+        yield "-Wno-unused-command-line-argument"
         yield self.checked_deps_folder("include", prefix="-I")
         yield self.checked_deps_folder("include/readline", prefix="-I")
         yield self.checked_deps_folder("include/openssl", prefix="-I")
         yield self.checked_deps_folder("include/uuid", prefix="-I")
-        yield "-Wno-unused-command-line-argument"
 
     def xenv_ldflags(self):
         yield self.checked_deps_folder("lib", prefix="-L")
@@ -41,14 +42,16 @@ class Cpython(PythonBuilder):
             yield f"--with-tcltk-includes=-I{self.deps}/include"
             yield f"--with-tcltk-libs=-L{self.deps}/lib"
 
-    @runez.cached_property
+    @property
     def main_python(self):
-        main_python_candidates = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
-        for f in BuildSetup.ls_dir(self.bin_folder):
-            if f.name in main_python_candidates:
-                return self.actual_basename(f)
+        if self._main_python is None:
+            main_python_candidates = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
+            for f in BuildSetup.ls_dir(self.bin_folder):
+                if f.name in main_python_candidates:
+                    self._main_python = self.actual_basename(f)
+                    break
 
-        return "python"
+        return self._main_python or "python"
 
     def _finalize(self):
         if self.setup.get_module("openssl"):
@@ -60,12 +63,12 @@ class Cpython(PythonBuilder):
         self.correct_symlinks()
         self.cleanup_distribution()
         self.run(self.bin_folder / self.main_python, "-mcompileall")
-        runez.compress(self.bin_folder.parent, self.tarball_path)
+        runez.compress(self.install_folder, self.tarball_path)
 
     def _symlink_static_libs(self):
         """Symlink libpython*.a to save space"""
         libs = []
-        for dirpath, dirnames, filenames in os.walk(self.bin_folder.parent / "lib"):
+        for dirpath, dirnames, filenames in os.walk(self.install_folder / "lib"):
             for name in filenames:
                 if name.startswith("libpython"):
                     libs.append(os.path.join(dirpath, name))
@@ -108,7 +111,7 @@ class Cpython(PythonBuilder):
 
     def cleanup_distribution(self):
         cleaned = []
-        for dirpath, dirnames, filenames in os.walk(self.bin_folder.parent):
+        for dirpath, dirnames, filenames in os.walk(self.install_folder):
             removed = []
             for name in dirnames:
                 if self.should_clean(name):

@@ -26,12 +26,12 @@ def test_build(cli):
     bf = runez.to_path(f"build/cpython-{v}")
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone")
     assert cli.succeeded
-    assert f"./configure --prefix=/{v} " in cli.logged
+    assert f" --prefix=/{v} " in cli.logged
     assert f"make install DESTDIR={bf}" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
-    assert "./configure --prefix=/apps/python " in cli.logged
+    assert " --prefix=/apps/python " in cli.logged
     assert f"make install DESTDIR={bf}/root" in cli.logged
 
     # Simulate presence of some key files to verify code that is detecting them is hit
@@ -39,7 +39,6 @@ def test_build(cli):
     runez.touch(bf / "deps/bin/bzcat", logger=None)
     runez.touch(bf / "deps/include/readline/readline.h", logger=None)
     runez.touch(bf / "deps/lib/libssl.a", logger=None)
-    runez.touch(bf / "deps/lib/libssl.so", logger=None)
     lib_static = f"libpython{mm}.a"
     lp = bf / f"{v}/lib"
     lpc = lp / f"python{mm}/config-{mm}-darwin"
@@ -52,7 +51,6 @@ def test_build(cli):
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "--static")
     assert cli.succeeded
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
-    assert f"Would move build/cpython-{v}/deps/lib/libssl.so -> build/cpython-{v}/deps/_moved/libssl.so" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
     assert cli.succeeded
@@ -62,7 +60,7 @@ def test_build(cli):
 
     cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
     assert cli.succeeded
-    assert f"Would run: ./configure --prefix=/apps/foo{v} " in cli.logged
+    assert f" --prefix=/apps/foo{v} " in cli.logged
 
     cli.run("--dryrun", "list")
     assert cli.succeeded
