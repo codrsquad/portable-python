@@ -19,8 +19,9 @@ class LibFFI(ModuleBuilder):
 
     def c_configure_args(self):
         yield from super().c_configure_args()
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
         yield "--with-pic=yes"
-        yield "--enable-portable-binary"
         yield "--disable-multi-os-directory"
         yield "--disable-docs"
 
@@ -68,6 +69,7 @@ class Openssl(ModuleBuilder):
         yield from super().c_configure_args()
         yield f"--openssldir={self.deps}"
         yield "-DPEDANTIC"
+        yield "no-shared"
         if self.target.is_macos:
             yield "darwin64-%s-cc" % self.target.architecture
 

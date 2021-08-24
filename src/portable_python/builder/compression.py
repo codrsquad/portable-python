@@ -39,12 +39,17 @@ class Xz(ModuleBuilder):
 
     def c_configure_args(self):
         yield from super().c_configure_args()
+        yield "--with-pic=yes"
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
+        yield "--disable-doc"
         yield "--disable-xz"
         yield "--disable-xzdec"
         yield "--disable-lzmadec"
         yield "--disable-lzmainfo"
         yield "--disable-lzma-links"
         yield "--disable-scripts"
+        yield "--disable-rpath"
 
 
 @BuildSetup.module_builders.declare
@@ -59,3 +64,8 @@ class Zlib(ModuleBuilder):
     @property
     def version(self):
         return "1.2.11"
+
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--64"
+        yield "--static"

@@ -59,25 +59,25 @@ class InspectionReport:
 
     @staticmethod
     def lib_version_via_otool(path):
-        aliases = {"tkinter": "tcl"}
+        aliases = dict(ctypes="libffi", readline="curses,libedit", tkinter="tcl", zlib="libz")
         if path and os.path.exists(path):
             r = runez.run("otool", "-L", path, fatal=False, logger=None)
             if r.succeeded:
                 m = re.match(r"^_?([^.]+).*$", os.path.basename(path))
                 if m:
                     name = m.group(1).lower()
-                    name = aliases.get(name, name)
+                    names = set(runez.flattened(name, aliases.get(name), keep_empty=None, split=","))
                     for line in r.output.splitlines():
                         m = re.match(r"^\s*(\S+).+current version ([0-9.]+).*$", line)
                         if m:
                             lb = m.group(1).lower()
-                            if name in lb:
-                                return m.group(2)
+                            if any(x in lb for x in names):
+                                yield m.group(2)
 
     @staticmethod
     def lib_version(path):
         if path and path.endswith(".so"):
-            v = InspectionReport.lib_version_via_otool(path)
+            v = runez.joined(InspectionReport.lib_version_via_otool(path), keep_empty=None)
             if v:
                 return v
 

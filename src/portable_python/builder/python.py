@@ -50,12 +50,6 @@ class Cpython(PythonBuilder):
 
         return "python"
 
-    def _prepare(self):
-        """Remove shared libs to force static libs to be used (dynamic libs are not relocatable)"""
-        for f in self.setup.ls_dir(self.deps / "lib"):
-            if ".so" in f.name or ".dylib" in f.name:
-                runez.move(f, self.deps / "_moved" / f.name)
-
     def _finalize(self):
         if self.setup.get_module("openssl"):
             self.run(self.bin_folder / self.main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
