@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import runez
 
-from portable_python.builder.python import Cpython
 from portable_python.versions import PythonVersions
 
 from .conftest import dummy_tarball
@@ -109,7 +108,7 @@ def test_finalization(cli):
 
     assert runez.readlines(bin / "some-exe", logger=None) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
     assert runez.readlines(bin / "some-exe3", logger=None) == ["#!/bin/sh", "hello"]
-    assert Cpython.actual_basename(bin / "python") == "foo-python"
+    assert runez.basename(bin / "python", follow=True) == "foo-python"
 
 
 def test_inspect(cli):

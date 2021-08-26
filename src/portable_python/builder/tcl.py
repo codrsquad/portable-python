@@ -44,7 +44,7 @@ class Tcl(TclTkModule):
         return f"https://prdownloads.sourceforge.net/tcl/tcl{self.version}-src.tar.gz"
 
     def _prepare(self):
-        for path in BuildSetup.ls_dir(self.m_src_build / "pkgs"):
+        for path in runez.ls_dir(self.m_src_build / "pkgs"):
             if path.name.startswith(("sqlite", "tdbc")):
                 # Remove packages we don't care about and can pull in unwanted symbols
                 runez.delete(path)

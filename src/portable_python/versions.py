@@ -1,3 +1,14 @@
+"""
+Tracking only a handful of most recent (and non-EOL) versions by design
+Not trying to do historical stuff here, older (or EOL-ed) versions will be removed from the list without notice
+
+Usage:
+    from portable_python.versions import PythonVersions
+
+    print(PythonVersions.cpython.latest)
+    print(PythonVersions.cpython.versions)
+"""
+
 import runez
 from runez.pyenv import PythonSpec, Version
 
@@ -13,11 +24,12 @@ CPYTHON_VERSIONS = """
 """
 
 
-class VersionList:
+class VersionFamily:
+    """Latest versions for a python family"""
 
     def __init__(self, family, versions):
         self.family = family
-        self.versions = [Version(v) for v in versions.split()]
+        self.versions = sorted((Version(v) for v in versions.split()), reverse=True)
 
     def __repr__(self):
         return "%s [%s]" % (self.family, runez.plural(self.versions, "version"))
@@ -30,12 +42,12 @@ class VersionList:
 
 class PythonVersions:
 
-    cpython = VersionList("cpython", CPYTHON_VERSIONS)
+    cpython = VersionFamily("cpython", CPYTHON_VERSIONS)
 
     families = dict(cpython=cpython)
 
     @classmethod
-    def family(cls, family_name, fatal=True) -> VersionList:
+    def family(cls, family_name, fatal=True) -> VersionFamily:
         fam = cls.families.get(family_name)
         if fatal and not fam:
             runez.abort(f"Python family '{family_name}' is not yet supported")

@@ -46,9 +46,9 @@ class Cpython(PythonBuilder):
     def main_python(self):
         if self._main_python is None:
             main_python_candidates = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
-            for f in BuildSetup.ls_dir(self.bin_folder):
+            for f in runez.ls_dir(self.bin_folder):
                 if f.name in main_python_candidates:
-                    self._main_python = self.actual_basename(f)
+                    self._main_python = runez.basename(f, extension_marker=None, follow=True)
                     break
 
         return self._main_python or "python"
@@ -134,21 +134,13 @@ class Cpython(PythonBuilder):
             names = runez.joined(sorted(set(cleaned)))
             LOG.info("Cleaned %s: %s" % (runez.plural(cleaned, "build artifact"), runez.short(names)))
 
-    @staticmethod
-    def actual_basename(path):
-        """Follow symlink, for bin/python* symlinked exes"""
-        if os.path.islink(path):
-            path = runez.to_path(os.path.realpath(path))
-
-        return path.name
-
     def correct_symlinks(self):
         with runez.CurrentFolder(self.bin_folder):
             all_files = {}
             files = {}
             symlinks = {}
             cleanable = ("2to3", "easy_install", "idle3", "pip", "pydoc", "wheel")
-            for f in BuildSetup.ls_dir(self.bin_folder):
+            for f in runez.ls_dir(self.bin_folder):
                 if f.name.startswith(cleanable):
                     runez.delete(f)  # Get rid of old junk, can be pip installed if needed
                     continue

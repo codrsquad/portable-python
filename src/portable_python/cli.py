@@ -5,7 +5,8 @@ import runez
 from runez.render import PrettyTable
 
 from portable_python import LOG, PythonInspector
-from portable_python.builder import BuildSetup, ModuleCollection, TargetSystem
+from portable_python.builder import BuildSetup, ModuleCollection
+from portable_python.setup import TargetSystem
 from portable_python.versions import PythonVersions
 
 
@@ -19,6 +20,7 @@ def main(debug):
     Build (optionally portable) python binaries
     """
     runez.system.AbortException = SystemExit
+    runez.log.timeit.logger = LOG.info
     runez.log.setup(
         debug=debug,
         console_format="%(levelname)s %(message)s",

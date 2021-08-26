@@ -2,7 +2,6 @@ import contextlib
 import logging
 import os
 import pathlib
-import time
 
 import runez
 from runez.http import RestClient
@@ -10,6 +9,7 @@ from runez.inspector import auto_import_siblings
 from runez.render import Header
 
 from portable_python import LOG
+from portable_python.setup import TargetSystem
 from portable_python.versions import PythonVersions
 
 
@@ -41,43 +41,6 @@ class AvailableBuilders:
             v.attach(setup)
 
         return v
-
-
-class TargetSystem:
-    """Models target platform / architecture we're compiling for"""
-
-    def __init__(self, target=None):
-        import platform
-
-        arch = plat = None
-        if target:
-            plat, _, arch = target.partition("-")
-
-        self.architecture = arch or platform.machine()
-        self.platform = plat or platform.system().lower()
-
-    def __repr__(self):
-        return "%s-%s" % (self.platform, self.architecture)
-
-    @runez.cached_property
-    def sdk_folder(self):
-        if self.is_macos:
-            return "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
-
-    @runez.cached_property
-    def sys_include(self):
-        if self.sdk_folder:
-            return f"{self.sdk_folder}/usr/include"
-
-        return "/usr/include"
-
-    @property
-    def is_linux(self):
-        return self.platform == "linux"
-
-    @property
-    def is_macos(self):
-        return self.platform == "darwin"
 
 
 class ModuleCollection:
@@ -146,15 +109,9 @@ class BuildSetup:
     def __repr__(self):
         return runez.short(self.build_folder)
 
-    @staticmethod
-    def ls_dir(path):
-        """A --dryrun friendly version of Path.iterdir"""
-        if path.is_dir():
-            yield from path.iterdir()
-
     def fix_lib_permissions(self, mode=0o644):
         """Some libs get funky permissions for some reason"""
-        # for path in self.ls_dir(self.deps_folder / "libs"):
+        # for path in runez.ls_dir(self.deps_folder / "libs"):
         #     if path.name.endswith((".a", ".la")):
         #         current = path.stat().st_mode & 0o777
         #         if current != mode:
@@ -213,7 +170,7 @@ class ModuleBuilder:
             return False, runez.brown("only on demand (no auto-detection available)")
 
         for telltale in runez.flattened(cls.telltale, keep_empty=None):
-            path = telltale.format(include=target.sys_include)
+            path = target.formatted_path(telltale)
             if os.path.exists(path):
                 return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
 
@@ -313,14 +270,15 @@ class ModuleBuilder:
     @contextlib.contextmanager
     def captured_logs(self):
         try:
-            logs_path = self.setup._get_logs_path(self.module_builder_name())
-            if not runez.DRYRUN:
-                self._log_handler = logging.FileHandler(logs_path)
-                self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-                self._log_handler.setLevel(logging.DEBUG)
-                logging.root.addHandler(self._log_handler)
+            with runez.log.timeit("Compiling %s" % self.module_builder_name(), color=runez.bold):
+                logs_path = self.setup._get_logs_path(self.module_builder_name())
+                if not runez.DRYRUN:
+                    self._log_handler = logging.FileHandler(logs_path)
+                    self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+                    self._log_handler.setLevel(logging.DEBUG)
+                    logging.root.addHandler(self._log_handler)
 
-            yield
+                yield
 
         finally:
             if self._log_handler:
@@ -328,7 +286,6 @@ class ModuleBuilder:
                 self._log_handler = None
 
     def compile(self, x_debug):
-        started = time.time()
         print(Header.aerated(self.module_builder_name()))
         with self.captured_logs():
             if not x_debug or not self.m_src_build.is_dir():
@@ -343,7 +300,6 @@ class ModuleBuilder:
                 func()
 
             self._finalize()
-            LOG.info("Compiled %s %s in %s" % (self.module_builder_name(), self.version, runez.represented_duration(time.time() - started)))
 
     def _prepare(self):
         """Ran at the beginning of compile()"""
