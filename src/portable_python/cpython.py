@@ -465,9 +465,6 @@ class Tk(TclTkModule):
 
 
 class Tix(TclTkModule):
-    """
-    TODO: does not compile on macos M1, undefined function 'panic'
-    """
 
     m_name = "tix"
     c_configure_program = "/bin/sh configure"
@@ -483,7 +480,7 @@ class Tix(TclTkModule):
     def xenv_cflags(self):
         # Needed to avoid error: Getting no member named 'result' in 'struct Tcl_Interp'
         yield "-DUSE_INTERP_RESULT"
-        yield "-Wno-implicit-function-declaration"
+        yield "-Wno-implicit-function-declaration"  # Allows to not fail compilation due to missing 'panic' symbol
         yield self.checked_deps_folder("include", prefix="-I")
 
     def xenv_ldflags(self):
