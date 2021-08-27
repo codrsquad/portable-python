@@ -52,7 +52,7 @@ class BuildSetup:
 
     def fix_lib_permissions(self):
         """Some libs get funky permissions for some reason"""
-        for path in runez.ls_dir(self.deps_folder / "libs"):
+        for path in runez.ls_dir(self.deps_folder / "lib"):
             expected = 0o755 if path.is_dir() else 0o644
             current = path.stat().st_mode & 0o777
             if current != expected:
