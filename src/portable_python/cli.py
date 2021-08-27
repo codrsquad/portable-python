@@ -89,10 +89,19 @@ def scan(target, family):
     if not family:
         family = ["cpython"]
 
+    family = runez.flattened(family, keep_empty=None, split=",", unique=True)
+    indent = "  " if len(family) > 1 else ""
     for family_name in family:
-        python_builder = PythonVersions.get_builder(family_name)
+        if indent:
+            print(runez.bold("%s%s:" % ("" if family_name == family[0] else "\n", family_name)))
+
+        fam = PythonVersions.family(family_name, fatal=False)
+        if not fam:
+            print("%s%s" % (indent, runez.red("unknown")))
+            continue
+
         ts = TargetSystem(target)
-        _, reasons = python_builder.get_modules(ts)
+        _, reasons = fam.builder.get_modules(ts)
         table = PrettyTable(2)
         table.header[0].align = "right"
         rows = sorted(reasons.items())
