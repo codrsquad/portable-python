@@ -56,6 +56,7 @@ class BuildSetup:
             expected = 0o755 if path.is_dir() else 0o644
             current = path.stat().st_mode & 0o777
             if current != expected:
+                LOG.info("Corrected permissions for %s" % runez.short(path))
                 path.chmod(expected)
 
     def _get_logs_path(self, name):
@@ -82,7 +83,6 @@ class BuildSetup:
             for m in self.active_modules:
                 m.compile(x_debug)
 
-            self.fix_lib_permissions()
             self.python_builder.compile(x_debug)
 
 

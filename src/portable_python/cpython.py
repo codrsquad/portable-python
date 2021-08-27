@@ -57,6 +57,9 @@ class Cpython(PythonBuilder):
 
         return self._main_python or "python"
 
+    def _prepare(self):
+        self.setup.fix_lib_permissions()
+
     def _finalize(self):
         if self.setup.get_module("openssl"):
             self.run(self.bin_folder / self.main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
@@ -203,6 +206,8 @@ class Bdb(ModuleBuilder):
 
     def c_configure_args(self):
         yield from super().c_configure_args()
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
         yield "--enable-dbm"
         yield "--with-pic=yes"
 
@@ -255,6 +260,8 @@ class Gdbm(ModuleBuilder):
     def c_configure_args(self):
         # CPython setup.py looks for libgdbm_compat and gdbm-ndbm.h, which require --enable-libgdbm-compat
         yield from super().c_configure_args()
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
         yield "--with-pic=yes"
         yield "--disable-rpath"
         yield "--without-libiconv-prefix"
@@ -328,6 +335,8 @@ class Readline(ModuleBuilder):
 
     def c_configure_args(self):
         yield from super().c_configure_args()
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
         yield "--disable-install-examples"
         yield "--with-curses"
 
@@ -363,6 +372,8 @@ class Sqlite(ModuleBuilder):
 
     def c_configure_args(self):
         yield from super().c_configure_args()
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
         yield "--disable-tcl"
         yield "--disable-readline"
         yield "--with-pic=yes"
@@ -389,6 +400,7 @@ class TclTkModule(ModuleBuilder):
 
     def c_configure_args(self):
         yield from super().c_configure_args()
+        yield "--enable-shared=no"
         yield "--enable-threads"
 
     def run_make_install(self):
@@ -464,6 +476,11 @@ class Uuid(ModuleBuilder):
     @property
     def version(self):
         return "1.0.3"
+
+    def c_configure_args(self):
+        yield from super().c_configure_args()
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
 
 
 class Xz(ModuleBuilder):
