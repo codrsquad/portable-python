@@ -72,6 +72,7 @@ class BuildSetup:
             if name == module.m_name:
                 return module
 
+    @runez.log.timeit("Overall compilation", color=runez.bold)
     def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
             runez.ensure_folder(self.build_folder, clean=not x_debug)
@@ -288,17 +289,28 @@ class PythonBuilder(ModuleBuilder):
             return cls.available_modules()
 
         selected = []
+        unknown = []
         available = cls.available_modules()
-        if module_names.startswith("+"):
+        module_map = {m.m_name: m for m in available}
+        if "+" in module_names or "-" in module_names:
             selected = [x.m_name for x in cls.get_auto_detected_modules(target)]
-            module_names = module_names[1:]
 
         for name in runez.flattened(module_names, keep_empty=None, split=","):
-            if name not in selected:
+            remove = False
+            if name[0] in "+-":
+                remove = name[0] == "-"
+                name = name[1:]
+
+            if name not in module_map:
+                unknown.append(name)
+
+            elif remove:
+                if name in selected:
+                    selected.remove(name)
+
+            elif name not in selected:
                 selected.append(name)
 
-        module_map = {m.m_name: m for m in available}
-        unknown = [n for n in selected if n not in module_map]
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
 

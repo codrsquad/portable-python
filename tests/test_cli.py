@@ -23,8 +23,10 @@ def test_build(cli):
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
     bf = runez.to_path(f"build/cpython-{v}")
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone")
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-m+bdb,-openssl")
     assert cli.succeeded
+    assert " openssl:" not in cli.logged
+    assert " bdb:" in cli.logged
     assert f" --prefix=/{v} " in cli.logged
     assert f"make install DESTDIR={bf}" in cli.logged
 
