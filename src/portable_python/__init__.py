@@ -211,15 +211,14 @@ class ModuleBuilder:
     @contextlib.contextmanager
     def captured_logs(self):
         try:
-            with runez.log.timeit("Compiling %s" % self.m_name, color=runez.bold):
-                logs_path = self.setup._get_logs_path(self.m_name)
-                if not runez.DRYRUN:
-                    self._log_handler = logging.FileHandler(logs_path)
-                    self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-                    self._log_handler.setLevel(logging.DEBUG)
-                    logging.root.addHandler(self._log_handler)
+            logs_path = self.setup._get_logs_path(self.m_name)
+            if not runez.DRYRUN:
+                self._log_handler = logging.FileHandler(logs_path)
+                self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+                self._log_handler.setLevel(logging.DEBUG)
+                logging.root.addHandler(self._log_handler)
 
-                yield
+            yield
 
         finally:
             if self._log_handler:
@@ -229,7 +228,11 @@ class ModuleBuilder:
     def compile(self, x_debug):
         print(Header.aerated(self.m_name))
         with self.captured_logs():
-            if not x_debug or not self.m_src_build.is_dir():
+            if x_debug and self.m_src_build.is_dir():
+                # For quicker iteration: debugging directly finalization
+                self._finalize()
+
+            else:
                 # Build folder would exist only if we're doing an --x-debug run
                 self.unpack()
                 self._setup_env()
@@ -238,9 +241,9 @@ class ModuleBuilder:
                 if not func:
                     runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
 
-                func()
-
-            self._finalize()
+                with runez.log.timeit("Compiling %s" % self.m_name, color=runez.bold):
+                    func()
+                    self._finalize()
 
     def _prepare(self):
         """Ran at the beginning of compile()"""
