@@ -1,3 +1,5 @@
+import runez
+
 from portable_python import BuildSetup, ModuleBuilder, PythonInspector
 from portable_python.versions import PythonVersions
 
@@ -21,5 +23,31 @@ def test_edge_cases():
     assert r0.color("built-in")
     assert r0.color("foo")
 
-    r = inspector._python_report("no-such-exe")
-    assert r["exit_code"]
+    inspector.reports[0].python.problem = None
+    inspector.reports[0].report = runez.program.RunResult()
+    assert inspector.report() == "0.1.2:\n-- exit_code: 1"
+
+
+def test_inspect_module(logged):
+    # Exercise _inspect code
+    import portable_python._inspect
+
+    portable_python._inspect.main()
+    assert '"readline": "' in logged.pop()
+
+    all_modules = portable_python._inspect.get_modules("all")
+    assert "_tracemalloc" in all_modules
+
+    # Verify convenience parsing works
+    base = portable_python._inspect.get_modules("")
+    with_foo = portable_python._inspect.get_modules("+,,foo")
+    assert with_foo == base + ["foo"]
+
+    assert portable_python._inspect.get_report(["readline", "sys", "zlib"])
+    assert portable_python._inspect.represented("key", b"foo", None) == "key=foo"
+    assert portable_python._inspect.represented("key", (1, 2), None) == "key=1.2"
+
+    # Verify edge cases don't crash
+    assert portable_python._inspect.module_report("foo-bar") == "*absent*"
+    assert portable_python._inspect.module_representation("foo", [])
+    assert not logged

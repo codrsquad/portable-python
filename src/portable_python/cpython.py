@@ -366,7 +366,7 @@ class Sqlite(ModuleBuilder):
 
     @classmethod
     def auto_use_with_reason(cls, target):
-        if not runez.which("tclsh"):  # pragma: no cover
+        if not runez.which("tclsh"):
             return None, runez.brown("requires tclsh")
 
         return super().auto_use_with_reason(target)

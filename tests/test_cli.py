@@ -120,27 +120,6 @@ def test_inspect(cli):
     assert "foo: not available" in cli.logged
 
 
-def test_inspect_module():
-    # Exercise _inspect code
-    import portable_python._inspect
-
-    all_modules = portable_python._inspect.get_modules(["python", "all"])
-    assert "_tracemalloc" in all_modules
-
-    # Verify convenience parsing works
-    base = portable_python._inspect.get_modules([])
-    with_foo = portable_python._inspect.get_modules(["python", "+,,foo"])
-    assert with_foo == base + ["foo"]
-
-    assert portable_python._inspect.get_report(["readline", "sys", "zlib"])
-    assert portable_python._inspect.represented("key", b"foo", None) == "key=foo"
-    assert portable_python._inspect.represented("key", (1, 2), None) == "key=1.2"
-
-    # Verify edge cases don't crash
-    assert portable_python._inspect.module_report("foo-bar") == "*absent*"
-    assert portable_python._inspect.module_representation("foo", [])
-
-
 def test_invalid(cli):
     v = PythonVersions.cpython.latest
     cli.run("--dryrun", "build", "foo")
@@ -165,5 +144,7 @@ def test_scan(cli):
     assert cli.succeeded
     assert "unknown" in cli.logged
 
-    cli.run("scan", "--target", "linux-x86_64")
-    assert cli.succeeded
+    with patch("portable_python.cpython.runez.which", return_value=None):
+        cli.run("scan", "--target", "linux-x86_64")
+        assert cli.succeeded
+        assert "requires tclsh" in cli.logged

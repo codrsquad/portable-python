@@ -71,20 +71,24 @@ def get_report(modules):
     return report
 
 
-def get_modules(args):
-    mods = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
-    if len(args) > 1 and args[1]:
-        if args[1] == "all":
-            mods += ",_asyncio,_functools,_tracemalloc,dbm.gnu,tkinter"
+def get_modules(names):
+    default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
+    if not names:
+        names = default
 
-        elif args[1][0] == "+":
-            mods += ",%s" % args[1][1:]
+    elif names == "all":
+        names = "%s,_asyncio,_functools,_tracemalloc,dbm.gnu,tkinter" % default
 
-        else:
-            mods = args[1]
+    elif names[0] == "+":
+        names = "%s,%s" % (default, names[1:])
 
-    return [x for x in mods.split(",") if x]
+    return [x for x in names.split(",") if x]
 
 
-report = get_report(get_modules(sys.argv))
-print(json.dumps(report, indent=2, sort_keys=True))
+def main(args=None):
+    report = get_report(get_modules(args and args[0]))
+    print(json.dumps(report, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])  # pragma: no cover

@@ -395,26 +395,20 @@ class PythonInspector:
 
     def report_rows(self):
         for r in self.reports:
-            if r.report:
-                if r.python.problem:
-                    yield runez.short("%s: %s" % (runez.blue(r.spec), runez.red(r.python.problem)))
-
-                else:
-                    yield "%s:" % runez.blue(r.python)
-                    yield r.represented() or ""
+            yield from r.report_rows()
 
     def _spec_report(self, spec):
         python = self.depot.find_python(spec)
-        report = dict(problem=python.problem) if python.problem else self._python_report(python.executable)
+        report = None
+        if not python.problem:
+            report = self._python_report(python.executable)
+
         return InspectionReport(spec, python, report)
 
     def _python_report(self, exe):
         r = runez.run(exe, self.inspector_path, self.modules, fatal=False, logger=print if runez.DRYRUN else LOG.debug)
         if not runez.DRYRUN:
-            if r.succeeded and r.output and r.output.startswith("{"):
-                return json.loads(r.output)
-
-            return dict(exit_code=r.exit_code, error=r.error, output=r.output)
+            return r
 
 
 class InspectionReport:
@@ -476,14 +470,27 @@ class InspectionReport:
 
         return text
 
-    def represented(self):
-        if self.report:
-            t = PrettyTable(2)
-            t.header[0].align = "right"
-            for k, v in sorted(self.report.items()):
-                t.add_row(k, self.color(str(v or "*empty*")))
+    def report_rows(self):
+        p = runez.blue(runez.short(self.spec))
+        if self.python.problem:
+            yield "%s: %s" % (p, runez.red(self.python.problem))
 
-            return "%s\n" % t
+        elif self.report is not None:
+            yield "%s:" % p
+            if self.report.succeeded and self.report.output and self.report.output.startswith("{"):
+                payload = json.loads(self.report.output)
+                t = PrettyTable(2)
+                t.header[0].align = "right"
+                for k, v in sorted(payload.items()):
+                    t.add_row(k, self.color(str(v or "*empty*")))
+
+                yield t
+                return
+
+            for k in ("exit_code", "output", "error"):
+                v = getattr(self.report, k)
+                if v:
+                    yield "-- %s: %s" % (k, v)
 
 
 class TargetSystem:
