@@ -416,7 +416,11 @@ class TclTkModule(ModuleBuilder):
         yield "--enable-threads"
 
     def run_make_install(self):
-        super().run_make_install()
+        self.run("make")
+        if self.__class__ is Tk:
+            runez.touch("wish")
+
+        self.run("make", "install")
         if self.__class__ is not Tix:
             self.run("make", "install-private-headers")
 
@@ -446,10 +450,18 @@ class Tk(TclTkModule):
     def url(self):
         return f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz"
 
+    def xenv_cflags(self):
+        yield self.checked_deps_folder("include", prefix="-I")
+
+    def xenv_ldflags(self):
+        yield self.checked_deps_folder("lib", prefix="-L")
+
     def c_configure_args(self):
         yield from super().c_configure_args()
         yield f"--with-tcl={self.deps}/lib"
         yield "--without-x"
+        if self.target.is_macos:
+            yield "--enable-aqua=yes"
 
 
 class Tix(TclTkModule):
