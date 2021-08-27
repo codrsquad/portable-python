@@ -480,6 +480,9 @@ class Tix(TclTkModule):
     def xenv_cflags(self):
         # Needed to avoid error: Getting no member named 'result' in 'struct Tcl_Interp'
         yield "-DUSE_INTERP_RESULT"
+        if self.target.is_macos and self.target.architecture == "arm64":
+            yield "-Dmacintosh"  # Not defined on M1 for some reason, but header files assume it is defined
+
         yield self.checked_deps_folder("include", prefix="-I")
 
     def xenv_ldflags(self):
