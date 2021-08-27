@@ -2,7 +2,7 @@ import os
 
 import runez
 
-from portable_python.builder import BuildSetup, ModuleBuilder
+from portable_python.builder import ModuleBuilder
 
 
 class TclTkModule(ModuleBuilder):
@@ -34,7 +34,6 @@ class TclTkModule(ModuleBuilder):
             self.run("make", "install-private-headers")
 
 
-@BuildSetup.module_builders.declare
 class Tcl(TclTkModule):
 
     c_configure_cwd = "unix"
@@ -50,7 +49,6 @@ class Tcl(TclTkModule):
                 runez.delete(path)
 
 
-@BuildSetup.module_builders.declare
 class Tk(TclTkModule):
 
     c_configure_cwd = "unix"
@@ -65,7 +63,6 @@ class Tk(TclTkModule):
         yield "--without-x"
 
 
-@BuildSetup.module_builders.declare
 class Tix(TclTkModule):
 
     c_configure_program = "/bin/sh configure"

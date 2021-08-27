@@ -39,12 +39,23 @@ class VersionFamily:
         """Latest version for this family"""
         return self.versions[0]
 
+    @property
+    def builder(self):
+        if self.family == "cpython":
+            from portable_python.builder.python import Cpython
+
+            return Cpython
+
 
 class PythonVersions:
 
     cpython = VersionFamily("cpython", CPYTHON_VERSIONS)
 
     families = dict(cpython=cpython)
+
+    @classmethod
+    def get_builder(cls, family_name: str):
+        return cls.family(family_name).builder
 
     @classmethod
     def family(cls, family_name, fatal=True) -> VersionFamily:

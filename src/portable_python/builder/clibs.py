@@ -1,7 +1,6 @@
-from portable_python.builder import BuildSetup, ModuleBuilder
+from portable_python.builder import ModuleBuilder
 
 
-@BuildSetup.module_builders.declare
 class LibFFI(ModuleBuilder):
 
     telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
@@ -26,7 +25,6 @@ class LibFFI(ModuleBuilder):
         yield "--disable-docs"
 
 
-@BuildSetup.module_builders.declare
 class Readline(ModuleBuilder):
 
     telltale = "{include}/readline/readline.h"
@@ -51,7 +49,6 @@ class Readline(ModuleBuilder):
     #         yield "SHLIB_LIBS=-lcurses"
 
 
-@BuildSetup.module_builders.declare
 class Openssl(ModuleBuilder):
 
     c_configure_program = "./Configure"
@@ -77,7 +74,6 @@ class Openssl(ModuleBuilder):
             yield "%s-%s" % (self.target.platform, self.target.architecture)
 
 
-@BuildSetup.module_builders.declare
 class Uuid(ModuleBuilder):
 
     telltale = "{include}/uuid/uuid.h"

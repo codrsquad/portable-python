@@ -3,15 +3,23 @@ import os
 import runez
 
 from portable_python import LOG
-from portable_python.builder import BuildSetup, PythonBuilder
+from portable_python.builder import PythonBuilder
 
 
-@BuildSetup.python_builders.declare
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
     base_url = "https://www.python.org/ftp/python"
     _main_python = None
+
+    @classmethod
+    def available_modules(cls):
+        from portable_python.builder.clibs import LibFFI, Readline, Openssl, Uuid
+        from portable_python.builder.compression import Bzip2, Xz, Zlib
+        from portable_python.builder.db import Bdb, Gdbm, Sqlite
+        from portable_python.builder.tcl import Tcl, Tix, Tk
+
+        return [Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Tcl, Tix, Tk, Uuid, Xz, Zlib]
 
     @property
     def url(self):

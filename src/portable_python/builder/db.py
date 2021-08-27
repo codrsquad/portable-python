@@ -1,9 +1,8 @@
 import runez
 
-from portable_python.builder import BuildSetup, ModuleBuilder
+from portable_python.builder import ModuleBuilder
 
 
-@BuildSetup.module_builders.declare
 class Gdbm(ModuleBuilder):
 
     telltale = "{include}/gdbm.h"
@@ -36,7 +35,6 @@ class Gdbm(ModuleBuilder):
         yield "--without-readline"
 
 
-@BuildSetup.module_builders.declare
 class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
@@ -60,7 +58,6 @@ class Bdb(ModuleBuilder):
         yield "--with-pic=yes"
 
 
-@BuildSetup.module_builders.declare
 class Sqlite(ModuleBuilder):
 
     telltale = "{include}/sqlite3.h"

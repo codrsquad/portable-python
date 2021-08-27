@@ -1,7 +1,6 @@
-from portable_python.builder import BuildSetup, ModuleBuilder
+from portable_python.builder import ModuleBuilder
 
 
-@BuildSetup.module_builders.declare
 class Bzip2(ModuleBuilder):
     """
     See https://docs.python.org/3/library/bz2.html
@@ -23,7 +22,6 @@ class Bzip2(ModuleBuilder):
         self.run("make", "install", f"PREFIX={self.deps}", "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64")
 
 
-@BuildSetup.module_builders.declare
 class Xz(ModuleBuilder):
 
     telltale = "{include}/lzma.h"
@@ -51,7 +49,6 @@ class Xz(ModuleBuilder):
         yield "--disable-rpath"
 
 
-@BuildSetup.module_builders.declare
 class Zlib(ModuleBuilder):
 
     telltale = "{include}/zlib.h"

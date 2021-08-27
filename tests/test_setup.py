@@ -10,7 +10,6 @@ def test_edge_cases():
     assert str(setup).endswith(f"build/cpython-{latest}")
     assert str(setup.python_builder) == f"cpython {latest}"
     assert str(PythonVersions.cpython).startswith("cpython ")
-    assert str(setup.python_builders) == "1 python builder"
 
     mb = ModuleBuilder()
     assert not mb.url

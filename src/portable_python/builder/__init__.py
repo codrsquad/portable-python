@@ -5,7 +5,6 @@ import pathlib
 
 import runez
 from runez.http import RestClient
-from runez.inspector import auto_import_siblings
 from runez.render import Header
 
 from portable_python import LOG
@@ -16,79 +15,10 @@ from portable_python.versions import PythonVersions
 REST_CLIENT = RestClient()
 
 
-class AvailableBuilders:
-
-    def __init__(self, category):
-        self.category = category
-        self.available = {}
-
-    def __repr__(self):
-        return runez.plural(self.available, "%s builder" % self.category)
-
-    def declare(self, decorated):
-        name = decorated.module_builder_name()
-        self.available[name] = decorated
-        return decorated
-
-    def get_builder(self, name, setup=None):
-        auto_import_siblings()
-        v = self.available.get(name)
-        if not v:
-            runez.abort("Unknown module '%s'" % runez.red(name))
-
-        if setup:
-            v = v()
-            v.attach(setup)
-
-        return v
-
-
-class ModuleCollection:
-
-    def __init__(self, target: TargetSystem, module_names=None):
-        auto_import_siblings()
-        self.target = target
-        self.selected = []  # Module classes, either auto-detected or as stated/implied by 'module_names'
-        self.reason = {}  # type: dict[str, str] # Reason each module was selected, if auto-detected
-        if module_names == "none":
-            self.selected = []
-
-        elif module_names == "all":
-            for name, mod in BuildSetup.module_builders.available.items():
-                should_use, reason = mod.auto_use_with_reason(target)
-                if should_use is not None:
-                    self.selected.append(mod)
-
-                else:  # pragma: no cover
-                    LOG.info("Skipping %s: %s" % (name, reason))
-
-        elif module_names:
-            self.selected = runez.flattened(module_names, keep_empty=None, split=",", transform=BuildSetup.module_builders.get_builder)
-
-        else:
-            for mod in BuildSetup.module_builders.available.values():
-                should_use, reason = mod.auto_use_with_reason(target)
-                self.reason[mod.module_builder_name()] = reason
-                if should_use:
-                    self.selected.append(mod)
-
-    def attached(self, setup):
-        for mod in self.selected:
-            should_use, reason = mod.auto_use_with_reason(setup.target_system)
-            if should_use is None:  # pragma: no cover
-                runez.abort("Can't build %s: %s" % (mod.module_builder_name(), reason))
-
-            mod = mod()
-            mod.attach(setup)
-            yield mod
-
-
 class BuildSetup:
     """General build settings"""
 
-    module_builders = AvailableBuilders("external module")
     prefix = None
-    python_builders = AvailableBuilders("python")
     static = True
     _log_counter = 0
 
@@ -102,9 +32,14 @@ class BuildSetup:
         self.downloads_folder = build_folder / "downloads"
         self.logs_folder = self.build_folder / "logs"
         self.anchors = {build_folder.parent, self.dist_folder.parent}
-        self.python_builder = self.python_builders.get_builder(self.python_spec.family, setup=self)
-        self.modules = ModuleCollection(self.target_system, module_names=modules)
-        self.active_modules = list(self.modules.attached(self))
+        self.python_builder = PythonVersions.get_builder(self.python_spec.family)()
+        self.python_builder.attach(self)
+        active, _ = self.python_builder.get_modules(self.target_system, module_names=modules)
+        active = [x() for x in active]
+        for x in active:
+            x.attach(self)
+
+        self.active_modules = active
 
     def __repr__(self):
         return runez.short(self.build_folder)
@@ -144,7 +79,7 @@ class BuildSetup:
 class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
-    setup: BuildSetup = None
+    setup = None  # type: BuildSetup
     m_src_build: pathlib.Path = None  # Folder where this module's source code is unpacked and built
 
     c_configure_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
@@ -335,6 +270,41 @@ class ModuleBuilder:
 
 
 class PythonBuilder(ModuleBuilder):
+
+    @classmethod
+    def get_modules(cls, target, module_names=None):
+        selected = []  # Module classes, either auto-detected or as stated/implied by 'module_names'
+        reasons = {}  # type: dict[str, str] # Reason each module was selected, if auto-detected
+        if module_names != "none":
+            all_modules = cls.available_modules()
+            all_modules = {m.module_builder_name(): m for m in all_modules}
+            if module_names != "all":
+                module_names = runez.flattened(module_names, keep_empty=None, split=",")
+                for name in module_names:
+                    if name not in all_modules:
+                        runez.abort("Unknown module '%s'" % runez.red(name))
+
+            for name, mod in all_modules.items():
+                should_use, reason = mod.auto_use_with_reason(target)
+                reasons[name] = reason
+                if not module_names and should_use is None:  # pragma: no cover
+                    LOG.info("Skipping %s: %s" % (name, reason))
+                    continue
+
+                if module_names == "all":
+                    should_use = should_use is not None
+
+                elif module_names:
+                    should_use = name in module_names
+
+                if should_use:
+                    selected.append(mod)
+
+        return selected, reasons
+
+    @classmethod
+    def available_modules(cls) -> list:
+        """Available modules for python python family"""
 
     @property
     def c_configure_prefix(self):

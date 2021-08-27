@@ -5,7 +5,7 @@ import runez
 from runez.render import PrettyTable
 
 from portable_python import LOG, PythonInspector
-from portable_python.builder import BuildSetup, ModuleCollection
+from portable_python.builder import BuildSetup
 from portable_python.setup import TargetSystem
 from portable_python.versions import PythonVersions
 
@@ -84,16 +84,22 @@ def list(family):
 
 
 @main.command()
-@click.argument("target", required=False)
-def scan(target):
+@click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
+@click.argument("family", nargs=-1)
+def scan(target, family):
     """Scan all buildable modules, see if system already has equivalent"""
-    ts = TargetSystem(target)
-    collection = ModuleCollection(ts)
-    table = PrettyTable(2)
-    table.header[0].align = "right"
-    rows = sorted(collection.reason.items())
-    table.add_rows(*rows)
-    print(table)
+    if not family:
+        family = ["cpython"]
+
+    for family_name in family:
+        python_builder = PythonVersions.get_builder(family_name)
+        ts = TargetSystem(target)
+        _, reasons = python_builder.get_modules(ts)
+        table = PrettyTable(2)
+        table.header[0].align = "right"
+        rows = sorted(reasons.items())
+        table.add_rows(*rows)
+        print(table)
 
 
 if __name__ == "__main__":

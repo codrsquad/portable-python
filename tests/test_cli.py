@@ -159,8 +159,8 @@ def test_invalid(cli):
 
 
 def test_scan(cli):
-    cli.run("scan", "darwin-x86_64")
+    cli.run("scan", "--target", "darwin-x86_64")
     assert cli.succeeded
 
-    cli.run("scan", "linux-x86_64")
+    cli.run("scan", "--target", "linux-x86_64")
     assert cli.succeeded
