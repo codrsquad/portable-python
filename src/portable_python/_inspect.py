@@ -99,7 +99,7 @@ def main(args=None):
             if abs_builddir.startswith("/private"):
                 secondary = abs_builddir[8:]  # pragma: no cover, edge case: whoever compiled didn't use realpath(tmp)
 
-            else:
+            elif not abs_builddir.startswith("/tmp"):
                 abs_builddir = os.path.dirname(abs_builddir)
 
             print("%s: %s  # original abs_builddir" % (marker, abs_builddir))
