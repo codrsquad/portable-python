@@ -294,7 +294,7 @@ class PythonBuilder(ModuleBuilder):
         selected = []
         unknown = []
         available = cls.available_modules()
-        module_map = {m.m_name: m for m in available}
+        known_names = set(m.m_name for m in available)
         if "+" in module_names or "-" in module_names:
             selected = [x.m_name for x in cls.get_auto_detected_modules(target)]
 
@@ -304,7 +304,7 @@ class PythonBuilder(ModuleBuilder):
                 remove = name[0] == "-"
                 name = name[1:]
 
-            if name not in module_map:
+            if name not in known_names:
                 unknown.append(name)
 
             elif remove:
@@ -317,7 +317,13 @@ class PythonBuilder(ModuleBuilder):
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
 
-        return [module_map[n] for n in selected]
+        # Ensure we yield same pre-determined order as returned by available_modules()
+        result = []
+        for mod in available:
+            if mod.m_name in selected:
+                result.append(mod)
+
+        return result
 
     @classmethod
     def get_auto_detected_modules(cls, target):
