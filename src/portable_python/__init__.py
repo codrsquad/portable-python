@@ -471,12 +471,11 @@ class InspectionReport:
         return text
 
     def report_rows(self):
-        p = runez.blue(runez.short(self.spec))
         if self.python.problem:
-            yield "%s: %s" % (p, runez.red(self.python.problem))
+            yield "%s: %s" % (runez.blue(runez.short(self.spec)), runez.red(self.python.problem))
 
         elif self.report is not None:
-            yield "%s:" % p
+            yield "%s:" % runez.blue(self.python)
             if self.report.succeeded and self.report.output and self.report.output.startswith("{"):
                 payload = json.loads(self.report.output)
                 t = PrettyTable(2)
@@ -487,10 +486,20 @@ class InspectionReport:
                 yield t
                 return
 
+            report = []
             for k in ("exit_code", "output", "error"):
                 v = getattr(self.report, k)
                 if v:
-                    yield "-- %s: %s" % (k, v)
+                    report.append(("-- %s:" % k, str(v)))
+
+            report = report[0][1] if len(report) == 1 else [runez.joined(x) for x in report]
+            yield runez.joined(self.shortened_lines(report), delimiter="\n")
+
+    @staticmethod
+    def shortened_lines(text, size=2048):
+        for item in runez.flattened(text):
+            for line in item.splitlines():
+                yield runez.short(line, size=size)
 
 
 class TargetSystem:

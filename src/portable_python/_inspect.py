@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 
 INSIGHTS = {
@@ -86,7 +87,34 @@ def get_modules(names):
 
 
 def main(args=None):
-    report = get_report(get_modules(args and args[0]))
+    names = args and args[0]
+    if names == "sysconfig":
+        import sysconfig
+
+        abs_builddir = sysconfig.get_config_var("abs_builddir")
+        secondary = None
+        marker = "$^"
+        if abs_builddir:
+            abs_builddir = os.path.dirname(abs_builddir)
+            if abs_builddir.startswith("/private"):
+                secondary = abs_builddir[8:]  # pragma: no cover, edge case: whoever compiled didn't use realpath(tmp)
+
+            else:
+                abs_builddir = os.path.dirname(abs_builddir)
+
+            print("%s: %s  # original abs_builddir" % (marker, abs_builddir))
+
+        for k, v in sorted(sysconfig.get_config_vars().items()):
+            if abs_builddir:
+                v = str(v).replace(abs_builddir, marker)
+                if secondary:
+                    v = v.replace(secondary, marker)  # pragma: no cover
+
+            print("%s: %s" % (k, v))
+
+        return
+
+    report = get_report(get_modules(names))
     print(json.dumps(report, indent=2, sort_keys=True))
 
 

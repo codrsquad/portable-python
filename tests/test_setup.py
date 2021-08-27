@@ -24,8 +24,11 @@ def test_edge_cases():
     assert r0.color("foo")
 
     inspector.reports[0].python.problem = None
-    inspector.reports[0].report = runez.program.RunResult()
-    assert inspector.report() == "0.1.2:\n-- exit_code: 1"
+    inspector.reports[0].report = runez.program.RunResult(code=0, output="foo")
+    assert inspector.report() == "0.1.2 [cpython:0.1.2]:\nfoo"
+
+    inspector.reports[0].report = runez.program.RunResult(code=1, output="foo")
+    assert inspector.report() == "0.1.2 [cpython:0.1.2]:\n-- exit_code: 1\n-- output: foo"
 
 
 def test_inspect_module(logged):
@@ -34,6 +37,9 @@ def test_inspect_module(logged):
 
     portable_python._inspect.main()
     assert '"readline": "' in logged.pop()
+
+    portable_python._inspect.main(["sysconfig"])
+    assert "VERSION:" in logged.pop()
 
     all_modules = portable_python._inspect.get_modules("all")
     assert "_tracemalloc" in all_modules
