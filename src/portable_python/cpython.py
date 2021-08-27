@@ -15,7 +15,7 @@ class Cpython(PythonBuilder):
 
     @classmethod
     def available_modules(cls):
-        return [Zlib, Bzip2, LibFFI, Openssl, Readline, Uuid, Xz, Sqlite, Bdb, Gdbm, Tcl, Tk, Tix]
+        return [Zlib, Bzip2, LibFFI, Openssl, Readline, Xz, Sqlite, Bdb, Gdbm, Tcl, Tk, Tix, Uuid]
 
     @property
     def url(self):
