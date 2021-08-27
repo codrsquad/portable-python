@@ -1,20 +1,22 @@
 import json
 import sys
 
-INSIGHTS = dict(
-    _curses="version __version__",
-    _ctypes="__version__",
-    _dbm="library",
-    _gdbm="_GDBM_VERSION",
-    _tkinter="TCL_VERSION TK_VERSION",
-    _sqlite3="sqlite_version version",
-    _ssl="OPENSSL_VERSION",
-    pip="__version__",
-    readline="_READLINE_LIBRARY_VERSION",
-    setuptools="__version__",
-    wheel="__version__",
-    zlib="ZLIB_VERSION ZLIB_RUNTIME_VERSION",
-)
+INSIGHTS = {
+    "_curses": "version __version__",
+    "_ctypes": "__version__",
+    "_dbm": "library",
+    "_gdbm": "_GDBM_VERSION",
+    "_tkinter": "TCL_VERSION TK_VERSION",
+    "_sqlite3": "sqlite_version version",
+    "_ssl": "OPENSSL_VERSION",
+    "dbm.gnu": "_GDBM_VERSION",
+    "pip": "__version__",
+    "readline": "_READLINE_LIBRARY_VERSION",
+    "setuptools": "__version__",
+    "tkinter": "TclVersion TkVersion",
+    "wheel": "__version__",
+    "zlib": "ZLIB_VERSION ZLIB_RUNTIME_VERSION",
+}
 
 
 def represented(key, value, source):
@@ -73,7 +75,7 @@ def get_modules(args):
     mods = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
     if len(args) > 1 and args[1]:
         if args[1] == "all":
-            mods += ",_asyncio,_functools,_tracemalloc"
+            mods += ",_asyncio,_functools,_tracemalloc,dbm.gnu,tkinter"
 
         elif args[1][0] == "+":
             mods += ",%s" % args[1][1:]

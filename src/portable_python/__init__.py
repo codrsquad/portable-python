@@ -474,9 +474,6 @@ class InspectionReport:
 
                 text = "%s %s" % (before, text)
 
-        else:
-            text = runez.short(text)
-
         return text
 
     def represented(self):
@@ -484,7 +481,7 @@ class InspectionReport:
             t = PrettyTable(2)
             t.header[0].align = "right"
             for k, v in sorted(self.report.items()):
-                t.add_row(k, self.color(v or "*empty*"))
+                t.add_row(k, self.color(str(v or "*empty*")))
 
             return "%s\n" % t
 

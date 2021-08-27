@@ -113,8 +113,19 @@ class Cpython(PythonBuilder):
 
         return r
 
+    @runez.cached_property
+    def cleanable_suffixes(self):
+        """Files/folders that are not useful in deliverable, but name varies, can be identified by their suffix"""
+        return {"_failed.so"}
+
     def should_clean(self, basename):
-        return basename in self.cleanable_basenames or any(basename.startswith(x) for x in self.cleanable_prefixes)
+        if basename in self.cleanable_basenames:
+            return True
+
+        if any(basename.startswith(x) for x in self.cleanable_prefixes):
+            return True
+
+        return any(basename.endswith(x) for x in self.cleanable_suffixes)
 
     def cleanup_distribution(self):
         cleaned = []
@@ -235,6 +246,7 @@ class Bzip2(ModuleBuilder):
 
 
 class Gdbm(ModuleBuilder):
+    """See https://docs.python.org/2.7/library/gdbm.html"""
 
     m_name = "gdbm"
     m_telltale = "{include}/gdbm.h"
