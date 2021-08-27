@@ -8,12 +8,14 @@ from portable_python import LOG, ModuleBuilder, PythonBuilder
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
+    m_name = "cpython"
+
     base_url = "https://www.python.org/ftp/python"
     _main_python = None
 
     @classmethod
     def available_modules(cls):
-        return [Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Tcl, Tix, Tk, Uuid, Xz, Zlib]
+        return [Zlib, Bzip2, LibFFI, Openssl, Readline, Uuid, Xz, Sqlite, Bdb, Gdbm, Tcl, Tix, Tk]
 
     @property
     def url(self):
@@ -184,6 +186,7 @@ class Cpython(PythonBuilder):
 class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
+    m_name = "bdb"
     c_configure_cwd = "build_unix"
     c_configure_program = "../dist/configure"
 
@@ -209,9 +212,10 @@ class Bzip2(ModuleBuilder):
     See https://docs.python.org/3/library/bz2.html
     """
 
+    m_name = "bzip2"
+    m_telltale = "{include}/bzlib.h"
     c_configure_program = None
     make_args = None
-    telltale = "{include}/bzlib.h"
 
     @property
     def url(self):
@@ -227,7 +231,8 @@ class Bzip2(ModuleBuilder):
 
 class Gdbm(ModuleBuilder):
 
-    telltale = "{include}/gdbm.h"
+    m_name = "gdbm"
+    m_telltale = "{include}/gdbm.h"
 
     @classmethod
     def auto_use_with_reason(cls, target):
@@ -259,7 +264,8 @@ class Gdbm(ModuleBuilder):
 
 class LibFFI(ModuleBuilder):
 
-    telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
+    m_name = "libffi"
+    m_telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
 
     @property
     def url(self):
@@ -283,8 +289,9 @@ class LibFFI(ModuleBuilder):
 
 class Openssl(ModuleBuilder):
 
+    m_name = "openssl"
+    m_telltale = "{include}/openssl/ssl.h"
     c_configure_program = "./Configure"
-    telltale = "{include}/openssl/ssl.h"
 
     @property
     def url(self):
@@ -308,7 +315,8 @@ class Openssl(ModuleBuilder):
 
 class Readline(ModuleBuilder):
 
-    telltale = "{include}/readline/readline.h"
+    m_name = "readline"
+    m_telltale = "{include}/readline/readline.h"
 
     @property
     def url(self):
@@ -332,7 +340,8 @@ class Readline(ModuleBuilder):
 
 class Sqlite(ModuleBuilder):
 
-    telltale = "{include}/sqlite3.h"
+    m_name = "sqlite"
+    m_telltale = "{include}/sqlite3.h"
 
     @classmethod
     def auto_use_with_reason(cls, target):
@@ -365,7 +374,7 @@ class TclTkModule(ModuleBuilder):
     TODO: macos build fails with Symbol not found: _TclBN_mp_clear
     """
 
-    telltale = ["{include}/tk", "{include}/tk.h"]
+    m_telltale = ["{include}/tk", "{include}/tk.h"]
 
     @classmethod
     def auto_use_with_reason(cls, target):
@@ -390,6 +399,7 @@ class TclTkModule(ModuleBuilder):
 
 class Tcl(TclTkModule):
 
+    m_name = "tcl"
     c_configure_cwd = "unix"
 
     @property
@@ -405,6 +415,7 @@ class Tcl(TclTkModule):
 
 class Tk(TclTkModule):
 
+    m_name = "tk"
     c_configure_cwd = "unix"
 
     @property
@@ -419,6 +430,7 @@ class Tk(TclTkModule):
 
 class Tix(TclTkModule):
 
+    m_name = "tix"
     c_configure_program = "/bin/sh configure"
 
     @property
@@ -442,7 +454,8 @@ class Tix(TclTkModule):
 
 class Uuid(ModuleBuilder):
 
-    telltale = "{include}/uuid/uuid.h"
+    m_name = "uuid"
+    m_telltale = "{include}/uuid/uuid.h"
 
     @property
     def url(self):
@@ -455,7 +468,8 @@ class Uuid(ModuleBuilder):
 
 class Xz(ModuleBuilder):
 
-    telltale = "{include}/lzma.h"
+    m_name = "xz"
+    m_telltale = "{include}/lzma.h"
 
     @property
     def url(self):
@@ -482,7 +496,8 @@ class Xz(ModuleBuilder):
 
 class Zlib(ModuleBuilder):
 
-    telltale = "{include}/zlib.h"
+    m_name = "zlib"
+    m_telltale = "{include}/zlib.h"
 
     @property
     def url(self):

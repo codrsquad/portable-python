@@ -7,7 +7,7 @@ def test_edge_cases():
     setup = BuildSetup(latest, target="linux-x86_64")
     assert setup.target_system.is_linux
     assert str(setup).endswith(f"build/cpython-{latest}")
-    assert str(setup.python_builder) == f"cpython {latest}"
+    assert str(setup.python_builder) == f"cpython:{latest}"
     assert str(PythonVersions.cpython).startswith("cpython ")
 
     mb = ModuleBuilder()

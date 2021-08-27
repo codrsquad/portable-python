@@ -16,10 +16,10 @@ def test_module_invocation(cli):
 def test_build(cli):
     v = PythonVersions.cpython.latest
     mm = f"{v.major}.{v.minor}"
-    cli.run("--dryrun", "build", "2.7.1", "-mnone", "--target=foo-bar")
+    cli.run("--dryrun", "build", "2.7.1", "-m+bdb", "--target=foo-bar")
     assert cli.failed
     assert "cpython:2.7.1 is not in the supported list" in cli.logged
-    assert "Compiling 0 external modules" in cli.logged
+    assert " bdb:" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
     bf = runez.to_path(f"build/cpython-{v}")
@@ -147,7 +147,7 @@ def test_invalid(cli):
 
     cli.run("--dryrun", "build", v, "-mfoo,bar")
     assert cli.failed
-    assert "Unknown module 'foo'" in cli.logged
+    assert "Unknown modules: foo, bar" in cli.logged
 
     cli.run("--dryrun", "build", v, "--build", "foo bar")
     assert cli.failed

@@ -101,7 +101,7 @@ def scan(target, family):
             continue
 
         ts = TargetSystem(target)
-        _, reasons = fam.builder.get_modules(ts)
+        reasons = fam.builder.get_scan_report(ts)
         table = PrettyTable(2)
         table.header[0].align = "right"
         rows = sorted(reasons.items())

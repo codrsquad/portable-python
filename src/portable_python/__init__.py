@@ -41,8 +41,7 @@ class BuildSetup:
         self.anchors = {build_folder.parent, self.dist_folder.parent}
         self.python_builder = PythonVersions.get_builder(self.python_spec.family)()
         self.python_builder.attach(self)
-        active, _ = self.python_builder.get_modules(self.target_system, module_names=modules)
-        active = [x() for x in active]
+        active = [x() for x in self.python_builder.get_modules(self.target_system, module_names=modules)]
         for x in active:
             x.attach(self)
 
@@ -70,13 +69,15 @@ class BuildSetup:
 
     def get_module(self, name):
         for module in self.active_modules:
-            if name == module.module_builder_name():
+            if name == module.m_name:
                 return module
 
     def compile(self, x_debug=None):
         with runez.Anchored(*self.anchors):
             runez.ensure_folder(self.build_folder, clean=not x_debug)
-            LOG.debug("Compiling %s" % runez.plural(self.active_modules, "external module"))
+            count = runez.plural(self.active_modules, "external module")
+            names = runez.joined(self.active_modules)
+            LOG.debug("Compiling %s: %s" % (count, names))
             for m in self.active_modules:
                 m.compile(x_debug)
 
@@ -87,36 +88,33 @@ class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
     setup = None  # type: BuildSetup
+    m_name: str = None  # Module name
     m_src_build: pathlib.Path = None  # Folder where this module's source code is unpacked and built
+    m_telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
 
     c_configure_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
     c_configure_program = "./configure"
-    telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
 
     _log_handler = None
 
     def __repr__(self):
-        return "%s %s" % (self.module_builder_name(), self.version)
+        return "%s:%s" % (self.m_name, self.version)
 
     def attach(self, setup):
         self.setup = setup
-        self.m_src_build = setup.build_folder / "build" / self.module_builder_name()
-
-    @classmethod
-    def module_builder_name(cls):
-        return cls.__name__.lower()
+        self.m_src_build = setup.build_folder / "build" / self.m_name
 
     @classmethod
     def auto_use_with_reason(cls, target):
-        if not cls.telltale:
+        if not cls.m_telltale:
             return False, runez.brown("only on demand (no auto-detection available)")
 
-        for telltale in runez.flattened(cls.telltale, keep_empty=None):
+        for telltale in runez.flattened(cls.m_telltale, keep_empty=None):
             path = target.formatted_path(telltale)
             if os.path.exists(path):
                 return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
 
-        return True, "%s, no %s" % (runez.green("needed"), cls.telltale)
+        return True, "%s, no %s" % (runez.green("needed"), cls.m_telltale)
 
     @property
     def target(self):
@@ -212,8 +210,8 @@ class ModuleBuilder:
     @contextlib.contextmanager
     def captured_logs(self):
         try:
-            with runez.log.timeit("Compiling %s" % self.module_builder_name(), color=runez.bold):
-                logs_path = self.setup._get_logs_path(self.module_builder_name())
+            with runez.log.timeit("Compiling %s" % self.m_name, color=runez.bold):
+                logs_path = self.setup._get_logs_path(self.m_name)
                 if not runez.DRYRUN:
                     self._log_handler = logging.FileHandler(logs_path)
                     self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
@@ -228,7 +226,7 @@ class ModuleBuilder:
                 self._log_handler = None
 
     def compile(self, x_debug):
-        print(Header.aerated(self.module_builder_name()))
+        print(Header.aerated(self.m_name))
         with self.captured_logs():
             if not x_debug or not self.m_src_build.is_dir():
                 # Build folder would exist only if we're doing an --x-debug run
@@ -280,34 +278,49 @@ class PythonBuilder(ModuleBuilder):
 
     @classmethod
     def get_modules(cls, target, module_names=None):
-        selected = []  # Module classes, either auto-detected or as stated/implied by 'module_names'
-        reasons = {}  # type: dict[str, str] # Reason each module was selected, if auto-detected
-        if module_names != "none":
-            all_modules = cls.available_modules()
-            all_modules = {m.module_builder_name(): m for m in all_modules}
-            if module_names != "all":
-                module_names = runez.flattened(module_names, keep_empty=None, split=",")
-                for name in module_names:
-                    if name not in all_modules:
-                        runez.abort("Unknown module '%s'" % runez.red(name))
+        if not module_names:
+            return cls.get_auto_detected_modules(target)
 
-            for name, mod in all_modules.items():
-                should_use, reason = mod.auto_use_with_reason(target)
-                reasons[name] = reason
-                if not module_names and should_use is None:  # pragma: no cover
-                    LOG.info("Skipping %s: %s" % (name, reason))
-                    continue
+        if module_names == "none":
+            return []
 
-                if module_names == "all":
-                    should_use = should_use is not None
+        if module_names == "all":
+            return cls.available_modules()
 
-                elif module_names:
-                    should_use = name in module_names
+        selected = []
+        available = cls.available_modules()
+        if module_names.startswith("+"):
+            selected = [x.m_name for x in cls.get_auto_detected_modules(target)]
+            module_names = module_names[1:]
 
-                if should_use:
-                    selected.append(mod)
+        for name in runez.flattened(module_names, keep_empty=None, split=","):
+            if name not in selected:
+                selected.append(name)
 
-        return selected, reasons
+        module_map = {m.m_name: m for m in available}
+        unknown = [n for n in selected if n not in module_map]
+        if unknown:
+            runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
+
+        return [module_map[n] for n in selected]
+
+    @classmethod
+    def get_auto_detected_modules(cls, target):
+        selected = []
+        for mod in cls.available_modules():
+            should_use, _ = mod.auto_use_with_reason(target)
+            if should_use:
+                selected.append(mod)
+
+        return selected
+
+    @classmethod
+    def get_scan_report(cls, target):
+        reasons = {}  # type: dict[str, str] # Reason each module was selected by auto-detection
+        for mod in cls.available_modules():
+            reasons[mod.m_name] = mod.auto_use_with_reason(target)[1]
+
+        return reasons
 
     @classmethod
     def available_modules(cls) -> list:
