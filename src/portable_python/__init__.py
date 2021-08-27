@@ -50,13 +50,13 @@ class BuildSetup:
     def __repr__(self):
         return runez.short(self.build_folder)
 
-    def fix_lib_permissions(self, mode=0o644):
+    def fix_lib_permissions(self):
         """Some libs get funky permissions for some reason"""
-        # for path in runez.ls_dir(self.deps_folder / "libs"):
-        #     if path.name.endswith((".a", ".la")):
-        #         current = path.stat().st_mode & 0o777
-        #         if current != mode:
-        #             path.chmod(mode)
+        for path in runez.ls_dir(self.deps_folder / "libs"):
+            expected = 0o755 if path.is_dir() else 0o644
+            current = path.stat().st_mode & 0o777
+            if current != expected:
+                path.chmod(expected)
 
     def _get_logs_path(self, name):
         """Log file to use for a compilation, name is such that alphabetical sort conserves the order in which compilations occurred"""
@@ -82,6 +82,7 @@ class BuildSetup:
             for m in self.active_modules:
                 m.compile(x_debug)
 
+            self.fix_lib_permissions()
             self.python_builder.compile(x_debug)
 
 
@@ -250,7 +251,6 @@ class ModuleBuilder:
 
     def _finalize(self):
         """Called after (a possibly skipped) compile(), useful for --x-debug"""
-        self.setup.fix_lib_permissions()
 
     def download(self):
         if self.download_path.exists():
