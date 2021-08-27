@@ -82,7 +82,7 @@ How it works
 
     # pip install portable-python
 
-    from portable_python.builder import BuildSetup
+    from portable_python import BuildSetup
 
     setup = BuildSetup("3.9.6")
     setup.compile()

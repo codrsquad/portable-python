@@ -1,5 +1,4 @@
-from portable_python import PythonInspector
-from portable_python.builder import BuildSetup, ModuleBuilder
+from portable_python import BuildSetup, ModuleBuilder, PythonInspector
 from portable_python.versions import PythonVersions
 
 

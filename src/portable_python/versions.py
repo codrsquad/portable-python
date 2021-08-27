@@ -12,8 +12,6 @@ Usage:
 import runez
 from runez.pyenv import PythonSpec, Version
 
-from portable_python import LOG
-
 
 CPYTHON_VERSIONS = """
 3.9.6
@@ -42,7 +40,7 @@ class VersionFamily:
     @property
     def builder(self):
         if self.family == "cpython":
-            from portable_python.builder.python import Cpython
+            from portable_python.cpython import Cpython
 
             return Cpython
 
@@ -70,9 +68,5 @@ class PythonVersions:
         spec = PythonSpec.to_spec(spec)
         if not spec.version or not spec.version.is_valid:
             runez.abort("Invalid python spec: %s" % runez.red(spec))
-
-        fam = cls.family(spec.family)
-        if spec.version not in fam.versions:
-            LOG.warning("%s is not in the supported list, your mileage may vary" % spec)
 
         return spec

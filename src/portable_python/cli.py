@@ -4,9 +4,7 @@ import click
 import runez
 from runez.render import PrettyTable
 
-from portable_python import LOG, PythonInspector
-from portable_python.builder import BuildSetup
-from portable_python.setup import TargetSystem
+from portable_python import BuildSetup, LOG, PythonInspector, TargetSystem
 from portable_python.versions import PythonVersions
 
 
