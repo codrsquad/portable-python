@@ -240,13 +240,6 @@ class ModuleBuilder:
 
     def compile(self, x_debug):
         """Effectively compile this external module"""
-        if not runez.DRYRUN and self.m_src_build.is_dir():
-            if x_debug:
-                # For quicker iteration: debugging directly finalization
-                self._finalize()
-
-            return
-
         print(Header.aerated(str(self)))
         with self.captured_logs():
             submodules = self.required_submodules()
@@ -256,6 +249,11 @@ class ModuleBuilder:
                 LOG.info("Required submodules: %s" % submodules)
                 for module in submodules:
                     module.compile(x_debug)
+
+            if x_debug and self.m_src_build.is_dir():
+                # For quicker iteration: debugging directly finalization
+                self._finalize()
+                return
 
             if self.url:
                 # Modules without a url just drive sub-modules compilation typically
