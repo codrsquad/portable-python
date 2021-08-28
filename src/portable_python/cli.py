@@ -104,9 +104,8 @@ def scan(target, family):
         reasons = fam.builder.get_scan_report(ts)
         table = PrettyTable(2)
         table.header[0].align = "right"
-        all_modules = fam.builder.available_modules()
         rows = []
-        for mod in all_modules:
+        for mod in fam.builder.available_modules:
             rows.append((mod.m_name, reasons[mod.m_name]))
 
         table.add_rows(*rows)

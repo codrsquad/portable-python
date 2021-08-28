@@ -2,20 +2,19 @@ import os
 
 import runez
 
-from portable_python import LOG, ModuleBuilder, PythonBuilder
+from portable_python import LOG, PythonBuilder
+from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, TkInter, Uuid, Xz, Zlib
 
 
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
+    available_modules = [Zlib, Bzip2, LibFFI, Openssl, Readline, Xz, Sqlite, Bdb, Gdbm, TkInter, Uuid]
+
     m_name = "cpython"
 
     base_url = "https://www.python.org/ftp/python"
     _main_python = None
-
-    @classmethod
-    def available_modules(cls):
-        return [Zlib, Bzip2, LibFFI, Openssl, Readline, Xz, Sqlite, Bdb, Gdbm, Tcl, Tk, Tix, Uuid]
 
     @property
     def url(self):
@@ -33,18 +32,22 @@ class Cpython(PythonBuilder):
         yield self.checked_deps_folder("lib", prefix="-L")
 
     def c_configure_args(self):
-        yield from super().c_configure_args()
-        openssl = self.setup.get_module("openssl")
+        openssl = self.setup.get_module(Openssl)
         yield "--with-ensurepip=%s" % ("upgrade" if openssl else "install")
         yield "--enable-optimizations"
         yield "--with-lto"
         if openssl:
             yield f"--with-openssl={self.deps}"
 
-        tcl = self.setup.get_module("tcl")
-        if tcl:
+        tkinter = self.setup.get_module(TkInter)
+        if tkinter:
             yield f"--with-tcltk-includes=-I{self.deps}/include"
             yield f"--with-tcltk-libs=-L{self.deps}/lib"
+
+    def _do_linux_compile(self):
+        self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
+        self.run("make")
+        self.run("make", "install", f"DESTDIR={self.build_base}")
 
     @property
     def main_python(self):
@@ -61,7 +64,7 @@ class Cpython(PythonBuilder):
         self.setup.fix_lib_permissions()
 
     def _finalize(self):
-        if self.setup.get_module("openssl"):
+        if self.setup.get_module(Openssl):
             self.run(self.bin_folder / self.main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
 
         if self.setup.static:
@@ -195,365 +198,3 @@ class Cpython(PythonBuilder):
         with open(path, "wt") as fh:
             for line in lines:
                 fh.write(line)
-
-
-class Bdb(ModuleBuilder):
-    """See https://docs.python.org/3/library/dbm.html"""
-
-    m_name = "bdb"
-    c_configure_cwd = "build_unix"
-    c_configure_program = "../dist/configure"
-
-    @property
-    def url(self):
-        return f"https://ftp.osuosl.org/pub/blfs/conglomeration/db/db-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "6.2.32"
-
-    def xenv_cflags(self):
-        yield "-fPIC"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-        yield "--enable-dbm"
-        yield "--with-pic=yes"
-
-
-class Bzip2(ModuleBuilder):
-    """
-    See https://docs.python.org/3/library/bz2.html
-    """
-
-    m_name = "bzip2"
-    m_telltale = "{include}/bzlib.h"
-    c_configure_program = None
-    make_args = None
-
-    @property
-    def url(self):
-        return f"https://sourceware.org/pub/bzip2/bzip2-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "1.0.8"
-
-    def run_make_install(self):
-        self.run("make", "install", f"PREFIX={self.deps}", "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64")
-
-
-class Gdbm(ModuleBuilder):
-    """See https://docs.python.org/2.7/library/gdbm.html"""
-
-    m_name = "gdbm"
-    m_telltale = "{include}/gdbm.h"
-
-    @classmethod
-    def auto_use_with_reason(cls, target):
-        if target.is_macos:
-            return False, runez.brown("only on demand on macos")  # Can build, but waste of time
-
-        return super().auto_use_with_reason(target)
-
-    @property
-    def url(self):
-        return f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "1.18.1"
-
-    def xenv_cflags(self):
-        yield "-fPIC"
-
-    def c_configure_args(self):
-        # CPython setup.py looks for libgdbm_compat and gdbm-ndbm.h, which require --enable-libgdbm-compat
-        yield from super().c_configure_args()
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-        yield "--with-pic=yes"
-        yield "--disable-rpath"
-        yield "--without-libiconv-prefix"
-        yield "--without-libintl-prefix"
-        yield "--without-readline"
-
-
-class LibFFI(ModuleBuilder):
-
-    m_name = "libffi"
-    m_telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
-
-    @property
-    def url(self):
-        return f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "3.3"
-
-    def xenv_cflags(self):
-        yield "-fPIC"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-        yield "--with-pic=yes"
-        yield "--disable-multi-os-directory"
-        yield "--disable-docs"
-
-
-class Openssl(ModuleBuilder):
-
-    m_name = "openssl"
-    m_telltale = "{include}/openssl/ssl.h"
-    c_configure_program = "./Configure"
-
-    @property
-    def url(self):
-        return f"https://www.openssl.org/source/openssl-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "1.1.1k"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield f"--openssldir={self.deps}"
-        yield "-DPEDANTIC"
-        yield "no-shared"
-        if self.target.is_macos:
-            yield "darwin64-%s-cc" % self.target.architecture
-
-        else:
-            yield "%s-%s" % (self.target.platform, self.target.architecture)
-
-
-class Readline(ModuleBuilder):
-
-    m_name = "readline"
-    m_telltale = "{include}/readline/readline.h"
-
-    @property
-    def url(self):
-        return f"https://ftp.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "8.1"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-        yield "--disable-install-examples"
-        yield "--with-curses"
-
-    # TODO: check linux again
-    # def make_args(self):
-    #     if self.target.is_linux:
-    #         # See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb
-    #         yield "SHLIB_LIBS=-lcurses"
-
-
-class Sqlite(ModuleBuilder):
-
-    m_name = "sqlite"
-    m_telltale = "{include}/sqlite3.h"
-
-    @classmethod
-    def auto_use_with_reason(cls, target):
-        if not runez.which("tclsh"):
-            return None, runez.brown("requires tclsh")
-
-        return super().auto_use_with_reason(target)
-
-    @property
-    def url(self):
-        return f"https://github.com/sqlite/sqlite/archive/refs/tags/version-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "3.36.0"
-
-    def xenv_cflags(self):
-        yield "-fPIC"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-        yield "--disable-tcl"
-        yield "--disable-readline"
-        yield "--with-pic=yes"
-
-
-class TclTkModule(ModuleBuilder):
-    """
-    Common Tcl/Tk stuff
-    TODO: macos build fails with Symbol not found: _TclBN_mp_clear
-    """
-
-    m_telltale = ["{include}/tk", "{include}/tk.h"]
-
-    @classmethod
-    def auto_use_with_reason(cls, target):
-        if not target.is_macos and not os.path.isdir("/usr/include/X11"):
-            return False, runez.brown("requires libx11-dev")
-
-        return super().auto_use_with_reason(target)
-
-    @property
-    def version(self):
-        return "8.6.10"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--enable-shared=no"
-        yield "--enable-threads"
-
-    def run_make_install(self):
-        self.run("make")
-        if self.__class__ is Tk:
-            runez.touch("wish")
-
-        self.run("make", "install")
-        if self.__class__ is not Tix:
-            self.run("make", "install-private-headers")
-
-
-class Tcl(TclTkModule):
-
-    m_name = "tcl"
-    c_configure_cwd = "unix"
-
-    @property
-    def url(self):
-        return f"https://prdownloads.sourceforge.net/tcl/tcl{self.version}-src.tar.gz"
-
-    def _prepare(self):
-        for path in runez.ls_dir(self.m_src_build / "pkgs"):
-            if path.name.startswith(("sqlite", "tdbc")):
-                # Remove packages we don't care about and can pull in unwanted symbols
-                runez.delete(path)
-
-
-class Tk(TclTkModule):
-
-    m_name = "tk"
-    c_configure_cwd = "unix"
-
-    @property
-    def url(self):
-        return f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz"
-
-    def xenv_cflags(self):
-        yield self.checked_deps_folder("include", prefix="-I")
-
-    def xenv_ldflags(self):
-        yield self.checked_deps_folder("lib", prefix="-L")
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield f"--with-tcl={self.deps}/lib"
-        yield "--without-x"
-        if self.target.is_macos:
-            yield "--enable-aqua=yes"
-
-
-class Tix(TclTkModule):
-
-    m_name = "tix"
-    c_configure_program = "/bin/sh configure"
-
-    @property
-    def url(self):
-        return f"https://github.com/python/cpython-source-deps/archive/tix-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "8.4.3.6"
-
-    def xenv_cflags(self):
-        # Needed to avoid error: Getting no member named 'result' in 'struct Tcl_Interp'
-        yield "-DUSE_INTERP_RESULT"
-        yield "-Wno-implicit-function-declaration"  # Allows to not fail compilation due to missing 'panic' symbol
-        yield self.checked_deps_folder("include", prefix="-I")
-
-    def xenv_ldflags(self):
-        yield self.checked_deps_folder("lib", prefix="-L")
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield f"--with-tcl={self.deps}/lib"
-        yield f"--with-tk={self.deps}/lib"
-        yield "--without-x"
-
-
-class Uuid(ModuleBuilder):
-
-    m_name = "uuid"
-    m_telltale = "{include}/uuid/uuid.h"
-
-    @property
-    def url(self):
-        return f"https://sourceforge.net/projects/libuuid/files/libuuid-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "1.0.3"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-
-
-class Xz(ModuleBuilder):
-
-    m_name = "xz"
-    m_telltale = "{include}/lzma.h"
-
-    @property
-    def url(self):
-        return f"https://tukaani.org/xz/xz-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "5.2.5"
-
-    def c_configure_args(self):
-        yield from super().c_configure_args()
-        yield "--with-pic=yes"
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-        yield "--disable-doc"
-        yield "--disable-xz"
-        yield "--disable-xzdec"
-        yield "--disable-lzmadec"
-        yield "--disable-lzmainfo"
-        yield "--disable-lzma-links"
-        yield "--disable-scripts"
-        yield "--disable-rpath"
-
-
-class Zlib(ModuleBuilder):
-
-    m_name = "zlib"
-    m_telltale = "{include}/zlib.h"
-
-    @property
-    def url(self):
-        return f"https://zlib.net/zlib-{self.version}.tar.gz"
-
-    @property
-    def version(self):
-        return "1.2.11"
-
-    def c_configure_args(self):
-        yield f"--prefix={self.c_configure_prefix}"
-        yield "--64"
-        yield "--static"

@@ -39,16 +39,48 @@ class BuildSetup:
         self.downloads_folder = build_folder / "downloads"
         self.logs_folder = self.build_folder / "logs"
         self.anchors = {build_folder.parent, self.dist_folder.parent}
-        self.python_builder = PythonVersions.get_builder(self.python_spec.family)()
-        self.python_builder.attach(self)
-        active = [x() for x in self.python_builder.get_modules(self.target_system, module_names=modules)]
-        for x in active:
-            x.attach(self)
-
-        self.active_modules = active
+        self.attached_modules_order = []
+        self.attached_modules_map = {}
+        builder = PythonVersions.get_builder(self.python_spec.family)
+        self.python_builder = self.attach_module(builder)  # type: PythonBuilder
+        desired = self.python_builder.get_modules(modules)
+        self.active_modules = self.attach_modules(desired)
 
     def __repr__(self):
         return runez.short(self.build_folder)
+
+    def attach_modules(self, modules, parent=None):
+        result = []
+        changed = 0
+        for module in modules:
+            if not isinstance(module, ModuleBuilder):
+                changed += 1
+                module = self.attach_module(module)  # type: ModuleBuilder
+                if module.parent is not parent:
+                    assert module.parent is None
+                    module.parent = parent
+
+            result.append(module)
+
+        return result if changed else modules
+
+    def attach_module(self, module):
+        current = self.attached_modules_map.get(module.m_name)
+        if not current:
+            assert issubclass(module, ModuleBuilder)
+            current = module()
+            current.setup = self
+            current.set_default_xenv("archflags", ("-arch ", self.target_system.architecture))
+            if self.target_system.is_macos:
+                current.set_default_xenv("macosx_deployment_target", default="10.14")
+
+            self.attached_modules_order.append(current)
+            self.attached_modules_map[current.m_name] = current
+            current.m_src_build = self.build_folder / "build"
+            if current.url:
+                current.m_src_build = current.m_src_build / current.m_name
+
+        return current
 
     def fix_lib_permissions(self):
         """Some libs get funky permissions for some reason"""
@@ -68,9 +100,9 @@ class BuildSetup:
         runez.delete(path, logger=None)
         return path
 
-    def get_module(self, name):
+    def get_module(self, mod):
         for module in self.active_modules:
-            if name == module.m_name:
+            if mod.m_name == module.m_name:
                 return module
 
     @runez.log.timeit("Overall compilation", color=runez.bold)
@@ -89,25 +121,23 @@ class BuildSetup:
 class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
-    setup = None  # type: BuildSetup
+    parent: "ModuleBuilder" = None
+    setup: BuildSetup = None
+    depends_on = None  # type: list
+
     m_name: str = None  # Module name
     m_src_build: pathlib.Path = None  # Folder where this module's source code is unpacked and built
     m_telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
 
     c_configure_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
-    c_configure_program = "./configure"
 
     _log_handler = None
 
     def __repr__(self):
         return "%s:%s" % (self.m_name, self.version)
 
-    def attach(self, setup):
-        self.setup = setup
-        self.m_src_build = setup.build_folder / "build" / self.m_name
-
     @classmethod
-    def auto_use_with_reason(cls, target):
+    def auto_use_with_reason(cls, target: "TargetSystem"):
         if not cls.m_telltale:
             return False, runez.brown("only on demand (no auto-detection available)")
 
@@ -130,7 +160,8 @@ class ModuleBuilder:
     @property
     def version(self):
         """Version to use"""
-        return ""
+        if self.parent:
+            return self.parent.version
 
     @property
     def deps(self):
@@ -140,7 +171,8 @@ class ModuleBuilder:
     @property
     def download_path(self):
         """Path where source tarball for this module resides"""
-        return self.setup.downloads_folder / os.path.basename(self.url)
+        if self.url:
+            return self.setup.downloads_folder / os.path.basename(self.url)
 
     def exported_env_vars(self):
         """Environment variables to set -> all generators of this object prefixed with 'xenv_'"""
@@ -148,13 +180,15 @@ class ModuleBuilder:
             if name.startswith("xenv_"):
                 yield name
 
-    def xenv_archflags(self):
-        """Help some components figure out architecture"""
-        yield "-arch", self.target.architecture
+    def set_default_xenv(self, name, value=None, default=None):
+        """Set xenv_ attribute, if not already defined by descendant"""
+        k = "xenv_%s" % name.lower()
+        if not hasattr(self, k):
+            if value is None:
+                value = os.environ.get(name.upper(), default)
 
-    def xenv_macosx_deployment_target(self):
-        if self.target.is_macos:
-            yield "10.14"
+            if value:
+                setattr(self, k, value)
 
     def xenv_path(self):
         yield self.checked_deps_folder("bin")
@@ -169,27 +203,19 @@ class ModuleBuilder:
     def run(self, program, *args):
         return runez.run(program, *args, passthrough=self._log_handler or True)
 
-    @property
-    def c_configure_prefix(self):
-        """--prefix to use for the ./configure program"""
-        return self.deps
-
-    def c_configure_args(self):
-        """CLI args to pass to pass to ./configure"""
-        yield f"--prefix={self.c_configure_prefix}"
-
-    def run_configure(self):
+    def run_configure(self, program, *args, prefix=None):
         """
         Calling ./configure is similar across all components.
         This allows to have descendants customize each part relatively elegantly
         """
-        if self.c_configure_program:
-            args = runez.flattened(self.c_configure_program.split(), self.c_configure_args(), keep_empty=None)
-            return self.run(*args)
+        if prefix is None:
+            prefix = self.deps
 
-    def run_make_install(self):
-        self.run("make")
-        self.run("make", "install")
+        if prefix:
+            prefix = f"--prefix={prefix}"
+
+        cmd = runez.flattened(program, prefix, *args, keep_empty=None, split=" ")
+        return self.run(*cmd)
 
     @staticmethod
     def setenv(key, value):
@@ -227,22 +253,33 @@ class ModuleBuilder:
                 self._log_handler = None
 
     def compile(self, x_debug):
-        print(Header.aerated(self.m_name))
-        with self.captured_logs():
-            if x_debug and self.m_src_build.is_dir():
+        if not runez.DRYRUN and self.m_src_build.is_dir():
+            if x_debug:
                 # For quicker iteration: debugging directly finalization
                 self._finalize()
 
-            else:
-                # Build folder would exist only if we're doing an --x-debug run
-                self.unpack()
-                self._setup_env()
-                self._prepare()
-                func = getattr(self, "_do_%s_compile" % self.target.platform, None)
-                if not func:
-                    runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
+            return
 
-                with runez.log.timeit("Compiling %s" % self.m_name, color=runez.bold):
+        print(Header.aerated(self))
+        with self.captured_logs():
+            if self.depends_on:
+                self.depends_on = self.setup.attach_modules(self.depends_on, parent=self)
+                for module in self.depends_on:
+                    module.compile(x_debug)
+
+            self.unpack()
+            self._setup_env()
+            self._prepare()
+            func = getattr(self, "_do_%s_compile" % self.target.platform, None)
+            if not func:
+                runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
+
+            with runez.log.timeit("Compiling %s" % self.m_name, color=runez.bold):
+                folder = self.m_src_build
+                if self.c_configure_cwd:
+                    folder = folder / self.c_configure_cwd
+
+                with runez.CurrentFolder(folder):
                     func()
                     self._finalize()
 
@@ -253,15 +290,17 @@ class ModuleBuilder:
         """Called after (a possibly skipped) compile(), useful for --x-debug"""
 
     def download(self):
-        if self.download_path.exists():
-            LOG.info("Already downloaded: %s" % self.url)
+        if self.url:
+            if self.download_path.exists():
+                LOG.info("Already downloaded: %s" % self.url)
 
-        else:
-            REST_CLIENT.download(self.url, self.download_path)
+            else:
+                REST_CLIENT.download(self.url, self.download_path)
 
     def unpack(self):
-        self.download()
-        runez.decompress(self.download_path, self.m_src_build)
+        if self.url:
+            self.download()
+            runez.decompress(self.download_path, self.m_src_build)
 
     def _do_darwin_compile(self):
         """Compile on macos variants"""
@@ -269,34 +308,38 @@ class ModuleBuilder:
 
     def _do_linux_compile(self):
         """Compile on linux variants"""
-        folder = self.m_src_build
-        if self.c_configure_cwd:
-            folder = folder / self.c_configure_cwd
-
-        with runez.CurrentFolder(folder):
-            self.run_configure()
-            self.run_make_install()
 
 
 class PythonBuilder(ModuleBuilder):
 
+    available_modules: list = None  # Available modules for this python family
+    _available_module_names = None
+
     @classmethod
-    def get_modules(cls, target, module_names=None):
+    def available_module_names(cls):
+        if cls._available_module_names is None:
+            cls._available_module_names = [m.m_name for m in cls.available_modules]
+
+        return cls._available_module_names
+
+    @classmethod
+    def is_known_module_name(cls, module_name):
+        return module_name in cls.available_module_names()
+
+    def get_modules(self, module_names):
         if not module_names:
-            return cls.get_auto_detected_modules(target)
+            return self._auto_detected_modules()
 
         if module_names == "none":
             return []
 
         if module_names == "all":
-            return cls.available_modules()
+            return list(self.available_modules)
 
         selected = []
         unknown = []
-        available = cls.available_modules()
-        known_names = set(m.m_name for m in available)
         if "+" in module_names or "-" in module_names:
-            selected = [x.m_name for x in cls.get_auto_detected_modules(target)]
+            selected = [x.m_name for x in self._auto_detected_modules()]
 
         for name in runez.flattened(module_names, keep_empty=None, split=","):
             remove = False
@@ -304,7 +347,7 @@ class PythonBuilder(ModuleBuilder):
                 remove = name[0] == "-"
                 name = name[1:]
 
-            if name not in known_names:
+            if not self.is_known_module_name(name):
                 unknown.append(name)
 
             elif remove:
@@ -319,17 +362,16 @@ class PythonBuilder(ModuleBuilder):
 
         # Ensure we yield same pre-determined order as returned by available_modules()
         result = []
-        for mod in available:
+        for mod in self.available_modules:
             if mod.m_name in selected:
                 result.append(mod)
 
         return result
 
-    @classmethod
-    def get_auto_detected_modules(cls, target):
+    def _auto_detected_modules(self):
         selected = []
-        for mod in cls.available_modules():
-            should_use, _ = mod.auto_use_with_reason(target)
+        for mod in self.available_modules:
+            should_use, _ = mod.auto_use_with_reason(self.target)
             if should_use:
                 selected.append(mod)
 
@@ -338,14 +380,10 @@ class PythonBuilder(ModuleBuilder):
     @classmethod
     def get_scan_report(cls, target):
         reasons = {}  # type: dict[str, str] # Reason each module was selected by auto-detection
-        for mod in cls.available_modules():
+        for mod in cls.available_modules:
             reasons[mod.m_name] = mod.auto_use_with_reason(target)[1]
 
         return reasons
-
-    @classmethod
-    def available_modules(cls) -> list:
-        """Available modules for this python family"""
 
     @property
     def c_configure_prefix(self):
@@ -381,10 +419,6 @@ class PythonBuilder(ModuleBuilder):
     @property
     def version(self):
         return self.setup.python_spec.version
-
-    def run_make_install(self):
-        self.run("make")
-        self.run("make", "install", f"DESTDIR={self.build_base}")
 
 
 class PythonInspector:
