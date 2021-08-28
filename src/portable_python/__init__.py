@@ -202,8 +202,8 @@ class ModuleBuilder:
         if path.is_dir():
             return f"{prefix}{path}"
 
-    def run(self, program, *args):
-        return runez.run(program, *args, passthrough=self._log_handler or True)
+    def run(self, program, *args, fatal=True):
+        return runez.run(program, *args, passthrough=self._log_handler or True, fatal=fatal)
 
     def run_configure(self, program, *args, prefix=None):
         """

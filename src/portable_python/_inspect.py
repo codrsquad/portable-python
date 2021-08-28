@@ -59,8 +59,12 @@ def module_report(module_name):
     try:
         return module_representation(module_name, __import__(module_name))
 
-    except ImportError:
-        return "*absent*"
+    except ImportError as e:
+        msg = "*absent*"
+        if "No module named" not in str(e):
+            msg += " %s" % e  # pragma: no cover, more info in case of failed import
+
+        return msg
 
 
 def get_report(modules):

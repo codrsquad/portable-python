@@ -58,15 +58,17 @@ class Cpython(PythonBuilder):
         return self._main_python or "python"
 
     def _finalize(self):
-        if self.setup.active_module(Openssl):
-            self.run(self.bin_folder / self.main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
+        bin_python = self.bin_folder / self.main_python
+        has_ssl = runez.run(bin_python, "-c", "import _ssl; print(_ssl.OPENSSL_VERSION)", fatal=False)
+        if has_ssl.succeeded and has_ssl.output and "openssl" in has_ssl.output.lower():
+            self.run(bin_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel", fatal=False)
 
         if self.setup.static:
             self._symlink_static_libs()
 
         self.correct_symlinks()
         self.cleanup_distribution()
-        self.run(self.bin_folder / self.main_python, "-mcompileall")
+        self.run(bin_python, "-mcompileall")
         runez.compress(self.install_folder, self.tarball_path)
 
     def _symlink_static_libs(self):
