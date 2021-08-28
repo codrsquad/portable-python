@@ -28,12 +28,12 @@ def test_build(cli):
     assert " openssl:" not in cli.logged
     assert " bdb:" in cli.logged
     assert f" --prefix=/{v} " in cli.logged
-    assert f"make install DESTDIR={bf}" in cli.logged
+    assert f" install DESTDIR={bf}" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
     assert " --prefix=/apps/python " in cli.logged
-    assert f"make install DESTDIR={bf}/root" in cli.logged
+    assert f" install DESTDIR={bf}/root" in cli.logged
 
     # Simulate presence of some key files to verify code that is detecting them is hit
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)

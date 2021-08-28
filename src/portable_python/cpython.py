@@ -30,11 +30,11 @@ class Cpython(PythonBuilder):
         yield f"-L{self.deps_lib}"
 
     def c_configure_args(self):
-        openssl = self.setup.active_module(Openssl)
-        yield "--with-ensurepip=%s" % ("upgrade" if openssl else "install")
+        yield "--with-ensurepip=install"
         yield "--enable-optimizations"
         yield "--with-lto"
-        if openssl:
+        yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
+        if self.setup.active_module(Openssl):
             yield f"--with-openssl={self.deps}"
 
         if self.setup.active_module(TkInter):
@@ -43,8 +43,8 @@ class Cpython(PythonBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
-        self.run("make")
-        self.run("make", "install", f"DESTDIR={self.build_base}")
+        self.run_make()
+        self.run_make("install", f"DESTDIR={self.build_base}")
 
     @property
     def main_python(self):

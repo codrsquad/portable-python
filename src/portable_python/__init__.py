@@ -11,6 +11,7 @@ Can be used programmatically too, example usage:
 import contextlib
 import json
 import logging
+import multiprocessing
 import os
 import pathlib
 import platform
@@ -147,6 +148,9 @@ class ModuleBuilder:
         if not cls.m_telltale:
             return False, runez.brown("only on demand (no auto-detection available)")
 
+        if cls.m_telltale is True:
+            return True, runez.green("always compiled")
+
         for telltale in runez.flattened(cls.m_telltale, keep_empty=None):
             path = target.formatted_path(telltale)
             if os.path.exists(path):
@@ -218,6 +222,16 @@ class ModuleBuilder:
 
         cmd = runez.flattened(program, prefix, *args, keep_empty=None, split=" ")
         return self.run(*cmd)
+
+    def run_make(self, *args, program="make", cpu_count=None):
+        cmd = program.split()
+        if cpu_count is None:
+            cpu_count = multiprocessing.cpu_count()
+
+        if cpu_count:
+            cmd.append("-j%s" % cpu_count)
+
+        self.run(*cmd, *args)
 
     @contextlib.contextmanager
     def captured_logs(self):

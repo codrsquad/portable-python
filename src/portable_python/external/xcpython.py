@@ -24,8 +24,8 @@ class Bdb(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("../dist/configure", "--enable-shared=no", "--enable-static=yes", "--enable-dbm", "--with-pic=yes")
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
 
 
 class Bzip2(ModuleBuilder):
@@ -45,7 +45,7 @@ class Bzip2(ModuleBuilder):
         return "1.0.8"
 
     def _do_linux_compile(self):
-        self.run("make", "install", f"PREFIX={self.deps}", "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64")
+        self.run_make("install", f"PREFIX={self.deps}", "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64")
 
 
 class Gdbm(ModuleBuilder):
@@ -83,14 +83,14 @@ class Gdbm(ModuleBuilder):
             "--without-libintl-prefix",
             "--without-readline",
         )
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
 
 
 class LibFFI(ModuleBuilder):
 
     m_name = "libffi"
-    m_telltale = ["/usr/share/doc/libffi-dev", "{include}/ffi/ffi.h"]
+    m_telltale = ["{include}/ffi/ffi.h"]  # TODO: fails to build on linux without libffi-dev
 
     @property
     def url(self):
@@ -112,8 +112,8 @@ class LibFFI(ModuleBuilder):
             "--disable-multi-os-directory",
             "--disable-docs"
         )
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
 
 
 class Openssl(ModuleBuilder):
@@ -132,7 +132,7 @@ class Openssl(ModuleBuilder):
     def c_configure_args(self):
         yield f"--openssldir={self.deps}"
         yield "-DPEDANTIC"
-        yield "no-shared"
+        yield "no-shared", "no-tests"
         if self.target.is_macos:
             yield "darwin64-%s-cc" % self.target.architecture
 
@@ -141,8 +141,8 @@ class Openssl(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./Configure", self.c_configure_args())
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install_sw")  # See https://github.com/openssl/openssl/issues/8170
 
 
 class Readline(ModuleBuilder):
@@ -161,8 +161,8 @@ class Readline(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--enable-shared=no --enable-static=yes --disable-install-examples --with-curses")
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
 
 
 class Sqlite(ModuleBuilder):
@@ -190,8 +190,8 @@ class Sqlite(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--enable-shared=no --enable-static=yes --disable-tcl --disable-readline --with-pic=yes")
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
 
 
 class Tcl(ModuleBuilder):
@@ -211,9 +211,9 @@ class Tcl(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--enable-shared=no --enable-threads")
-        self.run("make")
-        self.run("make", "install")
-        self.run("make", "install-private-headers")
+        self.run_make()
+        self.run_make("install")
+        self.run_make("install-private-headers")
 
 
 class Tk(ModuleBuilder):
@@ -240,10 +240,10 @@ class Tk(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args())
-        self.run("make")
+        self.run_make()
         runez.touch("wish")
-        self.run("make", "install")
-        self.run("make", "install-private-headers")
+        self.run_make("install")
+        self.run_make("install-private-headers")
 
 
 class Tix(ModuleBuilder):
@@ -275,8 +275,8 @@ class Tix(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("/bin/sh configure", self.c_configure_args())
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
 
 
 class TkInter(ModuleBuilder):
@@ -314,16 +314,19 @@ class Uuid(ModuleBuilder):
     def version(self):
         return "1.0.3"
 
+    def xenv_CFLAGS(self):
+        yield "-fPIC"
+
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--enable-shared=no --enable-static=yes")
-        self.run("make")
-        self.run("make", "install")
+        self.run_configure("./configure", "--enable-shared=no --enable-static=yes --with-pic=yes")
+        self.run_make()
+        self.run_make("install")
 
 
 class Xz(ModuleBuilder):
 
     m_name = "xz"
-    m_telltale = "{include}/lzma.h"
+    m_telltale = True
 
     @property
     def url(self):
@@ -340,14 +343,14 @@ class Xz(ModuleBuilder):
             "--disable-doc --disable-xz --disable-xzdec --disable-lzmadec",
             "--disable-lzmainfo --disable-lzma-links --disable-scripts --disable-rpath",
         )
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
 
 
 class Zlib(ModuleBuilder):
 
     m_name = "zlib"
-    m_telltale = "{include}/zlib.h"
+    m_telltale = True
 
     @property
     def url(self):
@@ -357,7 +360,10 @@ class Zlib(ModuleBuilder):
     def version(self):
         return "1.2.11"
 
+    def xenv_CFLAGS(self):
+        yield "-fPIC"
+
     def _do_linux_compile(self):
         self.run_configure("./configure", "--64", "--static")
-        self.run("make")
-        self.run("make", "install")
+        self.run_make()
+        self.run_make("install")
