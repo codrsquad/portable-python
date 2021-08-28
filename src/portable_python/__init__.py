@@ -36,7 +36,7 @@ class BuildSetup:
 
     prefix = None
     static = True
-    _log_counter = 0
+    log_counter = 0
 
     def __init__(self, python_spec, modules=None, build_folder="build", dist_folder="dist", target=None):
         self.python_spec = PythonVersions.validated_spec(python_spec)
@@ -49,8 +49,6 @@ class BuildSetup:
         self.build_folder = build_folder / str(self.python_spec).replace(":", "-")
         self.dist_folder = runez.to_path(dist_folder).absolute()
         self.deps_folder = self.build_folder / "deps"
-        self.downloads_folder = build_folder / "downloads"
-        self.logs_folder = self.build_folder / "logs"
         self.anchors = {build_folder.parent, self.dist_folder.parent}
         self.attached_modules_order = []
         self.attached_modules_map = {}
@@ -109,9 +107,9 @@ class BuildSetup:
             assert issubclass(module, ModuleBuilder)
             current = module()
             current.setup = self
-            current.set_default_xenv("archflags", ("-arch ", self.target_system.architecture))
+            current.set_default_xenv("ARCHFLAGS", ("-arch ", self.target_system.architecture))
             if self.target_system.is_macos:
-                current.set_default_xenv("macosx_deployment_target", default="10.14")
+                current.set_default_xenv("MACOSX_DEPLOYMENT_TARGET", default="10.14")
 
             self.attached_modules_order.append(current)
             self.attached_modules_map[current.m_name] = current
@@ -121,35 +119,31 @@ class BuildSetup:
 
         return current
 
-    def _get_logs_path(self, name):
-        """Log file to use for a compilation, name is such that alphabetical sort conserves the order in which compilations occurred"""
-        runez.ensure_folder(self.logs_folder, logger=None)
-        self._log_counter += 1
-        basename = f"{self._log_counter:02}-{name}.log"
-        path = self.logs_folder / basename
-        runez.delete(path, logger=None)
-        return path
-
 
 class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
+    m_name: str = None  # Module name as can be referenced from CLI, typically lowercase of class name
+    m_telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
+    m_build_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
+
     parent: "ModuleBuilder" = None
     setup: BuildSetup = None
-
-    m_name: str = None  # Module name
     m_src_build: pathlib.Path = None  # Folder where this module's source code is unpacked and built
-    m_telltale = None  # File(s) that tell us OS already has a usable equivalent of this module
-
-    c_configure_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
-
     _log_handler = None
 
     def __repr__(self):
         return "%s:%s" % (self.m_name, self.version)
 
     @classmethod
-    def auto_use_with_reason(cls, target: "TargetSystem"):
+    def auto_use_with_reason(cls, target):
+        """
+        Args:
+            target (TargetSystem): Target system we're building for
+
+        Returns:
+            (bool, str): True/False: auto-select module, None: won't build on target system; str states reason why or why not
+        """
         if not cls.m_telltale:
             return False, runez.brown("only on demand (no auto-detection available)")
 
@@ -160,13 +154,17 @@ class ModuleBuilder:
 
         return True, "%s, no %s" % (runez.green("needed"), cls.m_telltale)
 
+    def required_submodules(self) -> list:
+        """Optional dependent/required sub-modules to be compiled"""
+
     @property
     def target(self):
+        """Shortcut to setup's target system"""
         return self.setup.target_system
 
     @property
     def url(self):
-        """Url of source tarball"""
+        """Url of source tarball, if any"""
         return ""
 
     @property
@@ -177,35 +175,24 @@ class ModuleBuilder:
 
     @property
     def deps(self):
-        """Path where deps are installed"""
+        """Folder <build>/.../deps/, where all externals modules get installed"""
         return self.setup.deps_folder
 
     @property
-    def download_path(self):
-        """Path where source tarball for this module resides"""
-        if self.url:
-            return self.setup.downloads_folder / os.path.basename(self.url)
-
-    def required_submodules(self) -> list:
-        """Optional required sub-modules to be compiled"""
-
-    def exported_env_vars(self):
-        """Environment variables to set -> all generators of this object prefixed with 'xenv_'"""
-        for name in sorted(dir(self)):
-            if name.startswith("xenv_"):
-                yield name
+    def deps_lib(self):
+        return self.deps / "lib"
 
     def set_default_xenv(self, name, value=None, default=None):
         """Set xenv_ attribute, if not already defined by descendant"""
-        k = "xenv_%s" % name.lower()
-        if not hasattr(self, k):
+        field_name = "xenv_%s" % name
+        if not hasattr(self, field_name):
             if value is None:
-                value = os.environ.get(name.upper(), default)
+                value = os.environ.get(name, default)
 
             if value:
-                setattr(self, k, value)
+                setattr(self, field_name, value)
 
-    def xenv_path(self):
+    def xenv_PATH(self):
         yield self.checked_deps_folder("bin")
         yield "/usr/bin"
         yield "/bin"
@@ -232,29 +219,13 @@ class ModuleBuilder:
         cmd = runez.flattened(program, prefix, *args, keep_empty=None, split=" ")
         return self.run(*cmd)
 
-    @staticmethod
-    def setenv(key, value):
-        LOG.debug("env %s=%s" % (key, runez.short(value, size=2048)))
-        os.environ[key] = value
-
-    def _setup_env(self):
-        for func_name in self.exported_env_vars():
-            name = func_name[5:].upper()
-            delimiter = os.pathsep if name.endswith("PATH") else " "
-            value = getattr(self, func_name)
-            if value:
-                if callable(value):
-                    value = value()
-
-                value = runez.joined(value, delimiter=delimiter, keep_empty=None)
-                if value:
-                    self.setenv(name, value)
-
     @contextlib.contextmanager
     def captured_logs(self):
         try:
-            logs_path = self.setup._get_logs_path(self.m_name)
+            self.setup.log_counter += 1
+            logs_path = self.setup.build_folder / "logs" / f"{self.setup.log_counter:02}-{self.m_name}.log"
             if not runez.DRYRUN:
+                runez.touch(logs_path, logger=None)
                 self._log_handler = logging.FileHandler(logs_path)
                 self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
                 self._log_handler.setLevel(logging.DEBUG)
@@ -268,6 +239,7 @@ class ModuleBuilder:
                 self._log_handler = None
 
     def compile(self, x_debug):
+        """Effectively compile this external module"""
         if not runez.DRYRUN and self.m_src_build.is_dir():
             if x_debug:
                 # For quicker iteration: debugging directly finalization
@@ -279,44 +251,51 @@ class ModuleBuilder:
         with self.captured_logs():
             submodules = self.required_submodules()
             if submodules:
+                # Compile sub-modules first
                 submodules = self.setup.attach_modules(submodules, parent=self)
+                LOG.info("Required submodules: %s" % submodules)
                 for module in submodules:
                     module.compile(x_debug)
 
-            self.unpack()
-            self._setup_env()
-            self._prepare()
+            if self.url:
+                # Modules without a url just drive sub-modules compilation typically
+                path = self.setup.build_folder.parent / "downloads" / os.path.basename(self.url)
+                if not path.exists():
+                    REST_CLIENT.download(self.url, path)
+
+                runez.decompress(path, self.m_src_build)
+
+            for var_name in sorted(dir(self)):
+                if var_name.startswith("xenv_"):
+                    # By convention, inject all xenv_* values as env vars
+                    value = getattr(self, var_name)
+                    var_name = var_name[5:]
+                    delimiter = os.pathsep if var_name.endswith("PATH") else " "
+                    if value:
+                        if callable(value):
+                            value = value()  # Allow for generators
+
+                        value = runez.joined(value, delimiter=delimiter, keep_empty=None)  # All yielded values are auto-joined
+                        if value:
+                            LOG.debug("env %s=%s" % (var_name, runez.short(value, size=2048)))
+                            os.environ[var_name] = value
+
             func = getattr(self, "_do_%s_compile" % self.target.platform, None)
             if not func:
                 runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
 
             with runez.log.timeit("Compiling %s" % self.m_name, color=runez.bold):
                 folder = self.m_src_build
-                if self.c_configure_cwd:
-                    folder = folder / self.c_configure_cwd
+                if self.m_build_cwd:
+                    folder = folder / self.m_build_cwd
 
                 with runez.CurrentFolder(folder):
+                    self._prepare()
                     func()
                     self._finalize()
 
     def _prepare(self):
-        """Ran at the beginning of compile()"""
-
-    def _finalize(self):
-        """Called after (a possibly skipped) compile(), useful for --x-debug"""
-
-    def download(self):
-        if self.url:
-            if self.download_path.exists():
-                LOG.info("Already downloaded: %s" % self.url)
-
-            else:
-                REST_CLIENT.download(self.url, self.download_path)
-
-    def unpack(self):
-        if self.url:
-            self.download()
-            runez.decompress(self.download_path, self.m_src_build)
+        """Ran before _do_*_compile()"""
 
     def _do_darwin_compile(self):
         """Compile on macos variants"""
@@ -324,6 +303,9 @@ class ModuleBuilder:
 
     def _do_linux_compile(self):
         """Compile on linux variants"""
+
+    def _finalize(self):
+        """Ran after _do_*_compile()"""
 
 
 class PythonBuilder(ModuleBuilder):
@@ -334,7 +316,7 @@ class PythonBuilder(ModuleBuilder):
     @classmethod
     def available_module_names(cls):
         if cls._available_module_names is None:
-            cls._available_module_names = [m.m_name for m in cls.available_modules]
+            cls._available_module_names = set(m.m_name for m in cls.available_modules)
 
         return cls._available_module_names
 
@@ -437,7 +419,7 @@ class PythonBuilder(ModuleBuilder):
 
     def _prepare(self):
         # Some libs get funky permissions for some reason
-        for path in runez.ls_dir(self.deps / "lib"):
+        for path in runez.ls_dir(self.deps_lib):
             expected = 0o755 if path.is_dir() else 0o644
             current = path.stat().st_mode & 0o777
             if current != expected:

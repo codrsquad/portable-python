@@ -9,7 +9,7 @@ class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
     m_name = "bdb"
-    c_configure_cwd = "build_unix"
+    m_build_cwd = "build_unix"
 
     @property
     def url(self):
@@ -19,7 +19,7 @@ class Bdb(ModuleBuilder):
     def version(self):
         return "6.2.32"
 
-    def xenv_cflags(self):
+    def xenv_CFLAGS(self):
         yield "-fPIC"
 
     def _do_linux_compile(self):
@@ -35,7 +35,6 @@ class Bzip2(ModuleBuilder):
 
     m_name = "bzip2"
     m_telltale = "{include}/bzlib.h"
-    make_args = None
 
     @property
     def url(self):
@@ -70,7 +69,7 @@ class Gdbm(ModuleBuilder):
     def version(self):
         return "1.18.1"
 
-    def xenv_cflags(self):
+    def xenv_CFLAGS(self):
         yield "-fPIC"
 
     def _do_linux_compile(self):
@@ -101,7 +100,7 @@ class LibFFI(ModuleBuilder):
     def version(self):
         return "3.3"
 
-    def xenv_cflags(self):
+    def xenv_CFLAGS(self):
         yield "-fPIC"
 
     def _do_linux_compile(self):
@@ -147,6 +146,7 @@ class Openssl(ModuleBuilder):
 
 
 class Readline(ModuleBuilder):
+    """See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb"""
 
     m_name = "readline"
     m_telltale = "{include}/readline/readline.h"
@@ -163,12 +163,6 @@ class Readline(ModuleBuilder):
         self.run_configure("./configure", "--enable-shared=no --enable-static=yes --disable-install-examples --with-curses")
         self.run("make")
         self.run("make", "install")
-
-    # TODO: check linux again
-    # def make_args(self):
-    #     if self.target.is_linux:
-    #         # See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb
-    #         yield "SHLIB_LIBS=-lcurses"
 
 
 class Sqlite(ModuleBuilder):
@@ -191,7 +185,7 @@ class Sqlite(ModuleBuilder):
     def version(self):
         return "3.36.0"
 
-    def xenv_cflags(self):
+    def xenv_CFLAGS(self):
         yield "-fPIC"
 
     def _do_linux_compile(self):
@@ -203,7 +197,7 @@ class Sqlite(ModuleBuilder):
 class Tcl(ModuleBuilder):
 
     m_name = "tcl"
-    c_configure_cwd = "unix"
+    m_build_cwd = "unix"
 
     @property
     def url(self):
@@ -225,21 +219,21 @@ class Tcl(ModuleBuilder):
 class Tk(ModuleBuilder):
 
     m_name = "tk"
-    c_configure_cwd = "unix"
+    m_build_cwd = "unix"
 
     @property
     def url(self):
         return f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz"
 
-    def xenv_cflags(self):
+    def xenv_CFLAGS(self):
         yield self.checked_deps_folder("include", prefix="-I")
 
-    def xenv_ldflags(self):
-        yield self.checked_deps_folder("lib", prefix="-L")
+    def xenv_LDFLAGS(self):
+        yield f"-L{self.deps_lib}"
 
     def c_configure_args(self):
         yield "--enable-shared=no --enable-threads"
-        yield f"--with-tcl={self.deps}/lib"
+        yield f"--with-tcl={self.deps_lib}"
         yield "--without-x"
         if self.target.is_macos:
             yield "--enable-aqua=yes"
@@ -264,19 +258,19 @@ class Tix(ModuleBuilder):
     def version(self):
         return "8.4.3.6"
 
-    def xenv_cflags(self):
+    def xenv_CFLAGS(self):
         # Needed to avoid error: Getting no member named 'result' in 'struct Tcl_Interp'
         yield "-DUSE_INTERP_RESULT"
         yield "-Wno-implicit-function-declaration"  # Allows to not fail compilation due to missing 'panic' symbol
         yield self.checked_deps_folder("include", prefix="-I")
 
-    def xenv_ldflags(self):
-        yield self.checked_deps_folder("lib", prefix="-L")
+    def xenv_LDFLAGS(self):
+        yield f"-L{self.deps_lib}"
 
     def c_configure_args(self):
         yield "--enable-shared=no --enable-threads"
-        yield f"--with-tcl={self.deps}/lib"
-        yield f"--with-tk={self.deps}/lib"
+        yield f"--with-tcl={self.deps_lib}"
+        yield f"--with-tk={self.deps_lib}"
         yield "--without-x"
 
     def _do_linux_compile(self):
@@ -298,13 +292,13 @@ class TkInter(ModuleBuilder):
 
         return super().auto_use_with_reason(target)
 
-    @property
-    def version(self):
-        return "8.6.10"
-
     def required_submodules(self):
         """Optional required sub-modules to be compiled"""
         return [Tcl, Tk, Tix]
+
+    @property
+    def version(self):
+        return "8.6.10"
 
 
 class Uuid(ModuleBuilder):

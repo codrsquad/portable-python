@@ -9,27 +9,25 @@ from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl,
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
+    m_name = "cpython"
     available_modules = [Zlib, Bzip2, LibFFI, Openssl, Readline, Xz, Sqlite, Bdb, Gdbm, TkInter, Uuid]
 
-    m_name = "cpython"
-
-    base_url = "https://www.python.org/ftp/python"
     _main_python = None
 
     @property
     def url(self):
         """Url of source tarball"""
-        return f"{self.base_url}/{self.version}/Python-{self.version}.tar.xz"
+        return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
 
-    def xenv_cflags(self):
+    def xenv_CFLAGS(self):
         yield "-Wno-unused-command-line-argument"
         yield self.checked_deps_folder("include", prefix="-I")
         yield self.checked_deps_folder("include/readline", prefix="-I")
         yield self.checked_deps_folder("include/openssl", prefix="-I")
         yield self.checked_deps_folder("include/uuid", prefix="-I")
 
-    def xenv_ldflags(self):
-        yield self.checked_deps_folder("lib", prefix="-L")
+    def xenv_LDFLAGS(self):
+        yield f"-L{self.deps_lib}"
 
     def c_configure_args(self):
         openssl = self.setup.active_module(Openssl)
@@ -41,7 +39,7 @@ class Cpython(PythonBuilder):
 
         if self.setup.active_module(TkInter):
             yield f"--with-tcltk-includes=-I{self.deps}/include"
-            yield f"--with-tcltk-libs=-L{self.deps}/lib"
+            yield f"--with-tcltk-libs=-L{self.deps_lib}"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
