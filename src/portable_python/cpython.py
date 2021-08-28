@@ -32,15 +32,14 @@ class Cpython(PythonBuilder):
         yield self.checked_deps_folder("lib", prefix="-L")
 
     def c_configure_args(self):
-        openssl = self.setup.get_module(Openssl)
+        openssl = self.setup.active_module(Openssl)
         yield "--with-ensurepip=%s" % ("upgrade" if openssl else "install")
         yield "--enable-optimizations"
         yield "--with-lto"
         if openssl:
             yield f"--with-openssl={self.deps}"
 
-        tkinter = self.setup.get_module(TkInter)
-        if tkinter:
+        if self.setup.active_module(TkInter):
             yield f"--with-tcltk-includes=-I{self.deps}/include"
             yield f"--with-tcltk-libs=-L{self.deps}/lib"
 
@@ -60,11 +59,8 @@ class Cpython(PythonBuilder):
 
         return self._main_python or "python"
 
-    def _prepare(self):
-        self.setup.fix_lib_permissions()
-
     def _finalize(self):
-        if self.setup.get_module(Openssl):
+        if self.setup.active_module(Openssl):
             self.run(self.bin_folder / self.main_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel")
 
         if self.setup.static:

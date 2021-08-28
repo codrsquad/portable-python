@@ -9,8 +9,7 @@ def test_edge_cases():
     setup = BuildSetup(latest, target="linux-x86_64")
     assert setup.target_system.is_linux
     assert str(setup).endswith(f"build/cpython-{latest}")
-    assert str(setup.python_builder) == f"cpython:{latest}"
-    assert str(PythonVersions.cpython).startswith("cpython ")
+    assert str(PythonVersions.cpython)
 
     mb = ModuleBuilder()
     assert not mb.url
@@ -41,12 +40,12 @@ def test_inspect_module(logged):
     portable_python._inspect.main(["sysconfig"])
     assert "VERSION:" in logged.pop()
 
-    all_modules = portable_python._inspect.get_modules("all")
+    all_modules = portable_python._inspect.get_import_names("all")
     assert "_tracemalloc" in all_modules
 
     # Verify convenience parsing works
-    base = portable_python._inspect.get_modules("")
-    with_foo = portable_python._inspect.get_modules("+,,foo")
+    base = portable_python._inspect.get_import_names("")
+    with_foo = portable_python._inspect.get_import_names("+,,foo")
     assert with_foo == base + ["foo"]
 
     assert portable_python._inspect.get_report(["readline", "sys", "zlib"])

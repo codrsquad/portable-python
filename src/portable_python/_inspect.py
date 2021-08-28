@@ -72,7 +72,7 @@ def get_report(modules):
     return report
 
 
-def get_modules(names):
+def get_import_names(names):
     default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
     if not names:
         names = default
@@ -114,7 +114,7 @@ def main(args=None):
 
         return
 
-    report = get_report(get_modules(names))
+    report = get_report(get_import_names(names))
     print(json.dumps(report, indent=2, sort_keys=True))
 
 

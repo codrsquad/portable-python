@@ -84,7 +84,7 @@ How it works
 
     from portable_python import BuildSetup
 
-    setup = BuildSetup("3.9.6")
+    setup = BuildSetup("cpython:3.9.6")
     setup.compile()
 
 
@@ -133,8 +133,8 @@ Build folder structure
     build/
         cpython-3.9.6/      # Build artifacts for corresponding version are here
             3.9.6/          # Full installation (after build completes)
-            build/          # Source code of various modules are here
-            deps/           # --prefix=/deps passed to all ./configure scripts
+            build/          # Source code of various needed/selected modules are here
+            deps/           # --prefix=.../deps passed to all ./configure scripts
             logs/           # Logs for each module build are here, in order of build
         downloads/
             openssl-1.1.1k.tar.gz           # Downloaded artifacts (downloaded only once)

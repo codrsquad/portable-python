@@ -1,3 +1,13 @@
+"""
+Designed to be used via portable-python CLI.
+Can be used programmatically too, example usage:
+
+    from portable_python import BuildSetup
+
+    setup = BuildSetup("cpython:3.9.6")
+    setup.compile()
+"""
+
 import contextlib
 import json
 import logging
@@ -19,7 +29,10 @@ REST_CLIENT = RestClient()
 
 
 class BuildSetup:
-    """General build settings"""
+    """
+    This class drives the compilation, external modules first, then the target python itself.
+    All modules are compiled in the same manner, follow the same conventional build layout.
+    """
 
     prefix = None
     static = True
@@ -42,29 +55,55 @@ class BuildSetup:
         self.attached_modules_order = []
         self.attached_modules_map = {}
         builder = PythonVersions.get_builder(self.python_spec.family)
-        self.python_builder = self.attach_module(builder)  # type: PythonBuilder
-        desired = self.python_builder.get_modules(modules)
-        self.active_modules = self.attach_modules(desired)
+        self.python_builder = self._attach_module(builder)  # type: PythonBuilder
+        selected = self.python_builder.resolved_modules(modules)
+        self.selected_modules = self.attach_modules(selected)
 
     def __repr__(self):
         return runez.short(self.build_folder)
 
+    def active_module(self, name):
+        """
+        Args:
+            name (type | str): Name to lookup
+
+        Returns:
+            (ModuleBuilder): Corresponding builder object, if selected for compilation
+        """
+        name = getattr(name, "m_name", name)
+        for module in self.selected_modules:
+            if name == module.m_name:
+                return module
+
     def attach_modules(self, modules, parent=None):
+        """Instances of 'modules' attached (if need be) to this setup object"""
         result = []
-        changed = 0
         for module in modules:
             if not isinstance(module, ModuleBuilder):
-                changed += 1
-                module = self.attach_module(module)  # type: ModuleBuilder
+                module = self._attach_module(module)  # type: ModuleBuilder
                 if module.parent is not parent:
                     assert module.parent is None
                     module.parent = parent
 
+            assert module.setup is self
             result.append(module)
 
-        return result if changed else modules
+        return result
 
-    def attach_module(self, module):
+    @runez.log.timeit("Overall compilation", color=runez.bold)
+    def compile(self, x_debug=None):
+        """Compile selected python family and version"""
+        with runez.Anchored(*self.anchors):
+            runez.ensure_folder(self.build_folder, clean=not x_debug)
+            count = runez.plural(self.selected_modules, "external module")
+            names = runez.joined(self.selected_modules)
+            LOG.debug("Compiling %s: %s" % (count, names))
+            for m in self.selected_modules:
+                m.compile(x_debug)
+
+            self.python_builder.compile(x_debug)
+
+    def _attach_module(self, module):
         current = self.attached_modules_map.get(module.m_name)
         if not current:
             assert issubclass(module, ModuleBuilder)
@@ -82,15 +121,6 @@ class BuildSetup:
 
         return current
 
-    def fix_lib_permissions(self):
-        """Some libs get funky permissions for some reason"""
-        for path in runez.ls_dir(self.deps_folder / "lib"):
-            expected = 0o755 if path.is_dir() else 0o644
-            current = path.stat().st_mode & 0o777
-            if current != expected:
-                LOG.info("Corrected permissions for %s" % runez.short(path))
-                path.chmod(expected)
-
     def _get_logs_path(self, name):
         """Log file to use for a compilation, name is such that alphabetical sort conserves the order in which compilations occurred"""
         runez.ensure_folder(self.logs_folder, logger=None)
@@ -100,30 +130,12 @@ class BuildSetup:
         runez.delete(path, logger=None)
         return path
 
-    def get_module(self, mod):
-        for module in self.active_modules:
-            if mod.m_name == module.m_name:
-                return module
-
-    @runez.log.timeit("Overall compilation", color=runez.bold)
-    def compile(self, x_debug=None):
-        with runez.Anchored(*self.anchors):
-            runez.ensure_folder(self.build_folder, clean=not x_debug)
-            count = runez.plural(self.active_modules, "external module")
-            names = runez.joined(self.active_modules)
-            LOG.debug("Compiling %s: %s" % (count, names))
-            for m in self.active_modules:
-                m.compile(x_debug)
-
-            self.python_builder.compile(x_debug)
-
 
 class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
     parent: "ModuleBuilder" = None
     setup: BuildSetup = None
-    depends_on = None  # type: list
 
     m_name: str = None  # Module name
     m_src_build: pathlib.Path = None  # Folder where this module's source code is unpacked and built
@@ -173,6 +185,9 @@ class ModuleBuilder:
         """Path where source tarball for this module resides"""
         if self.url:
             return self.setup.downloads_folder / os.path.basename(self.url)
+
+    def required_submodules(self) -> list:
+        """Optional required sub-modules to be compiled"""
 
     def exported_env_vars(self):
         """Environment variables to set -> all generators of this object prefixed with 'xenv_'"""
@@ -260,11 +275,12 @@ class ModuleBuilder:
 
             return
 
-        print(Header.aerated(self))
+        print(Header.aerated(str(self)))
         with self.captured_logs():
-            if self.depends_on:
-                self.depends_on = self.setup.attach_modules(self.depends_on, parent=self)
-                for module in self.depends_on:
+            submodules = self.required_submodules()
+            if submodules:
+                submodules = self.setup.attach_modules(submodules, parent=self)
+                for module in submodules:
                     module.compile(x_debug)
 
             self.unpack()
@@ -326,7 +342,7 @@ class PythonBuilder(ModuleBuilder):
     def is_known_module_name(cls, module_name):
         return module_name in cls.available_module_names()
 
-    def get_modules(self, module_names):
+    def resolved_modules(self, module_names):
         if not module_names:
             return self._auto_detected_modules()
 
@@ -342,9 +358,8 @@ class PythonBuilder(ModuleBuilder):
             selected = [x.m_name for x in self._auto_detected_modules()]
 
         for name in runez.flattened(module_names, keep_empty=None, split=","):
-            remove = False
+            remove = name[0] == "-"
             if name[0] in "+-":
-                remove = name[0] == "-"
                 name = name[1:]
 
             if not self.is_known_module_name(name):
@@ -419,6 +434,15 @@ class PythonBuilder(ModuleBuilder):
     @property
     def version(self):
         return self.setup.python_spec.version
+
+    def _prepare(self):
+        # Some libs get funky permissions for some reason
+        for path in runez.ls_dir(self.deps / "lib"):
+            expected = 0o755 if path.is_dir() else 0o644
+            current = path.stat().st_mode & 0o777
+            if current != expected:
+                LOG.info("Corrected permissions for %s (was %s)" % (runez.short(path), oct(current)))
+                path.chmod(expected)
 
 
 class PythonInspector:

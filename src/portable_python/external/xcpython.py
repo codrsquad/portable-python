@@ -288,7 +288,6 @@ class Tix(ModuleBuilder):
 class TkInter(ModuleBuilder):
     """Build tcl/tk"""
 
-    depends_on = [Tcl, Tk, Tix]
     m_name = "tkinter"
     m_telltale = ["{include}/tk", "{include}/tk.h"]
 
@@ -302,6 +301,10 @@ class TkInter(ModuleBuilder):
     @property
     def version(self):
         return "8.6.10"
+
+    def required_submodules(self):
+        """Optional required sub-modules to be compiled"""
+        return [Tcl, Tk, Tix]
 
 
 class Uuid(ModuleBuilder):

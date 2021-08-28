@@ -30,7 +30,7 @@ class VersionFamily:
         self.versions = sorted((Version(v) for v in versions.split()), reverse=True)
 
     def __repr__(self):
-        return "%s [%s]" % (self.family, runez.plural(self.versions, "version"))
+        return runez.plural(self.versions, "%s version" % self.family)
 
     @property
     def latest(self) -> Version:
