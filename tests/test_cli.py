@@ -37,7 +37,7 @@ def test_build(cli):
 
     # Simulate presence of some key files to verify code that is detecting them is hit
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
-    deps_dir = bf / "usr/local"
+    deps_dir = bf / "deps"
     runez.touch(deps_dir / "bin/bzcat", logger=None)
     runez.touch(deps_dir / "include/readline/readline.h", logger=None)
     runez.touch(deps_dir / "lib/libssl.a", logger=None)
