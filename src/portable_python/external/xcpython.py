@@ -10,7 +10,7 @@ class Bdb(ModuleBuilder):
 
     m_name = "bdb"
     m_build_cwd = "build_unix"
-    m_telltale = None  # "{include}/db.h"  # TODO: Verify how this gets compiled... doesn't seem to be picked up
+    m_telltale = "{include}/ndbm.h"
 
     @property
     def url(self):
@@ -53,7 +53,7 @@ class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
     m_name = "gdbm"
-    m_telltale = "{include}/gdbm.h"
+    m_telltale = True  # "{include}/gdbm.h"  # needed for static linking
 
     @classmethod
     def auto_use_with_reason(cls, target):

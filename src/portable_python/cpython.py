@@ -30,6 +30,7 @@ class Cpython(PythonBuilder):
         yield f"-L{self.deps_lib}"
 
     def c_configure_args(self):
+        # See https://wiki.python.org/moin/BuildStatically
         yield "--with-ensurepip=install"
         yield "--enable-optimizations"
         yield "--with-lto"

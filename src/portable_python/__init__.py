@@ -500,6 +500,12 @@ class InspectionReport:
 
     @staticmethod
     def lib_version(path):
+        """
+        TODO: ldd foo.so
+        linux-vdso.so.1 (0x00007ffdcfb89000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fa621f48000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fa622353000)
+        """
         if path and path.endswith(".so"):
             v = runez.joined(InspectionReport.lib_version_via_otool(path), keep_empty=None)
             if v:
