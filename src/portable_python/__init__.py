@@ -221,7 +221,8 @@ class ModuleBuilder:
         if prefix:
             prefix = f"--prefix={prefix}"
 
-        cmd = runez.flattened(program, prefix, *args, keep_empty=None, split=" ")
+        program = program.split()
+        cmd = runez.flattened(*program, prefix, *args, keep_empty=None)
         return self.run(*cmd)
 
     def run_make(self, *args, program="make", cpu_count=None):

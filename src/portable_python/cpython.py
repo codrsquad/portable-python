@@ -1,6 +1,7 @@
 import os
 
 import runez
+from runez.pyenv import Version
 
 from portable_python import LOG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, TkInter, Uuid, Xz, Zlib
@@ -39,12 +40,16 @@ class Cpython(PythonBuilder):
         if self.setup.active_module(Openssl):
             yield f"--with-openssl={self.deps}"
 
-        if self.setup.active_module(TkInter):
+        tkinter = self.setup.active_module(TkInter)
+        if tkinter:
+            mm = Version.from_text(tkinter.version)
+            mm = "%s.%s" % (mm.major, mm.minor)
             yield f"--with-tcltk-includes=-I{self.deps}/include"
-            yield f"--with-tcltk-libs=-L{self.deps_lib}"
+            yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{mm} -ltk{mm}"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
+        # TODO: Remove mentions of /usr/local in configure, Makefile?
         self.run_make()
         self.run_make("install", f"DESTDIR={self.build_base}")
 
@@ -65,11 +70,9 @@ class Cpython(PythonBuilder):
         if has_ssl.succeeded and has_ssl.output and "openssl" in has_ssl.output.lower():
             self.run(bin_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel", fatal=False)
 
-        if self.setup.static:
-            self._symlink_static_libs()
-
         self.correct_symlinks()
         self.cleanup_distribution()
+        self._symlink_static_libs()
         self.run(bin_python, "-mcompileall")
         runez.compress(self.install_folder, self.tarball_path)
 
@@ -123,10 +126,7 @@ class Cpython(PythonBuilder):
         if basename in self.cleanable_basenames:
             return True
 
-        if any(basename.startswith(x) for x in self.cleanable_prefixes):
-            return True
-
-        return any(basename.endswith(x) for x in self.cleanable_suffixes)
+        return any(basename.startswith(x) for x in self.cleanable_prefixes) or any(basename.endswith(x) for x in self.cleanable_suffixes)
 
     def cleanup_distribution(self):
         cleaned = []

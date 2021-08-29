@@ -131,7 +131,7 @@ class Openssl(ModuleBuilder):
     def c_configure_args(self):
         yield f"--openssldir={self.deps}"
         yield "-DPEDANTIC"
-        yield "no-shared", "no-tests"
+        yield "no-shared", "no-idea", "no-tests"
         if self.target.is_macos:
             yield "darwin64-%s-cc" % self.target.architecture
 
@@ -140,7 +140,8 @@ class Openssl(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./Configure", self.c_configure_args())
-        self.run_make()
+        self.run_make("depend")
+        self.run_make("all")
         self.run_make("install_sw")  # See https://github.com/openssl/openssl/issues/8170
 
 
@@ -159,7 +160,7 @@ class Readline(ModuleBuilder):
         return "8.1"
 
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--enable-shared=no --enable-static=yes --disable-install-examples --with-curses")
+        self.run_configure("./configure", "--enable-shared=no", "--enable-static=yes", "--disable-install-examples", "--with-curses")
         self.run_make()
         self.run_make("install")
 
@@ -189,7 +190,9 @@ class Sqlite(ModuleBuilder):
         yield "-fPIC"
 
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--enable-shared=no --enable-static=yes --disable-tcl --disable-readline --with-pic=yes")
+        self.run_configure(
+            "./configure", "--enable-shared=no", "--enable-static=yes", "--disable-tcl", "--disable-readline", "--with-pic=yes"
+        )
         self.run_make()
         self.run_make("install")
 
@@ -210,7 +213,7 @@ class Tcl(ModuleBuilder):
                 runez.delete(path)
 
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--enable-shared=no --enable-threads")
+        self.run_configure("./configure", "--enable-shared=no", "--enable-threads")
         self.run_make()
         self.run_make("install")
         self.run_make("install-private-headers")
@@ -232,7 +235,8 @@ class Tk(ModuleBuilder):
         yield f"-L{self.deps_lib}"
 
     def c_configure_args(self):
-        yield "--enable-shared=no --enable-threads"
+        yield "--enable-shared=no"
+        yield "--enable-threads"
         yield f"--with-tcl={self.deps_lib}"
         yield "--without-x"
         if self.target.is_macos:
@@ -268,7 +272,8 @@ class Tix(ModuleBuilder):
         yield f"-L{self.deps_lib}"
 
     def c_configure_args(self):
-        yield "--enable-shared=no --enable-threads"
+        yield "--enable-shared=no"
+        yield "--enable-threads"
         yield f"--with-tcl={self.deps_lib}"
         yield f"--with-tk={self.deps_lib}"
         yield "--without-x"
@@ -305,7 +310,7 @@ class Uuid(ModuleBuilder):
     # TODO: fails to link on linux without uuid-dev (works correctly if present)
 
     m_name = "uuid"
-    m_telltale = True  # "{include}/uuid/uuid.h"  # for static link
+    m_telltale = "{include}/uuid/uuid.h"
 
     @property
     def url(self):
@@ -319,7 +324,7 @@ class Uuid(ModuleBuilder):
         yield "-fPIC"
 
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--enable-shared=no --enable-static=yes --with-pic=yes")
+        self.run_configure("./configure", "--enable-shared=no", "--enable-static=yes", "--with-pic=yes")
         self.run_make()
         self.run_make("install")
 
@@ -340,9 +345,9 @@ class Xz(ModuleBuilder):
     def _do_linux_compile(self):
         self.run_configure(
             "./configure",
-            "--enable-shared=no --enable-static=yes --with-pic=yes",
-            "--disable-doc --disable-xz --disable-xzdec --disable-lzmadec",
-            "--disable-lzmainfo --disable-lzma-links --disable-scripts --disable-rpath",
+            "--enable-shared=no", "--enable-static=yes", "--with-pic=yes",
+            "--disable-dependency-tracking", "--disable-doc", "--disable-xz", "--disable-xzdec", "--disable-lzmadec",
+            "--disable-lzmainfo", "--disable-lzma-links", "--disable-scripts", "--disable-rpath",
         )
         self.run_make()
         self.run_make("install")

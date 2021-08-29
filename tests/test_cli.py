@@ -37,10 +37,11 @@ def test_build(cli):
 
     # Simulate presence of some key files to verify code that is detecting them is hit
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
-    runez.touch(bf / "deps/bin/bzcat", logger=None)
-    runez.touch(bf / "deps/include/readline/readline.h", logger=None)
-    runez.touch(bf / "deps/lib/libssl.a", logger=None)
-    os.chmod(bf / "deps/lib/libssl.a", 0o755)
+    deps_dir = bf / "usr/local"
+    runez.touch(deps_dir / "bin/bzcat", logger=None)
+    runez.touch(deps_dir / "include/readline/readline.h", logger=None)
+    runez.touch(deps_dir / "lib/libssl.a", logger=None)
+    os.chmod(deps_dir / "lib/libssl.a", 0o755)
     lib_static = f"libpython{mm}.a"
     lp = bf / f"{v}/lib"
     lpc = lp / f"python{mm}/config-{mm}-darwin"
@@ -53,12 +54,11 @@ def test_build(cli):
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "--static")
     assert cli.succeeded
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
-    assert f"Corrected permissions for build/cpython-{v}/deps/lib/libssl.a" in cli.logged
+    assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
     assert cli.succeeded
     assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
-    assert f"Would symlink {lib2}" not in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
