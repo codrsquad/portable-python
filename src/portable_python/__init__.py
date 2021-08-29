@@ -152,9 +152,10 @@ class ModuleBuilder:
             return True, runez.green("always compiled")
 
         for telltale in runez.flattened(cls.m_telltale, keep_empty=None):
-            path = target.formatted_path(telltale)
-            if os.path.exists(path):
-                return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
+            for sys_include in runez.flattened(target.sys_include):
+                path = telltale.format(include=sys_include, arch=target.architecture, platform=target.platform)
+                if os.path.exists(path):
+                    return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
 
         return True, "%s, no %s" % (runez.green("needed"), cls.m_telltale)
 
@@ -432,11 +433,12 @@ class PythonBuilder(ModuleBuilder):
     def _prepare(self):
         # Some libs get funky permissions for some reason
         for path in runez.ls_dir(self.deps_lib):
-            expected = 0o755 if path.is_dir() else 0o644
-            current = path.stat().st_mode & 0o777
-            if current != expected:
-                LOG.info("Corrected permissions for %s (was %s)" % (runez.short(path), oct(current)))
-                path.chmod(expected)
+            if not path.name.endswith(".la"):
+                expected = 0o755 if path.is_dir() else 0o644
+                current = path.stat().st_mode & 0o777
+                if current != expected:
+                    LOG.info("Corrected permissions for %s (was %s)" % (runez.short(path), oct(current)))
+                    path.chmod(expected)
 
 
 class PythonInspector:
@@ -574,13 +576,10 @@ class TargetSystem:
             self.sys_include = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include"
 
         else:
-            self.sys_include = "/usr/include"
+            self.sys_include = ["/usr/include", f"/usr/include/{self.architecture}-{self.platform}-gnu"]
 
     def __repr__(self):
         return "%s-%s" % (self.platform, self.architecture)
-
-    def formatted_path(self, path) -> str:
-        return path.format(include=self.sys_include, arch=self.architecture, platform=self.platform)
 
     @property
     def is_linux(self):

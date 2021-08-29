@@ -10,6 +10,7 @@ class Bdb(ModuleBuilder):
 
     m_name = "bdb"
     m_build_cwd = "build_unix"
+    m_telltale = None  # "{include}/db.h"  # TODO: Verify how this gets compiled... doesn't seem to be picked up
 
     @property
     def url(self):
@@ -56,9 +57,6 @@ class Gdbm(ModuleBuilder):
 
     @classmethod
     def auto_use_with_reason(cls, target):
-        if target.is_macos:
-            return False, runez.brown("only on demand on macos")  # Can build, but waste of time
-
         return super().auto_use_with_reason(target)
 
     @property
@@ -88,9 +86,10 @@ class Gdbm(ModuleBuilder):
 
 
 class LibFFI(ModuleBuilder):
+    # TODO: fails to build on linux without libffi-dev: undefined symbol: ffi_prep_cif
 
     m_name = "libffi"
-    m_telltale = ["{include}/ffi/ffi.h"]  # TODO: fails to build on linux without libffi-dev
+    m_telltale = True  # ["{include}/ffi.h", "{include}/ffi/ffi.h"]  # needed for static linking
 
     @property
     def url(self):
@@ -166,9 +165,10 @@ class Readline(ModuleBuilder):
 
 
 class Sqlite(ModuleBuilder):
+    # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
 
     m_name = "sqlite"
-    m_telltale = "{include}/sqlite3.h"
+    m_telltale = True  # "{include}/sqlite3.h"  # for static link
 
     @classmethod
     def auto_use_with_reason(cls, target):
@@ -302,9 +302,10 @@ class TkInter(ModuleBuilder):
 
 
 class Uuid(ModuleBuilder):
+    # TODO: fails to link on linux without uuid-dev (works correctly if present)
 
     m_name = "uuid"
-    m_telltale = "{include}/uuid/uuid.h"
+    m_telltale = True  # "{include}/uuid/uuid.h"  # for static link
 
     @property
     def url(self):
@@ -326,7 +327,7 @@ class Uuid(ModuleBuilder):
 class Xz(ModuleBuilder):
 
     m_name = "xz"
-    m_telltale = True
+    m_telltale = "{include}/lzma.h"
 
     @property
     def url(self):
@@ -350,7 +351,7 @@ class Xz(ModuleBuilder):
 class Zlib(ModuleBuilder):
 
     m_name = "zlib"
-    m_telltale = True
+    m_telltale = "{include}/zlib.h"
 
     @property
     def url(self):

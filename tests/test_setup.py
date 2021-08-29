@@ -1,6 +1,6 @@
 import runez
 
-from portable_python import BuildSetup, ModuleBuilder, PythonInspector
+from portable_python import BuildSetup, ModuleBuilder, PythonInspector, TargetSystem
 from portable_python.versions import PythonVersions
 
 
@@ -12,6 +12,7 @@ def test_edge_cases():
     assert str(PythonVersions.cpython)
 
     mb = ModuleBuilder()
+    assert mb.auto_use_with_reason(TargetSystem()) == (False, "only on demand (no auto-detection available)")
     assert not mb.url
     assert not mb.version
 

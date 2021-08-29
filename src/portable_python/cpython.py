@@ -10,7 +10,7 @@ class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
     m_name = "cpython"
-    available_modules = [Zlib, Bzip2, LibFFI, Openssl, Readline, Xz, Sqlite, Bdb, Gdbm, TkInter, Uuid]
+    available_modules = [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, TkInter, Uuid]
 
     _main_python = None
 
@@ -34,6 +34,7 @@ class Cpython(PythonBuilder):
         yield "--enable-optimizations"
         yield "--with-lto"
         yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
+        yield "--with-system-ffi=%s" % ("no" if self.setup.active_module(LibFFI) else "yes")
         if self.setup.active_module(Openssl):
             yield f"--with-openssl={self.deps}"
 
