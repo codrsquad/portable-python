@@ -30,13 +30,24 @@ class Cpython(PythonBuilder):
     def xenv_LDFLAGS(self):
         yield f"-L{self.deps_lib}"
 
+    def xenv_PKG_CONFIG_PATH(self):
+        yield f"{self.deps_lib}/pkgconfig"
+
     def c_configure_args(self):
         # See https://wiki.python.org/moin/BuildStatically
-        yield "--with-ensurepip=install"
+        yield "--with-ensurepip=upgrade"
         yield "--enable-optimizations"
         yield "--with-lto"
         yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
         yield "--with-system-ffi=%s" % ("no" if self.setup.active_module(LibFFI) else "yes")
+        db_order = [
+            self.setup.active_module(Gdbm) and "gdbm",
+            self.setup.active_module(Bdb) and "bdb",
+        ]
+        db_order = runez.joined(db_order, keep_empty=None, delimiter=":")
+        if db_order:
+            yield f"--with-dbmliborder={db_order}"
+
         if self.setup.active_module(Openssl):
             yield f"--with-openssl={self.deps}"
 
@@ -54,9 +65,13 @@ class Cpython(PythonBuilder):
         self.run_make("install", f"DESTDIR={self.build_base}")
 
     @property
+    def python_mm(self):
+        return "python%s.%s" % (self.version.major, self.version.minor)
+
+    @property
     def main_python(self):
         if self._main_python is None:
-            main_python_candidates = ("python", "python%s" % self.version.major, "python%s.%s" % (self.version.major, self.version.minor))
+            main_python_candidates = ("python", "python%s" % self.version.major, self.python_mm)
             for f in runez.ls_dir(self.bin_folder):
                 if f.name in main_python_candidates:
                     self._main_python = runez.basename(f, extension_marker=None, follow=True)
@@ -68,7 +83,7 @@ class Cpython(PythonBuilder):
         bin_python = self.bin_folder / self.main_python
         has_ssl = runez.run(bin_python, "-c", "import _ssl; print(_ssl.OPENSSL_VERSION)", fatal=False)
         if has_ssl.succeeded and has_ssl.output and "openssl" in has_ssl.output.lower():
-            self.run(bin_python, "-mpip", "install", "-U", "pip", "setuptools", "wheel", fatal=False)
+            self.run(bin_python, "-mpip", "install", "-U", "wheel", fatal=False)
 
         self.correct_symlinks()
         self.cleanup_distribution()
@@ -97,14 +112,13 @@ class Cpython(PythonBuilder):
         r = {
             "__phello__.foo.py",
             "__pycache__",  # Clear it because lots of unneeded stuff is in there initially, -mcompileall regenerates it
-            "_bundled",
             "idle_test",
             "test",
             "tests",
         }
         if not self.setup.static:
             # Don't keep static compilation file unless --static
-            r.add(f"libpython{self.version.major}.{self.version.minor}.a")
+            r.add(f"lib{self.python_mm}.a")
 
         return r
 
@@ -117,16 +131,8 @@ class Cpython(PythonBuilder):
 
         return r
 
-    @runez.cached_property
-    def cleanable_suffixes(self):
-        """Files/folders that are not useful in deliverable, but name varies, can be identified by their suffix"""
-        return {"_failed.so"}
-
     def should_clean(self, basename):
-        if basename in self.cleanable_basenames:
-            return True
-
-        return any(basename.startswith(x) for x in self.cleanable_prefixes) or any(basename.endswith(x) for x in self.cleanable_suffixes)
+        return basename in self.cleanable_basenames or any(basename.startswith(x) for x in self.cleanable_prefixes)
 
     def cleanup_distribution(self):
         cleaned = []

@@ -53,7 +53,7 @@ class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
     m_name = "gdbm"
-    m_telltale = True  # "{include}/gdbm.h"  # needed for static linking
+    m_telltale = "{include}/gdbm.h"  # TODO: check .so on linux
 
     @classmethod
     def auto_use_with_reason(cls, target):
@@ -67,15 +67,15 @@ class Gdbm(ModuleBuilder):
     def version(self):
         return "1.18.1"
 
-    def xenv_CFLAGS(self):
-        yield "-fPIC"
-
     def _do_linux_compile(self):
         self.run_configure(
             "./configure",
             "--enable-shared=no",
             "--enable-static=yes",
             "--with-pic=yes",
+            "--enable-libgdbm-compat",
+            "--disable-dependency-tracking",
+            "--disable-silent-rules",
             "--disable-rpath",
             "--without-libiconv-prefix",
             "--without-libintl-prefix",
@@ -83,13 +83,14 @@ class Gdbm(ModuleBuilder):
         )
         self.run_make()
         self.run_make("install")
+        runez.move(self.deps / "include/ndbm.h", self.deps / "include/gdbm-ndbm.h")
 
 
 class LibFFI(ModuleBuilder):
     # TODO: fails to build on linux without libffi-dev: undefined symbol: ffi_prep_cif
 
     m_name = "libffi"
-    m_telltale = True  # ["{include}/ffi.h", "{include}/ffi/ffi.h"]  # needed for static linking
+    m_telltale = True  # ["{include}/ffi.h", "{include}/ffi/ffi.h"]  # TODO: check .so on linux
 
     @property
     def url(self):
@@ -169,7 +170,7 @@ class Sqlite(ModuleBuilder):
     # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
 
     m_name = "sqlite"
-    m_telltale = True  # "{include}/sqlite3.h"  # for static link
+    m_telltale = True  # "{include}/sqlite3.h"  # TODO: check .so on linux
 
     @classmethod
     def auto_use_with_reason(cls, target):
