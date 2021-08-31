@@ -461,40 +461,14 @@ class ModuleInfo:
 
             return runez.bold(version)
 
-    @staticmethod
-    def lib_version(path):
-        """
-        TODO: ldd foo.so
-        linux-vdso.so.1 (0x00007ffdcfb89000)
-        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fa621f48000)
-        /lib64/ld-linux-x86-64.so.2 (0x00007fa622353000)
-        """
-        if path and path.endswith(".so"):
-            v = runez.joined(ModuleInfo.lib_version_via_otool(path), keep_empty=None)
-            if v:
-                return v
-
-    @staticmethod
-    def lib_version_via_otool(path):
-        aliases = dict(ctypes="libffi", readline="curses,libedit", tkinter="tcl", zlib="libz")
-        if path and os.path.exists(path):
-            r = runez.run("otool", "-L", path, fatal=False, logger=None)
-            if r.succeeded:
-                m = re.match(r"^_?([^.]+).*$", os.path.basename(path))
-                if m:
-                    name = m.group(1).lower()
-                    names = set(runez.flattened(name, aliases.get(name), keep_empty=None, split=","))
-                    for line in r.output.splitlines():
-                        m = re.match(r"^\s*(\S+).+current version ([0-9.]+).*$", line)
-                        if m:
-                            lb = m.group(1).lower()
-                            if any(x in lb for x in names):
-                                yield m.group(2)
-
     @property
     def additional_info(self):
         if self.filepath:
             path = runez.to_path(self.filepath)
+            if path.name.endswith(".so"):
+                info = SoInfo(self.filepath)
+                return info.report()
+
             if path.name.startswith("__init__."):
                 path = path.parent
 
@@ -504,8 +478,7 @@ class ModuleInfo:
             if cp.startswith(pp):
                 path = runez.to_path(cp[len(pp) + 1:])
 
-            info = self.lib_version(self.filepath)
-            return "%s %s" % (runez.green(path), info or "")
+            return runez.green(path)
 
         if self.note and "No module named" not in self.note:
             return self.note
@@ -514,6 +487,100 @@ class ModuleInfo:
         version = self.represented_version(self.version)
         info = self.additional_info
         yield self.name, runez.joined(version, info, keep_empty=None)
+
+
+class SoInfo:
+
+    _aliases = dict(ctypes="ffi,c.", curses="ncurses", readline="edit,curses,ncurses", tkinter="tcl,X11", zlib="z.")
+
+    def __init__(self, path):
+        self.path = path
+        self.short_name = os.path.basename(path).partition(".")[0]
+        self.top_levels = {}
+        self.used_libs = []
+        self.versions = {}
+        self.notes = []
+        otool = runez.run("otool", "-L", self.path, fatal=False, logger=None)
+        ldd = runez.run("ldd", self.path, fatal=False, logger=None)
+        self.extract_info(otool.output, ldd.output)
+
+    def __repr__(self):
+        return self.short_name
+
+    def extract_info(self, otool, ldd):
+        if otool:
+            for line in otool.splitlines():
+                line = line.strip()
+                if line:
+                    m = re.match(r"^(\S+).+current version ([0-9.]+).*$", line)
+                    if m:
+                        self.add_ref(m.group(1), m.group(2))
+
+        elif ldd:
+            for line in ldd.splitlines():
+                line = line.strip()
+                if line:
+                    parts = line.split()
+                    count = len(parts)
+                    if count == 2:
+                        path = parts[0]
+                        if path.startswith("linux-vdso"):
+                            continue
+
+                    else:
+                        path = parts[2]
+
+                    if path == "not":
+                        self.notes.append(runez.red(runez.joined(parts[:-1])))
+                        continue
+
+                    m = re.match(r"^.*?([\d.]+)[^\d]*$", os.path.basename(path))
+                    version = m.group(1) if m else "?"
+                    self.add_ref(path, version.strip("."))
+
+    def report(self):
+        result = [runez.green("%s*.so" % self.short_name)]
+        if self.notes:
+            result.extend(self.notes)
+
+        for k in sorted(set(self.invalid_top_levels())):
+            result.append(runez.red(k))
+
+        return runez.joined(result)
+
+    def invalid_top_levels(self):
+        for k, v in self.top_levels.items():
+            if v != "lib":
+                m = re.match(r"^.*\.\.\.\./(.*)$", k)
+                if m:
+                    k = m.group(1)
+
+                yield k
+
+    def associated_name(self, basename):
+        if basename.startswith("lib"):
+            basename = basename[3:]
+
+        pyname = self.short_name.strip("_")
+        names = runez.flattened(pyname, self._aliases.get(pyname), keep_empty=None, split=",", unique=True)
+        for name in names:
+            if basename.startswith(name):
+                return name.strip(".")
+
+    def add_ref(self, path, version):
+        basename = os.path.basename(path)
+        associated = self.associated_name(basename)
+        if associated:
+            self.notes.append(runez.blue("%s:%s" % (associated, version)))
+
+        self.used_libs.append(path)
+        top_level = runez.to_path(path).parts[1:3]
+        top_level = runez.joined(top_level, delimiter="/")
+        if top_level.startswith(("lib", "System", "usr/lib")):
+            top_level = "lib"
+
+        self.top_levels[path] = top_level
+        self.versions[path] = version
 
 
 class PythonInspector:
