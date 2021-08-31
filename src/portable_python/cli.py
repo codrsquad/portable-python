@@ -51,8 +51,10 @@ def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
 @click.argument("pythons", nargs=-1)
 def inspect(modules, pythons):
     """Overview of python internals"""
-    inspector = PythonInspector(pythons, modules)
-    print(inspector.report())
+    for spec in runez.flattened(pythons, keep_empty=None, split=","):
+        inspector = PythonInspector(spec, modules)
+        print(inspector.report())
+        print()
 
 
 @main.command()

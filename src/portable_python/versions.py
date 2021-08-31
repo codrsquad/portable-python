@@ -10,7 +10,7 @@ Usage:
 """
 
 import runez
-from runez.pyenv import PythonSpec, Version
+from runez.pyenv import PythonDepot, PythonSpec, Version
 
 
 CPYTHON_VERSIONS = """
@@ -48,8 +48,9 @@ class VersionFamily:
 class PythonVersions:
 
     cpython = VersionFamily("cpython", CPYTHON_VERSIONS)
-
     families = dict(cpython=cpython)
+
+    _depot = None
 
     @classmethod
     def family(cls, family_name, fatal=True) -> VersionFamily:
@@ -58,6 +59,13 @@ class PythonVersions:
             runez.abort(f"Python family '{family_name}' is not yet supported")
 
         return fam
+
+    @classmethod
+    def find_python(cls, spec):
+        if cls._depot is None:
+            cls._depot = PythonDepot(use_path=False)
+
+        return cls._depot.find_python(spec, fatal=False)
 
     @classmethod
     def validated_spec(cls, spec: str) -> PythonSpec:

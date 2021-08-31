@@ -113,7 +113,10 @@ def test_finalization(cli):
 
 
 def test_inspect(cli):
-    cli.run("inspect", sys.executable, "foo")
+    cli.run("inspect", sys.executable, "-m+sys")
+    assert cli.succeeded
+
+    cli.run("inspect", sys.executable, "foo", "-mall")
     assert cli.succeeded
     assert "readline" in cli.logged
     assert "foo: not available" in cli.logged

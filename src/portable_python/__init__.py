@@ -19,7 +19,6 @@ from typing import Dict, List
 
 import runez
 from runez.http import RestClient
-from runez.pyenv import PythonDepot
 from runez.render import Header, PrettyTable
 
 from portable_python.versions import PythonVersions
@@ -437,45 +436,43 @@ class PythonBuilder(ModuleBuilder):
                     path.chmod(expected)
 
 
-class PythonInspector:
+class ModuleInfo:
 
-    def __init__(self, specs, modules=None):
-        self.inspector_path = os.path.join(os.path.dirname(__file__), "_inspect.py")
-        self.specs = runez.flattened(specs, keep_empty=None, split=",")
-        self.modules = modules
-        self.depot = PythonDepot(use_path=False)
-        self.reports = [self._spec_report(p) for p in self.specs]
+    _regex = re.compile(r"^(.*?)\s*(\S+/(lib(64)?/.*))$")
 
-    def report(self):
-        return runez.joined(self.report_rows(), delimiter="\n")
+    def __init__(self, inspector, name, payload):
+        self.inspector = inspector
+        self.name = name
+        self.payload = payload
+        self.filepath = payload.get("path")
+        self.note = payload.get("note")
+        self.version = payload.get("version")
+        self.version_field = payload.get("version_field")
 
-    def report_rows(self):
-        for r in self.reports:
-            yield from r.report_rows()
+    @staticmethod
+    def represented_version(version):
+        if version:
+            version = str(version)
+            if version == "built-in":
+                return runez.blue(version)
 
-    def _spec_report(self, spec):
-        python = self.depot.find_python(spec)
-        report = None
-        if not python.problem:
-            report = self._python_report(python.executable)
+            if version.startswith("*"):
+                return runez.orange(version)
 
-        return InspectionReport(spec, python, report)
+            return runez.bold(version)
 
-    def _python_report(self, exe):
-        r = runez.run(exe, self.inspector_path, self.modules, fatal=False, logger=print if runez.DRYRUN else LOG.debug)
-        if not runez.DRYRUN:
-            return r
-
-
-class InspectionReport:
-
-    def __init__(self, spec, python, report):
-        self.spec = spec
-        self.python = python
-        self.report = report
-
-    def __repr__(self):
-        return str(self.python)
+    @staticmethod
+    def lib_version(path):
+        """
+        TODO: ldd foo.so
+        linux-vdso.so.1 (0x00007ffdcfb89000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fa621f48000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fa622353000)
+        """
+        if path and path.endswith(".so"):
+            v = runez.joined(ModuleInfo.lib_version_via_otool(path), keep_empty=None)
+            if v:
+                return v
 
     @staticmethod
     def lib_version_via_otool(path):
@@ -494,74 +491,85 @@ class InspectionReport:
                             if any(x in lb for x in names):
                                 yield m.group(2)
 
-    @staticmethod
-    def lib_version(path):
-        """
-        TODO: ldd foo.so
-        linux-vdso.so.1 (0x00007ffdcfb89000)
-        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fa621f48000)
-        /lib64/ld-linux-x86-64.so.2 (0x00007fa622353000)
-        """
-        if path and path.endswith(".so"):
-            v = runez.joined(InspectionReport.lib_version_via_otool(path), keep_empty=None)
-            if v:
-                return v
+    @property
+    def additional_info(self):
+        if self.filepath:
+            path = runez.to_path(self.filepath)
+            if path.name.startswith("__init__."):
+                path = path.parent
 
-    @staticmethod
-    def color(text):
-        if text.startswith("*"):
-            return runez.orange(text)
+            # 3.6 does not have Path.relative_to()
+            pp = str(self.inspector.python.folder.parent)
+            cp = str(path)
+            if cp.startswith(pp):
+                path = runez.to_path(cp[len(pp) + 1:])
 
-        if text == "built-in":
-            return runez.blue(text)
+            info = self.lib_version(self.filepath)
+            return "%s %s" % (runez.green(path), info or "")
 
-        m = re.match(r"^(.*?)\s*(\S+/(lib(64)?/.*))$", text)
-        if m:
-            before = m.group(1)
-            version = InspectionReport.lib_version(m.group(2))
-            text = runez.green(m.group(3))
-            if version:
-                text = "%s %s" % (text, runez.blue(version))
-
-            if before:
-                v = re.sub(r"\w*version\w*=", "", before, flags=re.IGNORECASE)
-                if v != before:
-                    before = runez.bold(v)
-
-                text = "%s %s" % (before, text)
-
-        return text
+        if self.note and "No module named" not in self.note:
+            return self.note
 
     def report_rows(self):
-        if self.python.problem:
-            yield "%s: %s" % (runez.blue(runez.short(self.spec)), runez.red(self.python.problem))
+        version = self.represented_version(self.version)
+        info = self.additional_info
+        yield self.name, runez.joined(version, info, keep_empty=None)
 
-        elif self.report is not None:
-            yield "%s:" % runez.blue(self.python)
-            if self.report.succeeded and self.report.output and self.report.output.startswith("{"):
-                payload = json.loads(self.report.output)
-                t = PrettyTable(2)
-                t.header[0].align = "right"
-                for k, v in sorted(payload.items()):
-                    t.add_row(k, self.color(str(v or "*empty*")))
 
-                yield t
-                return
+class PythonInspector:
 
-            report = []
-            for k in ("exit_code", "output", "error"):
-                v = getattr(self.report, k)
-                if v:
-                    report.append(("-- %s:" % k, str(v)))
+    def __init__(self, spec, modules=None):
+        self.spec = spec
+        self.modules = self.resolved_names(modules)
+        self.module_names = runez.flattened(self.modules, keep_empty=None, split=",")
+        self.python = PythonVersions.find_python(self.spec)
 
-            report = report[0][1] if len(report) == 1 else [runez.joined(x) for x in report]
-            yield runez.joined(self.shortened_lines(report), delimiter="\n")
+    def __repr__(self):
+        return str(self.python)
 
     @staticmethod
-    def shortened_lines(text, size=2048):
-        for item in runez.flattened(text):
-            for line in item.splitlines():
-                yield runez.short(line, size=size)
+    def resolved_names(names):
+        default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
+        if not names:
+            return default
+
+        if names == "all":
+            return "%s,_asyncio,_functools,_tracemalloc,dbm.gnu,tkinter" % default
+
+        if names[0] == "+":
+            names = "%s,%s" % (default, names[1:])
+
+        return names
+
+    @runez.cached_property
+    def module_info(self):
+        if self.payload:
+            return {k: ModuleInfo(self, k, v) for k, v in self.payload.items()}
+
+    @runez.cached_property
+    def output(self):
+        arg = self.resolved_names(self.modules)
+        script = os.path.join(os.path.dirname(__file__), "_inspect.py")
+        r = runez.run(self.python.executable, script, arg, fatal=False, logger=print if runez.DRYRUN else LOG.debug)
+        return r.output if r.succeeded else "exit code: %s\n%s" % (r.exit_code, r.full_output)
+
+    @runez.cached_property
+    def payload(self):
+        if self.output and self.output.startswith("{"):
+            return json.loads(self.output)
+
+    def report(self):
+        if self.python.problem:
+            return "%s: %s" % (runez.blue(runez.short(self.python.executable)), runez.red(self.python.problem))
+
+        table = None
+        if self.module_info:
+            table = PrettyTable(2)
+            table.header[0].align = "right"
+            for v in self.module_info.values():
+                table.add_rows(*v.report_rows())
+
+        return runez.joined(runez.blue(self.python), table or self.output, keep_empty=None, delimiter=":\n")
 
 
 class TargetSystem:

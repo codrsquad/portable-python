@@ -20,79 +20,52 @@ INSIGHTS = {
 }
 
 
-def represented(key, value, source):
+def pymodule_version_info(key, value, pymodule):
     if value:
+        result = dict(version_field=key)
         if isinstance(value, bytes):
             value = value.decode("utf-8")
 
         if isinstance(value, tuple):
             value = ".".join(str(x) for x in value)
 
-        value = "%s=%s" % (key, value)
-        if hasattr(source, "__file__"):
-            value += " %s" % source.__file__
+        result["version"] = value
+        if hasattr(pymodule, "__file__"):
+            result["path"] = pymodule.__file__
 
-        return value
+        return result
 
 
-def module_representation(module_name, mod):
+def pymodule_info(module_name, pymodule):
     fields = INSIGHTS.get(module_name)
     if fields:
         fields = fields.split()
         for f in fields:
-            v = represented(f, getattr(mod, f, None), mod)
+            v = pymodule_version_info(f, getattr(pymodule, f, None), pymodule)
             if v:
                 return v
 
-    if hasattr(mod, "__file__"):
-        return mod.__file__
+    if hasattr(pymodule, "__file__"):
+        return dict(path=pymodule.__file__)
 
-    if hasattr(mod, "__spec__"):
-        v = getattr(mod.__spec__, "origin")
-        if v:
-            return str(v)
+    if hasattr(pymodule, "__spec__"):
+        v = getattr(pymodule.__spec__, "origin")
+        if v == "built-in":
+            return dict(version=v)
 
-    return str(dir(mod))
+    return dict(note=str(dir(pymodule)))
 
 
 def module_report(module_name):
     try:
-        return module_representation(module_name, __import__(module_name))
+        return pymodule_info(module_name, __import__(module_name))
 
     except ImportError as e:
-        msg = "*absent*"
-        if "No module named" not in str(e):
-            msg += " %s" % e  # pragma: no cover, more info in case of failed import
-
-        return msg
+        return dict(version="*absent*", note=str(e))
 
 
-def get_report(modules):
-    report = dict((k, module_report(k)) for k in modules if k)
-    prefixes = set(getattr(sys, x) for x in dir(sys) if "prefix" in x and "pycache" not in x)
-    if len(prefixes) > 1:
-        report["prefixes"] = " ".join(sorted(prefixes))
-
-    return report
-
-
-def get_import_names(names):
-    default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
-    if not names:
-        names = default
-
-    elif names == "all":
-        names = "%s,_asyncio,_functools,_tracemalloc,dbm.gnu,tkinter" % default
-
-    elif names[0] == "+":
-        names = "%s,%s" % (default, names[1:])
-
-    return [x for x in names.split(",") if x]
-
-
-def main(args=None):
-    names = args and args[0]
-    if names == "sysconfig":
+def main(arg):
+    if arg == "sysconfig":
         import sysconfig
 
         abs_builddir = sysconfig.get_config_var("abs_builddir")
@@ -118,9 +91,9 @@ def main(args=None):
 
         return
 
-    report = get_report(get_import_names(names))
+    report = dict((k, module_report(k)) for k in arg.split(","))
     print(json.dumps(report, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])  # pragma: no cover
+    main(sys.argv[1])  # pragma: no cover
