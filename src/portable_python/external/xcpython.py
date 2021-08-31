@@ -8,7 +8,6 @@ from portable_python import ModuleBuilder
 class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
-    m_name = "bdb"
     m_build_cwd = "build_unix"
     m_telltale = "{include}/ndbm.h"
 
@@ -34,7 +33,6 @@ class Bzip2(ModuleBuilder):
     See https://docs.python.org/3/library/bz2.html
     """
 
-    m_name = "bzip2"
     m_telltale = "{include}/bzlib.h"
 
     @property
@@ -52,12 +50,7 @@ class Bzip2(ModuleBuilder):
 class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
-    m_name = "gdbm"
     m_telltale = "{include}/gdbm.h"  # TODO: check .so on linux
-
-    @classmethod
-    def auto_use_with_reason(cls, target):
-        return super().auto_use_with_reason(target)
 
     @property
     def url(self):
@@ -89,7 +82,6 @@ class Gdbm(ModuleBuilder):
 class LibFFI(ModuleBuilder):
     # TODO: fails to build on linux without libffi-dev: undefined symbol: ffi_prep_cif
 
-    m_name = "libffi"
     m_telltale = True  # ["{include}/ffi.h", "{include}/ffi/ffi.h"]  # TODO: check .so on linux
 
     @property
@@ -118,7 +110,6 @@ class LibFFI(ModuleBuilder):
 
 class Openssl(ModuleBuilder):
 
-    m_name = "openssl"
     m_telltale = "{include}/openssl/ssl.h"
 
     @property
@@ -149,7 +140,6 @@ class Openssl(ModuleBuilder):
 class Readline(ModuleBuilder):
     """See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb"""
 
-    m_name = "readline"
     m_telltale = "{include}/readline/readline.h"
 
     @property
@@ -169,15 +159,13 @@ class Readline(ModuleBuilder):
 class Sqlite(ModuleBuilder):
     # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
 
-    m_name = "sqlite"
     m_telltale = True  # "{include}/sqlite3.h"  # TODO: check .so on linux
 
-    @classmethod
-    def auto_use_with_reason(cls, target):
+    def auto_use_with_reason(self):
         if not runez.which("tclsh"):
             return None, runez.brown("requires tclsh")
 
-        return super().auto_use_with_reason(target)
+        return super().auto_use_with_reason()
 
     @property
     def url(self):
@@ -200,7 +188,6 @@ class Sqlite(ModuleBuilder):
 
 class Tcl(ModuleBuilder):
 
-    m_name = "tcl"
     m_build_cwd = "unix"
 
     @property
@@ -222,7 +209,6 @@ class Tcl(ModuleBuilder):
 
 class Tk(ModuleBuilder):
 
-    m_name = "tk"
     m_build_cwd = "unix"
 
     @property
@@ -252,8 +238,6 @@ class Tk(ModuleBuilder):
 
 
 class Tix(ModuleBuilder):
-
-    m_name = "tix"
 
     @property
     def url(self):
@@ -288,19 +272,17 @@ class Tix(ModuleBuilder):
 class TkInter(ModuleBuilder):
     """Build tcl/tk"""
 
-    m_name = "tkinter"
     m_telltale = ["{include}/tk", "{include}/tk.h"]
 
     @classmethod
-    def auto_use_with_reason(cls, target):
-        if not target.is_macos and not os.path.isdir("/usr/include/X11"):
+    def candidate_modules(cls):
+        return [Tcl, Tk, Tix]
+
+    def auto_use_with_reason(self):
+        if not self.target.is_macos and not os.path.isdir("/usr/include/X11"):
             return False, runez.brown("requires libx11-dev")
 
-        return super().auto_use_with_reason(target)
-
-    def required_submodules(self):
-        """Optional required sub-modules to be compiled"""
-        return [Tcl, Tk, Tix]
+        return super().auto_use_with_reason()
 
     @property
     def version(self):
@@ -310,7 +292,6 @@ class TkInter(ModuleBuilder):
 class Uuid(ModuleBuilder):
     # TODO: fails to link on linux without uuid-dev (works correctly if present)
 
-    m_name = "uuid"
     m_telltale = "{include}/uuid/uuid.h"
 
     @property
@@ -332,7 +313,6 @@ class Uuid(ModuleBuilder):
 
 class Xz(ModuleBuilder):
 
-    m_name = "xz"
     m_telltale = "{include}/lzma.h"
 
     @property
@@ -356,7 +336,6 @@ class Xz(ModuleBuilder):
 
 class Zlib(ModuleBuilder):
 
-    m_name = "zlib"
     m_telltale = "{include}/zlib.h"
 
     @property

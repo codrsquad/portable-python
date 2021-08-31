@@ -52,10 +52,6 @@ class PythonVersions:
     families = dict(cpython=cpython)
 
     @classmethod
-    def get_builder(cls, family_name: str):
-        return cls.family(family_name).builder
-
-    @classmethod
     def family(cls, family_name, fatal=True) -> VersionFamily:
         fam = cls.families.get(family_name)
         if fatal and not fam:
@@ -64,9 +60,12 @@ class PythonVersions:
         return fam
 
     @classmethod
-    def validated_spec(cls, spec) -> PythonSpec:
+    def validated_spec(cls, spec: str) -> PythonSpec:
         spec = PythonSpec.to_spec(spec)
         if not spec.version or not spec.version.is_valid:
             runez.abort("Invalid python spec: %s" % runez.red(spec))
+
+        if spec.version.text not in spec.text or len(spec.version.given_components) < 3:
+            runez.abort("Please provide full desired version: %s is not good enough" % runez.red(spec))
 
         return spec

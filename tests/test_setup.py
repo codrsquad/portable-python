@@ -1,20 +1,24 @@
 import runez
 
-from portable_python import BuildSetup, ModuleBuilder, PythonInspector, TargetSystem
+from portable_python import BuildSetup, ModuleBuilder, PythonInspector
 from portable_python.versions import PythonVersions
 
 
 def test_edge_cases():
-    latest = PythonVersions.cpython.latest
-    setup = BuildSetup(latest, target="linux-x86_64")
-    assert setup.target_system.is_linux
-    assert str(setup).endswith(f"build/cpython-{latest}")
-    assert str(PythonVersions.cpython)
+    setup = BuildSetup(None, modules="+readline")
+    assert setup.python_spec.version == PythonVersions.cpython.latest
+    assert str(setup.python_builder.modules) == "+readline"
 
-    mb = ModuleBuilder()
-    assert mb.auto_use_with_reason(TargetSystem()) == (False, "only on demand (no auto-detection available)")
+    setup = BuildSetup(None, target="linux-x86_64")
+    assert setup.target_system.is_linux
+    assert str(setup)
+    assert str(PythonVersions.cpython)
+    assert str(setup.python_builder.modules).startswith("auto-detected:")
+
+    mb = ModuleBuilder(setup)
     assert not mb.url
     assert not mb.version
+    assert str(mb.modules) == "no sub-modules"
 
     inspector = PythonInspector("0.1.2")
     r0 = inspector.reports[0]

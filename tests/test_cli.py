@@ -18,7 +18,6 @@ def test_build(cli):
     mm = f"{v.major}.{v.minor}"
     cli.run("--dryrun", "build", "2.7.1", "-m+bdb", "--target=foo-bar")
     assert cli.failed
-    assert "cpython:2.7.1 is not in the supported list" in cli.logged
     assert " bdb:" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
@@ -102,7 +101,7 @@ def test_finalization(cli):
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("build", v, "-mreadline", "--x-debug")
         assert cli.succeeded
-        assert "Compiling 1 external module" in cli.logged
+        assert "Modules selected: readline" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
         assert f"Deleted build/cpython-{v}/{v}/bin/2to3" in cli.logged
         assert "Symlink foo-python <- python" in cli.logged
@@ -126,6 +125,10 @@ def test_invalid(cli):
     assert cli.failed
     assert "Invalid python spec: ?foo" in cli.logged
 
+    cli.run("--dryrun", "build", "3.6")
+    assert cli.failed
+    assert "Please provide full desired version" in cli.logged
+
     cli.run("--dryrun", "build", v, "-mfoo,bar")
     assert cli.failed
     assert "Unknown modules: foo, bar" in cli.logged
@@ -134,15 +137,14 @@ def test_invalid(cli):
     assert cli.failed
     assert "Refusing path with space" in cli.logged
 
-    cli.run("--dryrun", "build", "conda:1.0")
+    cli.run("--dryrun", "build", "conda:1.2.3")
     assert cli.failed
     assert "Python family 'conda' is not yet supported" in cli.logged
 
 
 def test_scan(cli):
-    cli.run("scan", "--target", "darwin-x86_64", "cpython,foo")
+    cli.run("scan", "--target", "darwin-x86_64")
     assert cli.succeeded
-    assert "unknown" in cli.logged
 
     with patch("portable_python.cpython.runez.which", return_value=None):
         cli.run("scan", "--target", "linux-x86_64")

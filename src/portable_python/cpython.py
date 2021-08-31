@@ -10,10 +10,11 @@ from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl,
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
 
-    m_name = "cpython"
-    available_modules = [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, TkInter, Uuid]
-
     _main_python = None
+
+    @classmethod
+    def candidate_modules(cls):
+        return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, TkInter, Uuid]
 
     @property
     def url(self):
@@ -39,19 +40,19 @@ class Cpython(PythonBuilder):
         yield "--enable-optimizations"
         yield "--with-lto"
         yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
-        yield "--with-system-ffi=%s" % ("no" if self.setup.active_module(LibFFI) else "yes")
+        yield "--with-system-ffi=%s" % ("no" if self.active_module(LibFFI) else "yes")
         db_order = [
-            self.setup.active_module(Gdbm) and "gdbm",
-            self.setup.active_module(Bdb) and "bdb",
+            self.active_module(Gdbm) and "gdbm",
+            self.active_module(Bdb) and "bdb",
         ]
         db_order = runez.joined(db_order, keep_empty=None, delimiter=":")
         if db_order:
             yield f"--with-dbmliborder={db_order}"
 
-        if self.setup.active_module(Openssl):
+        if self.active_module(Openssl):
             yield f"--with-openssl={self.deps}"
 
-        tkinter = self.setup.active_module(TkInter)
+        tkinter = self.active_module(TkInter)
         if tkinter:
             mm = Version.from_text(tkinter.version)
             mm = "%s.%s" % (mm.major, mm.minor)

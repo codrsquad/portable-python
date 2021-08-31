@@ -2,9 +2,8 @@ import logging
 
 import click
 import runez
-from runez.render import PrettyTable
 
-from portable_python import BuildSetup, LOG, PythonInspector, TargetSystem
+from portable_python import BuildSetup, LOG, PythonInspector
 from portable_python.versions import PythonVersions
 
 
@@ -39,8 +38,7 @@ def main(debug):
 @click.argument("python_spec")
 def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
     """Build a python binary"""
-    setup = BuildSetup(python_spec, modules=modules, build_folder=build, dist_folder=dist, target=target)
-    setup.prefix = prefix
+    setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, modules=modules, prefix=prefix, target=target)
     setup.static = static
     setup.compile(x_debug=x_debug)
     if setup.python_builder.install_folder.is_dir():
@@ -82,34 +80,14 @@ def list(family):
 
 
 @main.command()
+@click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
-@click.argument("family", nargs=-1)
-def scan(target, family):
+@click.argument("python_spec", required=False)
+def scan(modules, target, python_spec):
     """Scan all buildable modules, see if system already has equivalent"""
-    if not family:
-        family = ["cpython"]
-
-    family = runez.flattened(family, keep_empty=None, split=",", unique=True)
-    indent = "  " if len(family) > 1 else ""
-    for family_name in family:
-        if indent:
-            print(runez.bold("%s%s:" % ("" if family_name == family[0] else "\n", family_name)))
-
-        fam = PythonVersions.family(family_name, fatal=False)
-        if not fam:
-            print("%s%s" % (indent, runez.red("unknown")))
-            continue
-
-        ts = TargetSystem(target)
-        reasons = fam.builder.get_scan_report(ts)
-        table = PrettyTable(2)
-        table.header[0].align = "right"
-        rows = []
-        for mod in fam.builder.available_modules:
-            rows.append((mod.m_name, reasons[mod.m_name]))
-
-        table.add_rows(*rows)
-        print(table)
+    setup = BuildSetup(python_spec, modules=modules, target=target)
+    print(runez.bold(setup.python_spec))
+    print(setup.python_builder.modules.report())
 
 
 if __name__ == "__main__":
