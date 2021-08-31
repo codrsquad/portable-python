@@ -84,6 +84,12 @@ class LibFFI(ModuleBuilder):
 
     m_telltale = True  # ["{include}/ffi.h", "{include}/ffi/ffi.h"]  # TODO: check .so on linux
 
+    def auto_use_with_reason(self):
+        if self.target.is_macos:
+            return False, runez.blue("on demand on macos")
+
+        return super().auto_use_with_reason()
+
     @property
     def url(self):
         return f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
@@ -162,6 +168,9 @@ class Sqlite(ModuleBuilder):
     m_telltale = True  # "{include}/sqlite3.h"  # TODO: check .so on linux
 
     def auto_use_with_reason(self):
+        if self.target.is_macos:
+            return False, runez.blue("on demand on macos")
+
         if not runez.which("tclsh"):
             return None, runez.brown("requires tclsh")
 
