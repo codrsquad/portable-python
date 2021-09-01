@@ -7,7 +7,8 @@ class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
     m_build_cwd = "build_unix"
-    m_telltale = None  # "{include}/ndbm.h" # Builds OK (statically) if libgdbm-compat-dev is present
+    m_debian = "libgdbm-compat-dev"
+    m_telltale = None  # "{include}/ndbm.h"
 
     @property
     def url(self):
@@ -48,7 +49,7 @@ class Bzip2(ModuleBuilder):
 class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
-    m_telltale = "{include}/gdbm.h"  # Need it on macos too, otherwise a brew install from /usr/local is picked up
+    m_telltale = ["-linux", "+darwin", "{include}/gdbm.h"]  # Needed on macos to override brew-installed gdbm from /usr/local
 
     @property
     def url(self):

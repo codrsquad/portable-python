@@ -221,18 +221,18 @@ class ModuleBuilder:
         if telltale is runez.UNSET:
             return True, runez.dim("sub-module of %s" % self.parent_module)
 
-        first = telltale
-        if isinstance(telltale, list):
-            first = telltale[0]
-
         if not telltale:
             return False, runez.blue("on demand")
 
-        if telltale is True:
-            return True, runez.green("always compiled")  # pragma: no cover, provisional
+        if isinstance(telltale, list):
+            while telltale and telltale[0][0] in "-+":
+                if telltale[0] == "-%s" % self.target.platform:
+                    return False, runez.blue("on demand on %s" % self.target.platform)
 
-        if first == "-%s" % self.target.platform:
-            return False, runez.blue("on demand on %s" % self.target.platform)
+                if telltale[0] == "+%s" % self.target.platform:
+                    return True, runez.green("mandatory on %s" % self.target.platform)
+
+                telltale = telltale[1:]
 
         debian = getattr(self, "m_debian", None)
         path = self._find_telltale(telltale)

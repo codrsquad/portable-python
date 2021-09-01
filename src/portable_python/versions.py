@@ -14,8 +14,7 @@ from runez.pyenv import PythonDepot, PythonSpec, Version
 
 
 CPYTHON_VERSIONS = """
-3.9.6
-3.9.5
+3.9.7
 3.8.11
 3.7.11
 3.6.14
