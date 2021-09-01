@@ -50,7 +50,7 @@ class Bzip2(ModuleBuilder):
 class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
-    m_telltale = None  # "{include}/gdbm.h" # Builds OK (statically), but not sure anyone uses this
+    m_telltale = "{include}/gdbm.h"  # Need it on macos too, otherwise a brew install from /usr/local is picked up
 
     @property
     def url(self):
@@ -147,10 +147,33 @@ class Openssl(ModuleBuilder):
         self.run_make("install_sw")  # See https://github.com/openssl/openssl/issues/8170
 
 
+class Ncurses(ModuleBuilder):
+
+    @property
+    def url(self):
+        return f"https://ftp.gnu.org/pub/gnu/ncurses/ncurses-{self.version}.tar.gz"
+
+    @property
+    def version(self):
+        return "6.2"
+
+    def _do_linux_compile(self):
+        self.run_configure(
+            "./configure", "--enable-shared=no", "--enable-static=yes", "--enable-widec"
+            "--without-cxx", "--without-tests", "--without-manpages", "--disable-stripping"
+        )
+        self.run_make()
+        self.run_make("install")
+
+
 class Readline(ModuleBuilder):
     """See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb"""
 
     m_telltale = "{include}/readline/readline.h"
+
+    @classmethod
+    def candidate_modules(cls):
+        return [Ncurses]
 
     @property
     def url(self):

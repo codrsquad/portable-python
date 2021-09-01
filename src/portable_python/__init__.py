@@ -350,6 +350,17 @@ class ModuleBuilder:
 
                 runez.decompress(path, self.m_src_build)
 
+            if self.modules.selected:
+                cpath = [
+                    self.checked_deps_folder("include"),
+                    self.checked_deps_folder("include/readline"),
+                    self.checked_deps_folder("include/openssl"),
+                    self.checked_deps_folder("include/uuid"),
+                ]
+                self.set_default_xenv("CPATH", cpath)
+                self.set_default_xenv("LDFLAGS", f"-L{self.deps_lib}")
+                self.set_default_xenv("PKG_CONFIG_PATH", f"{self.deps_lib}/pkgconfig")
+
             for var_name in sorted(dir(self)):
                 if var_name.startswith("xenv_"):
                     # By convention, inject all xenv_* values as env vars
