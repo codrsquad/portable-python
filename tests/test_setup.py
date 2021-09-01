@@ -29,10 +29,11 @@ def test_edge_cases(monkeypatch):
 
 
 LDD_SAMPLE = """
-    linux-vdso.so.1 (0x00007ffe98bb3000)
-    libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (0x00007f8d8f379000)
-    libtinfo.so.5 => not found (0x00007f7de012f000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f7de0dbe000)
+    linux-vdso.so.1 (...)
+    libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (...)
+    libtinfo.so.5 => not found
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (...)
+    /lib64/ld-linux-x86-64.so.2 (...)
 """
 
 OTOOL_SAMPLE = """
@@ -47,12 +48,12 @@ def test_inspect_lib():
     with patch("runez.which", return_value=None):
         info = SoInfo("_dbm...so")
         assert str(info) == "_dbm"
-        info.extract_info(OTOOL_SAMPLE, None)
-        assert info.report() == "_dbm*.so /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib foo/bar.dylib"
+        info.parse_otool(OTOOL_SAMPLE)
+        assert info.report() == "_dbm*.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0"
 
         info = SoInfo("_tkinter...so")
-        info.extract_info(None, LDD_SAMPLE)
-        assert info.report() == "_tkinter*.so tcl:8.6 libtinfo.so.5 => not found"
+        info.parse_ldd(LDD_SAMPLE)
+        assert info.report() == "_tkinter*.so tcl8:8.6 missing: tinfo?:5"
 
 
 def test_inspect_module(logged):

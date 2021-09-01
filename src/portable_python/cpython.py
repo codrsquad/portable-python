@@ -23,10 +23,6 @@ class Cpython(PythonBuilder):
 
     def xenv_CFLAGS(self):
         yield "-Wno-unused-command-line-argument"
-        yield self.checked_deps_folder("include", prefix="-I")
-        yield self.checked_deps_folder("include/readline", prefix="-I")
-        yield self.checked_deps_folder("include/openssl", prefix="-I")
-        yield self.checked_deps_folder("include/uuid", prefix="-I")
 
     def c_configure_args(self):
         # See https://wiki.python.org/moin/BuildStatically
@@ -34,8 +30,7 @@ class Cpython(PythonBuilder):
         yield "--enable-optimizations"
         yield "--with-lto"
         yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
-        libffi = self.active_module(LibFFI)
-        if libffi:
+        if self.active_module(LibFFI):
             yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
             yield "--with-system-ffi=no"
 

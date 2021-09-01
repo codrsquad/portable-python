@@ -153,3 +153,8 @@ def test_scan(cli):
         cli.run("scan", "--target", "linux-x86_64")
         assert cli.succeeded
         assert "requires tclsh" in cli.logged
+
+    with patch("portable_python.ModuleBuilder._find_telltale", return_value="foo"):
+        cli.run("scan", "--target", "linux-x86_64")
+        assert cli.succeeded
+        assert "on top of libffi-dev" in cli.logged

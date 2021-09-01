@@ -1,5 +1,3 @@
-import os
-
 import runez
 
 from portable_python import ModuleBuilder
@@ -81,18 +79,8 @@ class Gdbm(ModuleBuilder):
 
 class LibFFI(ModuleBuilder):
 
-    m_telltale = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
-
-    def auto_use_with_reason(self):
-        if self.target.is_macos:
-            return False, runez.blue("on demand on macos")
-
-        if self.target.is_linux:
-            path = self._find_telltale(self.m_telltale)
-            if path:
-                return True, "%s (on top of libffi-dev)" % runez.green("needed on linux")  # pragma: no cover, provisional
-
-        return super().auto_use_with_reason()
+    m_debian = "libffi-dev"
+    m_telltale = ["-darwin", "{include}/ffi.h", "{include}/ffi/ffi.h"]
 
     @property
     def url(self):
@@ -192,22 +180,12 @@ class Readline(ModuleBuilder):
 
 class Sqlite(ModuleBuilder):
 
-    m_telltale = "{include}/sqlite3.h"
+    m_debian = "libsqlite3-dev"
+    m_telltale = ["-darwin", "{include}/sqlite3.h"]
 
     def auto_use_with_reason(self):
-        if self.target.is_macos:
-            return False, runez.blue("on demand on macos")
-
         if not runez.which("tclsh"):
-            return None, runez.brown("requires tclsh")
-
-        if self.target.is_linux:
-            path = self._find_telltale(self.m_telltale)
-            if path:
-                return True, "%s (on top of libsqlite3-dev)" % runez.green("needed on linux")  # pragma: no cover, provisional
-
-            # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
-            return False, runez.red("need libsqlite3-dev on linux as well, pending enhancement")
+            return None, "%s (apt install tcl)" % runez.brown("requires tclsh")
 
         return super().auto_use_with_reason()
 
@@ -322,12 +300,6 @@ class TkInter(ModuleBuilder):
     def candidate_modules(cls):
         return [Tcl, Tk, Tix]
 
-    def auto_use_with_reason(self):
-        if not self.target.is_macos and not os.path.isdir("/usr/include/X11"):
-            return False, runez.brown("requires libx11-dev")
-
-        return super().auto_use_with_reason()
-
     @property
     def version(self):
         return "8.6.10"
@@ -335,21 +307,8 @@ class TkInter(ModuleBuilder):
 
 class Uuid(ModuleBuilder):
 
-    m_telltale = "{include}/uuid/uuid.h"
-
-    def auto_use_with_reason(self):
-        if self.target.is_macos:
-            return False, runez.blue("on demand on macos")
-
-        if self.target.is_linux:
-            path = self._find_telltale(self.m_telltale)
-            if path:
-                return True, "%s (on top of uuid-dev)" % runez.green("needed on linux")  # pragma: no cover, provisional
-
-            # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
-            return False, runez.red("need uuid-dev on linux as well, pending enhancement")
-
-        return super().auto_use_with_reason()
+    m_debian = "uuid-dev"
+    m_telltale = ["-darwin", "{include}/uuid/uuid.h"]
 
     @property
     def url(self):
@@ -393,12 +352,6 @@ class Xz(ModuleBuilder):
 class Zlib(ModuleBuilder):
 
     m_telltale = "{include}/zlib.h"
-
-    def auto_use_with_reason(self):
-        if self.target.is_linux:
-            return True, "%s (to get it statically compiled)" % runez.green("needed on linux")
-
-        return super().auto_use_with_reason()
 
     @property
     def url(self):

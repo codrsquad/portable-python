@@ -216,13 +216,27 @@ class ModuleBuilder:
         if telltale is runez.UNSET:
             return True, runez.dim("sub-module of %s" % self.parent_module)
 
+        first = telltale
+        if isinstance(telltale, list):
+            first = telltale[0]
+
         if not telltale:
             return False, runez.blue("on demand")
 
         if telltale is True:
             return True, runez.green("always compiled")  # pragma: no cover, provisional
 
+        if first == "-%s" % self.target.platform:
+            return False, runez.blue("on demand on %s" % self.target.platform)
+
+        debian = getattr(self, "m_debian", None)
         path = self._find_telltale(telltale)
+        if self.target.is_linux and debian:
+            if path:
+                return True, "%s (on top of %s, for static compile)" % (runez.green("needed on linux"), debian)
+
+            return True, "%s for static compile" % runez.red("needs %s" % debian)
+
         if path:
             return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
 
@@ -306,8 +320,8 @@ class ModuleBuilder:
         if cpu_count is None:
             cpu_count = multiprocessing.cpu_count()
 
-        if cpu_count:
-            cmd.append("-j%s" % cpu_count)
+        if cpu_count and cpu_count > 2:
+            cmd.append("-j%s" % (cpu_count // 2))
 
         self.run(*cmd, *args)
 
@@ -505,98 +519,112 @@ class ModuleInfo:
         yield self.name, runez.joined(version, info, keep_empty=None)
 
 
+class CLibInfo:
+
+    def __init__(self, path, color, version, short_name=None):
+        self.path = path
+        self.color = color
+        self.version = version
+        self.short_name = short_name
+
+    def __repr__(self):
+        r = self.short_name or self.path
+        m = re.match(r"^.*\.\.\.\./(.*)$", r)
+        if m:
+            r = m.group(1)
+
+        if self.version:
+            r += ":%s" % self.version
+
+        if self.color:
+            r = self.color(r)
+
+        return r
+
+
 class SoInfo:
 
-    _aliases = dict(ctypes="ffi,c.", curses="ncurses", readline="edit,curses,ncurses", tkinter="tcl,X11", zlib="z.")
+    _ignored = [
+        "/usr/lib/libSystem.B.dylib",
+        "linux-vdso.so",
+        "/lib/x86_64-linux-gnu/libc.so.6",
+        "/lib/x86_64-linux-gnu/libpthread.so.0",
+        "/lib64/ld-linux-x86-64.so.2",
+    ]
+    _sys_prefixes = ["/lib", "/usr/lib", "/System/Library/Frameworks/"]
 
     def __init__(self, path):
         self.path = path
         self.short_name = os.path.basename(path).partition(".")[0]
-        self.top_levels = {}
-        self.used_libs = []
-        self.versions = {}
-        self.notes = []
-        otool = runez.run("otool", "-L", self.path, fatal=False, logger=None)
-        ldd = runez.run("ldd", self.path, fatal=False, logger=None)
-        self.extract_info(otool.output, ldd.output)
+        self.ignored_libs = []
+        self.system_libs = []
+        self.other_libs = []
+        self.missing_libs = []
+        for cmd in ("otool -L", "ldd"):
+            cmd = runez.flattened(cmd, split=" ")
+            program = cmd[0]
+            if runez.which(program):
+                r = runez.run(*cmd, self.path, logger=None)
+                func = getattr(self, "parse_%s" % program)
+                func(r.output)
+                return
 
     def __repr__(self):
         return self.short_name
 
-    def extract_info(self, otool, ldd):
-        if otool:
-            for line in otool.splitlines():
-                line = line.strip()
-                if line:
-                    m = re.match(r"^(\S+).+current version ([0-9.]+).*$", line)
-                    if m:
-                        self.add_ref(m.group(1), m.group(2))
+    def parse_otool(self, output):
+        for line in output.splitlines():
+            m = re.match(r"^(\S+).+current version ([0-9.]+).*$", line.strip())
+            if m:
+                self.add_ref(m.group(1), m.group(2))
 
-        elif ldd:
-            for line in ldd.splitlines():
-                line = line.strip()
-                if line:
-                    parts = line.split()
-                    count = len(parts)
-                    if count == 2:
-                        path = parts[0]
-                        if path.startswith("linux-vdso"):
-                            continue
+    def parse_ldd(self, output):
+        for line in output.splitlines():
+            line = line.strip()
+            if line:
+                missing = False
+                if "=>" in line:
+                    name, _, path = line.partition("=")
+                    path = path[1:].strip().partition("(")[0]
+                    if path == "not found":
+                        path = name.strip()
+                        missing = True
 
-                    else:
-                        path = parts[2]
+                else:
+                    path, _, _ = line.partition(" ")
 
-                    if path == "not":
-                        self.notes.append(runez.red(runez.joined(parts[:-1])))
-                        continue
+                m = re.match(r"^.*?([\d.]+)[^\d]*$", os.path.basename(path))
+                version = m.group(1) if m else "?"
+                self.add_ref(path, version.strip("."), missing=missing)
 
-                    m = re.match(r"^.*?([\d.]+)[^\d]*$", os.path.basename(path))
-                    version = m.group(1) if m else "?"
-                    self.add_ref(path, version.strip("."))
-
-    def report(self):
-        result = [runez.green("%s*.so" % self.short_name)]
-        if self.notes:
-            result.extend(self.notes)
-
-        for k in sorted(set(self.invalid_top_levels())):
-            result.append(runez.red(k))
-
-        return runez.joined(result)
-
-    def invalid_top_levels(self):
-        for k, v in self.top_levels.items():
-            if v != "lib":
-                m = re.match(r"^.*\.\.\.\./(.*)$", k)
-                if m:
-                    k = m.group(1)
-
-                yield k
-
-    def associated_name(self, basename):
+    def short_lib_name(self, path):
+        basename = os.path.basename(path)
         if basename.startswith("lib"):
             basename = basename[3:]
 
-        pyname = self.short_name.strip("_")
-        names = runez.flattened(pyname, self._aliases.get(pyname), keep_empty=None, split=",", unique=True)
-        for name in names:
-            if basename.startswith(name):
-                return name.strip(".")
+        return basename.partition(".")[0]
 
-    def add_ref(self, path, version):
-        basename = os.path.basename(path)
-        associated = self.associated_name(basename)
-        if associated:
-            self.notes.append(runez.blue("%s:%s" % (associated, version)))
+    def add_ref(self, path, version, missing=False):
+        if missing:
+            self.missing_libs.append(CLibInfo(path, runez.red, version, self.short_lib_name(path) + "?"))
+            return
 
-        self.used_libs.append(path)
-        top_level = runez.to_path(path).parts[1:3]
-        top_level = runez.joined(top_level, delimiter="/")
-        if top_level.startswith(("lib", "System", "usr/lib")):
-            top_level = "lib"
+        if any(path.startswith(x) for x in self._ignored):
+            self.ignored_libs.append(path)
+            return
 
-        self.top_levels[path] = top_level
-        self.versions[path] = version
+        if any(path.startswith(x) for x in self._sys_prefixes):
+            self.system_libs.append(CLibInfo(path, runez.blue, version, self.short_lib_name(path)))
+            return
+
+        self.other_libs.append(CLibInfo(path, runez.brown, version))
+
+    def report(self):
+        missing = None
+        if self.missing_libs:
+            missing = [runez.red("missing:"), self.missing_libs]
+
+        return runez.joined(runez.green("%s*.so" % self.short_name), self.system_libs, self.other_libs, missing, keep_empty=None)
 
 
 class PythonInspector:
