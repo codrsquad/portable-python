@@ -40,7 +40,11 @@ class Cpython(PythonBuilder):
         yield "--enable-optimizations"
         yield "--with-lto"
         yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
-        yield "--with-system-ffi=%s" % ("no" if self.active_module(LibFFI) else "yes")
+        libffi = self.active_module(LibFFI)
+        if libffi:
+            yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
+            yield "--with-system-ffi=no"
+
         db_order = [
             self.active_module(Gdbm) and "gdbm",
             self.active_module(Bdb) and "bdb",

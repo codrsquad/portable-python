@@ -585,6 +585,9 @@ class SoInfo:
 
 class PythonInspector:
 
+    default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
+    additional = "_asyncio,_functools,_tracemalloc,dbm.gnu,ensurepip,ossaudiodev,spwd,tkinter,venv"
+
     def __init__(self, spec, modules=None):
         self.spec = spec
         self.modules = self.resolved_names(modules)
@@ -594,17 +597,15 @@ class PythonInspector:
     def __repr__(self):
         return str(self.python)
 
-    @staticmethod
-    def resolved_names(names):
-        default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
+    def resolved_names(self, names):
         if not names:
-            return default
+            return self.default
 
         if names == "all":
-            return "%s,_asyncio,_functools,_tracemalloc,dbm.gnu,tkinter" % default
+            return "%s,%s" % (self.default, self.additional)
 
         if names[0] == "+":
-            names = "%s,%s" % (default, names[1:])
+            names = "%s,%s" % (self.default, names[1:])
 
         return names
 

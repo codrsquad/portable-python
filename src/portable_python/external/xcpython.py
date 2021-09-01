@@ -80,9 +80,8 @@ class Gdbm(ModuleBuilder):
 
 
 class LibFFI(ModuleBuilder):
-    # TODO: fails to build on linux without libffi-dev: undefined symbol: ffi_prep_cif
 
-    m_telltale = True  # ["{include}/ffi.h", "{include}/ffi/ffi.h"]  # TODO: check .so on linux
+    m_telltale = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
 
     def auto_use_with_reason(self):
         if self.target.is_macos:
@@ -107,8 +106,8 @@ class LibFFI(ModuleBuilder):
             "--enable-shared=no",
             "--enable-static=yes",
             "--with-pic=yes",
-            "--disable-multi-os-directory",
-            "--disable-docs"
+            self.target.is_macos and "--disable-multi-os-directory",
+            "--disable-docs",
         )
         self.run_make()
         self.run_make("install")
@@ -336,8 +335,7 @@ class Xz(ModuleBuilder):
         self.run_configure(
             "./configure",
             "--enable-shared=no", "--enable-static=yes", "--with-pic=yes",
-            "--disable-dependency-tracking", "--disable-doc", "--disable-xz", "--disable-xzdec", "--disable-lzmadec",
-            "--disable-lzmainfo", "--disable-lzma-links", "--disable-scripts", "--disable-rpath",
+            "--disable-dependency-tracking", "--disable-doc",
         )
         self.run_make()
         self.run_make("install")
