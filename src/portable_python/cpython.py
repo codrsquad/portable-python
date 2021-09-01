@@ -31,6 +31,13 @@ class Cpython(PythonBuilder):
     def xenv_LDFLAGS(self):
         yield f"-L{self.deps_lib}"
 
+    def xenv_CPATH(self):
+        """Both gcc and clang accept CPATH to point to extra include folders to look at"""
+        yield self.checked_deps_folder("include")
+        yield self.checked_deps_folder("include/readline")
+        yield self.checked_deps_folder("include/openssl")
+        yield self.checked_deps_folder("include/uuid")
+
     def xenv_PKG_CONFIG_PATH(self):
         yield f"{self.deps_lib}/pkgconfig"
 

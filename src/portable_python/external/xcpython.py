@@ -9,7 +9,7 @@ class Bdb(ModuleBuilder):
     """See https://docs.python.org/3/library/dbm.html"""
 
     m_build_cwd = "build_unix"
-    m_telltale = "{include}/ndbm.h"
+    m_telltale = None  # "{include}/ndbm.h" # Builds OK (statically) if libgdbm-compat-dev is present
 
     @property
     def url(self):
@@ -50,7 +50,7 @@ class Bzip2(ModuleBuilder):
 class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
-    m_telltale = "{include}/gdbm.h"  # TODO: check .so on linux
+    m_telltale = None  # "{include}/gdbm.h" # Builds OK (statically), but not sure anyone uses this
 
     @property
     def url(self):
@@ -86,6 +86,11 @@ class LibFFI(ModuleBuilder):
     def auto_use_with_reason(self):
         if self.target.is_macos:
             return False, runez.blue("on demand on macos")
+
+        if self.target.is_linux:
+            path = self._find_telltale(self.m_telltale)
+            if path:
+                return True, "%s (on top of libffi-dev)" % runez.green("needed on linux")  # pragma: no cover, provisional
 
         return super().auto_use_with_reason()
 
@@ -162,9 +167,8 @@ class Readline(ModuleBuilder):
 
 
 class Sqlite(ModuleBuilder):
-    # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
 
-    m_telltale = True  # "{include}/sqlite3.h"  # TODO: check .so on linux
+    m_telltale = "{include}/sqlite3.h"
 
     def auto_use_with_reason(self):
         if self.target.is_macos:
@@ -172,6 +176,14 @@ class Sqlite(ModuleBuilder):
 
         if not runez.which("tclsh"):
             return None, runez.brown("requires tclsh")
+
+        if self.target.is_linux:
+            path = self._find_telltale(self.m_telltale)
+            if path:
+                return True, "%s (on top of libsqlite3-dev)" % runez.green("needed on linux")  # pragma: no cover, provisional
+
+            # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
+            return False, runez.red("need libsqlite3-dev on linux as well, pending enhancement")
 
         return super().auto_use_with_reason()
 
@@ -280,7 +292,7 @@ class Tix(ModuleBuilder):
 class TkInter(ModuleBuilder):
     """Build tcl/tk"""
 
-    m_telltale = ["{include}/tk", "{include}/tk.h"]
+    m_telltale = None  # ["{include}/tk", "{include}/tk.h"]
 
     @classmethod
     def candidate_modules(cls):
@@ -298,9 +310,22 @@ class TkInter(ModuleBuilder):
 
 
 class Uuid(ModuleBuilder):
-    # TODO: fails to link on linux without uuid-dev (works correctly if present)
 
     m_telltale = "{include}/uuid/uuid.h"
+
+    def auto_use_with_reason(self):
+        if self.target.is_macos:
+            return False, runez.blue("on demand on macos")
+
+        if self.target.is_linux:
+            path = self._find_telltale(self.m_telltale)
+            if path:
+                return True, "%s (on top of uuid-dev)" % runez.green("needed on linux")  # pragma: no cover, provisional
+
+            # TODO: fails to link on linux without libsqlite3-dev (works correctly if present)
+            return False, runez.red("need uuid-dev on linux as well, pending enhancement")
+
+        return super().auto_use_with_reason()
 
     @property
     def url(self):
@@ -344,6 +369,12 @@ class Xz(ModuleBuilder):
 class Zlib(ModuleBuilder):
 
     m_telltale = "{include}/zlib.h"
+
+    def auto_use_with_reason(self):
+        if self.target.is_linux:
+            return True, "%s (to get it statically compiled)" % runez.green("needed on linux")
+
+        return super().auto_use_with_reason()
 
     @property
     def url(self):

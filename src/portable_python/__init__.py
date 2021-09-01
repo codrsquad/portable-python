@@ -35,7 +35,7 @@ class BuildSetup:
     """
 
     # Optional extra settings (not taken as part of constructor)
-    static = True
+    static = False
 
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
@@ -63,7 +63,7 @@ class BuildSetup:
         """Compile selected python family and version"""
         self.log_counter = 0
         with runez.Anchored(self.build_base.parent, self.dist_folder.parent):
-            LOG.debug("Modules selected: %s" % runez.joined(self.python_builder.modules.selected, delimiter=", "))
+            LOG.info("Modules selected: %s" % runez.joined(self.python_builder.modules.selected, delimiter=", "))
             runez.ensure_folder(self.build_folder, clean=not x_debug)
             self.python_builder.compile(x_debug)
 
@@ -217,18 +217,23 @@ class ModuleBuilder:
             return True, runez.dim("sub-module of %s" % self.parent_module)
 
         if not telltale:
-            return False, runez.brown("only on demand (no auto-detection available)")  # pragma: no cover
+            return False, runez.blue("on demand")
 
         if telltale is True:
-            return True, runez.green("always compiled")
+            return True, runez.green("always compiled")  # pragma: no cover, provisional
 
+        path = self._find_telltale(telltale)
+        if path:
+            return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
+
+        return True, "%s, no %s" % (runez.green("needed"), telltale)
+
+    def _find_telltale(self, telltale):
         for tt in runez.flattened(telltale, keep_empty=None):
             for sys_include in runez.flattened(self.target.sys_include):
                 path = tt.format(include=sys_include, arch=self.target.architecture, platform=self.target.platform)
                 if os.path.exists(path):
-                    return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
-
-        return True, "%s, no %s" % (runez.green("needed"), telltale)
+                    return path
 
     def active_module(self, name):
         return self.modules.active_module(name)
@@ -357,7 +362,7 @@ class ModuleBuilder:
 
                         value = runez.joined(value, delimiter=delimiter, keep_empty=None)  # All yielded values are auto-joined
                         if value:
-                            LOG.debug("env %s=%s" % (var_name, runez.short(value, size=2048)))
+                            LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
                             os.environ[var_name] = value
 
             func = getattr(self, "_do_%s_compile" % self.target.platform, None)

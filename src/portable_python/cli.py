@@ -32,7 +32,7 @@ def main(debug):
 @click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compiled binary tarball")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Build a shared-libs python targeting given prefix folder")
-@click.option("--static/--no-static", is_flag=True, default=True, show_default=True, help="Keep static library?")
+@click.option("--static/--no-static", is_flag=True, default=BuildSetup.static, show_default=True, help="Keep static library?")
 @click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
 @click.option("--x-debug", is_flag=True, hidden=True, help="For debugging, allows to build one module at a time")
 @click.argument("python_spec")
