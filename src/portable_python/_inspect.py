@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import sysconfig
 
 INSIGHTS = {
     "_curses": "version __version__",
@@ -64,10 +65,16 @@ def module_report(module_name):
         return dict(version="*absent*", note=str(e))
 
 
+def get_so_path():
+    srcdir = sysconfig.get_config_var("srcdir")
+    if not srcdir or len(srcdir) < 3:
+        srcdir = sysconfig.get_config_var("DESTSHARED")  # pragma: no cover, py2 reports an odd '.' as srcdir
+
+    return os.path.join(os.path.dirname(srcdir), "lib-dynload")
+
+
 def main(arg):
     if arg == "sysconfig":
-        import sysconfig
-
         abs_builddir = sysconfig.get_config_var("abs_builddir")
         secondary = None
         marker = "$^"
@@ -92,6 +99,7 @@ def main(arg):
         return
 
     report = dict((k, module_report(k)) for k in arg.split(","))
+    report = dict(so=get_so_path(), report=report)
     print(json.dumps(report, indent=2, sort_keys=True))
 
 

@@ -40,6 +40,7 @@ OTOOL_SAMPLE = """
 .../lib/python3.9/lib-dynload/_dbm.cpython-39-darwin.so:
  ....../foo/bar.dylib (compatibility version 8.0.0, current version 8.4.0)
  /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib (compatibility version 5.0.0, current version 5.0.0)
+ @rpath/libssl.45.dylib (compatibility version 46.0.0, current version 46.1.0)
  /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1281.0.0)
 """
 
@@ -47,13 +48,13 @@ OTOOL_SAMPLE = """
 def test_inspect_lib():
     with patch("runez.which", return_value=None):
         info = SoInfo("_dbm...so")
-        assert str(info) == "_dbm"
+        assert str(info) == "_dbm*.so"
         info.parse_otool(OTOOL_SAMPLE)
-        assert info.report() == "_dbm*.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0"
+        assert str(info) == "_dbm*.so ssl:46.1.0 foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0"
 
         info = SoInfo("_tkinter...so")
         info.parse_ldd(LDD_SAMPLE)
-        assert info.report() == "_tkinter*.so tcl8:8.6 missing: tinfo?:5"
+        assert str(info) == "_tkinter*.so tcl8:8.6 missing: tinfo?:5"
 
 
 def test_inspect_module(logged):

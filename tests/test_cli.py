@@ -100,12 +100,13 @@ def test_finalization(cli):
     runez.write(bin / "some-exe3", "#!/bin/sh\nhello", logger=None)
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("build", v, "-mbzip2", "--x-debug")
-        assert cli.succeeded
+        assert cli.failed
         assert "Modules selected: bzip2" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
         assert f"Deleted build/cpython-{v}/{v}/bin/2to3" in cli.logged
         assert "Symlink foo-python <- python" in cli.logged
         assert f"Auto-corrected shebang for build/cpython-{v}/{v}/bin/some-exe" in cli.logged
+        assert "Build failed" in cli.logged
 
     assert runez.readlines(bin / "some-exe", logger=None) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
     assert runez.readlines(bin / "some-exe3", logger=None) == ["#!/bin/sh", "hello"]
@@ -115,6 +116,9 @@ def test_finalization(cli):
 def test_inspect(cli):
     cli.run("inspect", sys.executable, "-m+sys")
     assert cli.succeeded
+
+    cli.run("inspect", sys.executable)
+    assert ".so files:" in cli.logged
 
     cli.run("inspect", sys.executable, "foo", "-mall")
     assert cli.succeeded

@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import click
 import runez
@@ -41,20 +42,31 @@ def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
     setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, modules=modules, prefix=prefix, target=target)
     setup.static = static
     setup.compile(x_debug=x_debug)
-    if setup.python_builder.install_folder.is_dir():
-        inspector = PythonInspector(setup.python_builder.install_folder)
-        print(inspector.report())
 
 
 @main.command()
 @click.option("--modules", "-m", help="Modules to inspect")
+@click.option("--verbose", "-v", is_flag=True, default=None, help="Show full so report")
 @click.argument("pythons", nargs=-1)
-def inspect(modules, pythons):
+def inspect(modules, verbose, pythons):
     """Overview of python internals"""
+    if modules is None and verbose is None:
+        verbose = False
+
+    exit_code = 0
+    count = 0
     for spec in runez.flattened(pythons, keep_empty=None, split=","):
+        if count:
+            print()
+
+        count += 1
         inspector = PythonInspector(spec, modules)
-        print(inspector.report())
-        print()
+        print(inspector.report(verbose=verbose))
+        if verbose is not None:
+            if not inspector.full_so_report or not inspector.full_so_report.is_valid:
+                exit_code = 1
+
+    sys.exit(exit_code)
 
 
 @main.command()

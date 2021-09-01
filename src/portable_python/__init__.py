@@ -66,6 +66,11 @@ class BuildSetup:
             LOG.info("Modules selected: %s" % runez.joined(self.python_builder.modules.selected, delimiter=", "))
             runez.ensure_folder(self.build_folder, clean=not x_debug)
             self.python_builder.compile(x_debug)
+            if self.python_builder.install_folder.is_dir():
+                inspector = PythonInspector(self.python_builder.install_folder)
+                print(inspector.report(verbose=False))
+                if not inspector.full_so_report or not inspector.full_so_report.is_valid:
+                    runez.abort("Build failed", fatal=not runez.DRYRUN)
 
 
 class ModuleCollection:
@@ -491,13 +496,13 @@ class ModuleInfo:
 
             return runez.bold(version)
 
-    @property
+    @runez.cached_property
     def additional_info(self):
         if self.filepath:
             path = runez.to_path(self.filepath)
             if path.name.endswith(".so"):
                 info = SoInfo(self.filepath)
-                return info.report()
+                return info
 
             if path.name.startswith("__init__."):
                 path = path.parent
@@ -551,10 +556,10 @@ class SoInfo:
         "/lib/x86_64-linux-gnu/libpthread.so.0",
         "/lib64/ld-linux-x86-64.so.2",
     ]
-    _sys_prefixes = ["/lib", "/usr/lib", "/System/Library/Frameworks/"]
+    _sys_prefixes = ["@rpath", "/lib", "/usr/lib", "/System/Library/Frameworks/"]
 
     def __init__(self, path):
-        self.path = path
+        self.path = runez.to_path(path)
         self.short_name = os.path.basename(path).partition(".")[0]
         self.ignored_libs = []
         self.system_libs = []
@@ -570,7 +575,29 @@ class SoInfo:
                 return
 
     def __repr__(self):
-        return self.short_name
+        missing = None
+        if self.missing_libs:
+            missing = [runez.red("missing:"), self.missing_libs]
+
+        if self.is_failed:
+            name = runez.red("%s*_failed.so" % self.short_name)
+
+        else:
+            name = runez.green("%s*.so" % self.short_name)
+
+        return runez.joined(name, self.system_libs, self.other_libs, missing, keep_empty=None)
+
+    @property
+    def is_failed(self):
+        return "_failed" in self.path.name
+
+    @property
+    def is_problematic(self):
+        return self.is_failed or self.missing_libs or self.other_libs
+
+    @runez.cached_property
+    def size(self):
+        return runez.to_path(self.path).stat().st_size
 
     def parse_otool(self, output):
         for line in output.splitlines():
@@ -581,7 +608,7 @@ class SoInfo:
     def parse_ldd(self, output):
         for line in output.splitlines():
             line = line.strip()
-            if line:
+            if line and line != "statically linked":
                 missing = False
                 if "=>" in line:
                     name, _, path = line.partition("=")
@@ -619,13 +646,6 @@ class SoInfo:
 
         self.other_libs.append(CLibInfo(path, runez.brown, version))
 
-    def report(self):
-        missing = None
-        if self.missing_libs:
-            missing = [runez.red("missing:"), self.missing_libs]
-
-        return runez.joined(runez.green("%s*.so" % self.short_name), self.system_libs, self.other_libs, missing, keep_empty=None)
-
 
 class PythonInspector:
 
@@ -656,7 +676,7 @@ class PythonInspector:
     @runez.cached_property
     def module_info(self):
         if self.payload:
-            return {k: ModuleInfo(self, k, v) for k, v in self.payload.items()}
+            return {k: ModuleInfo(self, k, v) for k, v in self.payload.get("report", {}).items()}
 
     @runez.cached_property
     def output(self):
@@ -670,7 +690,14 @@ class PythonInspector:
         if self.output and self.output.startswith("{"):
             return json.loads(self.output)
 
-    def report(self):
+    @runez.cached_property
+    def full_so_report(self):
+        if self.payload:
+            folder = runez.to_path(self.payload.get("so"))
+            if folder and folder.exists():
+                return FullSoReport(folder)
+
+    def report(self, verbose=None):
         if self.python.problem:
             return "%s: %s" % (runez.blue(runez.short(self.python.executable)), runez.red(self.python.problem))
 
@@ -681,7 +708,37 @@ class PythonInspector:
             for v in self.module_info.values():
                 table.add_rows(*v.report_rows())
 
+            if verbose is not None:
+                table = [table, self.full_so_report.report(verbose=verbose)]
+
         return runez.joined(runez.blue(self.python), table or self.output, keep_empty=None, delimiter=":\n")
+
+
+class FullSoReport:
+
+    def __init__(self, folder):
+        self.folder = folder
+        self.ok = []
+        self.problematic = []
+        self.size = 0
+        for path in runez.ls_dir(folder):
+            info = SoInfo(path)
+            self.size += info.size
+            if info.is_problematic:
+                self.problematic.append(info)
+
+            else:
+                self.ok.append(info)
+
+    def __repr__(self):
+        return ".so files: %s, %s problematic, %s OK" % (runez.represented_bytesize(self.size), len(self.problematic), len(self.ok))
+
+    @property
+    def is_valid(self):
+        return self.ok and not self.problematic
+
+    def report(self, verbose=False):
+        return runez.joined(self, verbose and self.ok, self.problematic, keep_empty=None, delimiter="\n")
 
 
 class TargetSystem:
