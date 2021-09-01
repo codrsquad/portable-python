@@ -159,8 +159,9 @@ class Ncurses(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure(
-            "./configure", "--enable-shared=no", "--enable-static=yes", "--enable-widec"
-            "--without-cxx", "--without-tests", "--without-manpages", "--disable-stripping"
+            "./configure", "--enable-shared=no", "--enable-static=yes", "--enable-widec", "--enable-pc-files",
+            "--without-ada", "--without-cxx", "--without-tests", "--without-manpages", "--without-progs", "--without-tack",
+            "--disable-db-install", "--disable-stripping",
         )
         self.run_make()
         self.run_make("install")
