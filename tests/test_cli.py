@@ -73,18 +73,18 @@ def test_build(cli):
 
 def test_failed_run(cli):
     v = PythonVersions.cpython.latest
-    dummy_tarball("readline-8.1.tar.gz")
+    dummy_tarball("zlib-1.2.11.tar.gz")
     build_path = runez.to_path(f"build/cpython-{v}")
-    cli.run("build", v, "-mreadline")
+    cli.run("build", v, "-mzlib")
     assert cli.failed
     assert "./configure is not an executable" in cli.logged
-    assert os.path.exists(build_path / "logs/01-readline.log")
+    assert os.path.exists(build_path / "logs/01-zlib.log")
 
 
 def test_finalization(cli):
     v = PythonVersions.cpython.latest
     dummy_tarball(f"Python-{v}.tar.xz")
-    dummy_tarball("readline-8.1.tar.gz")
+    dummy_tarball("bzip2-1.0.8.tar.gz")
     base = runez.to_path(f"build/cpython-{v}")
     bin = base / f"{v}/bin"
 
@@ -99,9 +99,9 @@ def test_finalization(cli):
     runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
     runez.write(bin / "some-exe3", "#!/bin/sh\nhello", logger=None)
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
-        cli.run("build", v, "-mreadline", "--x-debug")
+        cli.run("build", v, "-mbzip2", "--x-debug")
         assert cli.succeeded
-        assert "Modules selected: readline" in cli.logged
+        assert "Modules selected: bzip2" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
         assert f"Deleted build/cpython-{v}/{v}/bin/2to3" in cli.logged
         assert "Symlink foo-python <- python" in cli.logged
