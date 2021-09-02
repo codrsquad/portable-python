@@ -49,6 +49,7 @@ class Bzip2(ModuleBuilder):
 class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
+    m_debian = "libgdbm-dev"
     m_telltale = ["-linux", "+darwin", "{include}/gdbm.h"]  # Needed on macos to override brew-installed gdbm from /usr/local
 
     @property
@@ -293,6 +294,7 @@ class Tix(ModuleBuilder):
 class TkInter(ModuleBuilder):
     """Build tcl/tk"""
 
+    m_debian = "tk-dev"
     m_telltale = None  # ["{include}/tk", "{include}/tk.h"]
 
     @classmethod

@@ -188,6 +188,7 @@ class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
     m_build_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
+    m_debian = None
     m_include: str = None  # Optional: subfolder to automatically list in CPATH when this module is active
 
     setup: BuildSetup
@@ -230,33 +231,43 @@ class ModuleBuilder:
             return True, runez.dim("sub-module of %s" % self.parent_module)
 
         if not telltale:
-            return False, runez.blue("on demand")
+            msg = runez.blue("on demand")
+            if self.target.is_linux and self.m_debian:
+                msg += " (needs debian %s)" % self.m_debian
 
-        if isinstance(telltale, list):
-            while telltale and telltale[0][0] in "-+":
-                if telltale[0] == "-%s" % self.target.platform:
-                    return False, runez.blue("on demand on %s" % self.target.platform)
+            return False, msg
 
-                if telltale[0] == "+%s" % self.target.platform:
-                    return True, runez.green("mandatory on %s" % self.target.platform)
+        telltale = runez.flattened(telltale, keep_empty=None)
+        by_platform = []
+        while telltale and telltale[0][0] in "-+":
+            by_platform.append(telltale.pop(0))
 
-                telltale = telltale[1:]
+        for pp in by_platform:
+            if pp == "-%s" % self.target.platform:
+                msg = runez.blue("on demand on %s" % self.target.platform)
+                if self.target.is_linux and self.m_debian:
+                    msg += " (needs debian %s)" % self.m_debian
 
-        debian = getattr(self, "m_debian", None)
+                return False, msg
+
+            if pp == "+%s" % self.target.platform:
+                return True, runez.green("mandatory on %s" % self.target.platform)
+
         path = self._find_telltale(telltale)
-        if self.target.is_linux and debian:
+        telltale = runez.joined(telltale)
+        if self.target.is_linux and self.m_debian:
             if path:
-                return True, "%s (on top of %s, for static compile)" % (runez.green("needed on linux"), debian)
+                return True, "%s (on top of %s, for static compile)" % (runez.green("needed on linux"), self.m_debian)
 
-            return True, "%s for static compile" % runez.red("needs %s" % debian)
+            return True, "%s for static compile" % runez.red("needs %s" % self.m_debian)
 
         if path:
             return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
 
         return True, "%s, no %s" % (runez.green("needed"), telltale)
 
-    def _find_telltale(self, telltale):
-        for tt in runez.flattened(telltale, keep_empty=None):
+    def _find_telltale(self, telltales):
+        for tt in telltales:
             for sys_include in runez.flattened(self.target.sys_include):
                 path = tt.format(include=sys_include, arch=self.target.architecture, platform=self.target.platform)
                 if os.path.exists(path):
