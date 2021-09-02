@@ -50,11 +50,11 @@ def test_inspect_lib():
         info = SoInfo("_dbm...so")
         assert str(info) == "_dbm*.so"
         info.parse_otool(OTOOL_SAMPLE)
-        assert str(info) == "_dbm*.so ssl:46.1.0 foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0"
+        assert str(info) == "_dbm*.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0"
 
         info = SoInfo("_tkinter...so")
         info.parse_ldd(LDD_SAMPLE)
-        assert str(info) == "_tkinter*.so tcl8:8.6 missing: tinfo?:5"
+        assert str(info) == "_tkinter*.so tcl8:8.6 missing: tinfo:5"
 
 
 def test_inspect_module(logged):

@@ -109,6 +109,7 @@ class LibFFI(ModuleBuilder):
 
 class Openssl(ModuleBuilder):
 
+    m_include = "openssl"
     m_telltale = "{include}/openssl/ssl.h"
 
     @property
@@ -138,6 +139,8 @@ class Openssl(ModuleBuilder):
 
 class Ncurses(ModuleBuilder):
 
+    m_include = "ncursesw"
+
     @property
     def url(self):
         return f"https://ftp.gnu.org/pub/gnu/ncurses/ncurses-{self.version}.tar.gz"
@@ -159,6 +162,7 @@ class Ncurses(ModuleBuilder):
 class Readline(ModuleBuilder):
     """See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb"""
 
+    m_include = "readline"
     m_telltale = "{include}/readline/readline.h"
 
     @classmethod
@@ -239,10 +243,7 @@ class Tk(ModuleBuilder):
         return f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz"
 
     def xenv_CFLAGS(self):
-        yield self.checked_deps_folder("include", prefix="-I")
-
-    def xenv_LDFLAGS(self):
-        yield f"-L{self.deps_lib}"
+        yield f"-I{self.deps}/include"
 
     def c_configure_args(self):
         yield "--enable-shared=no"
@@ -274,10 +275,7 @@ class Tix(ModuleBuilder):
         # Needed to avoid error: Getting no member named 'result' in 'struct Tcl_Interp'
         yield "-DUSE_INTERP_RESULT"
         yield "-Wno-implicit-function-declaration"  # Allows to not fail compilation due to missing 'panic' symbol
-        yield self.checked_deps_folder("include", prefix="-I")
-
-    def xenv_LDFLAGS(self):
-        yield f"-L{self.deps_lib}"
+        yield f"-I{self.deps}/include"
 
     def c_configure_args(self):
         yield "--enable-shared=no"
@@ -309,6 +307,7 @@ class TkInter(ModuleBuilder):
 class Uuid(ModuleBuilder):
 
     m_debian = "uuid-dev"
+    m_include = "uuid"
     m_telltale = ["-darwin", "{include}/uuid/uuid.h"]
 
     @property
@@ -352,6 +351,7 @@ class Xz(ModuleBuilder):
 
 class Zlib(ModuleBuilder):
 
+    m_debian = "zlib1g-dev"
     m_telltale = "{include}/zlib.h"
 
     @property

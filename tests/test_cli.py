@@ -18,6 +18,7 @@ def test_build(cli):
     mm = f"{v.major}.{v.minor}"
     cli.run("--dryrun", "build", "2.7.1", "-m+bdb", "--target=foo-bar")
     assert cli.failed
+    assert "Modules selected: [+bdb] -> " in cli.logged
     assert " bdb:" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
@@ -31,6 +32,7 @@ def test_build(cli):
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
+    assert "Modules selected: [none]\n" in cli.logged
     assert " --prefix=/apps/python " in cli.logged
     assert f" install DESTDIR={bf}/root" in cli.logged
 
@@ -101,7 +103,7 @@ def test_finalization(cli):
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("build", v, "-mbzip2", "--x-debug")
         assert cli.failed
-        assert "Modules selected: bzip2" in cli.logged
+        assert "Modules selected: [bzip2] -> bzip2:" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
         assert f"Deleted build/cpython-{v}/{v}/bin/2to3" in cli.logged
         assert "Symlink foo-python <- python" in cli.logged

@@ -63,7 +63,12 @@ class BuildSetup:
         """Compile selected python family and version"""
         self.log_counter = 0
         with runez.Anchored(self.build_base.parent, self.dist_folder.parent):
-            LOG.info("Modules selected: %s" % runez.joined(self.python_builder.modules.selected, delimiter=", "))
+            modules = list(self.python_builder.modules)
+            msg = "[%s]" % self.python_builder.modules
+            if modules:
+                msg += " -> %s" % runez.joined(modules, delimiter=", ")
+
+            LOG.info("Modules selected: %s" % msg)
             runez.ensure_folder(self.build_folder, clean=not x_debug)
             self.python_builder.compile(x_debug)
             if self.python_builder.install_folder.is_dir():
@@ -101,8 +106,8 @@ class ModuleCollection:
         if not desired:
             return
 
-        explicitly_disabled = runez.red("explicitly disabled")
-        explicitly_requested = runez.blue("explicitly requested")
+        explicitly_disabled = runez.orange("explicitly disabled")
+        explicitly_requested = runez.green("explicitly requested")
         if desired == "none":
             self.selected = []
             self.reasons = {k: explicitly_disabled for k in self.reasons}
@@ -147,6 +152,11 @@ class ModuleCollection:
 
         return "auto-detected: %s" % runez.plural(self.selected, "module")
 
+    def __iter__(self):
+        for module in self.selected:
+            yield from module.modules
+            yield module
+
     @staticmethod
     def get_module_name(module):
         if not isinstance(module, str):
@@ -178,6 +188,7 @@ class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
     m_build_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
+    m_include: str = None  # Optional: subfolder to automatically list in CPATH when this module is active
 
     setup: BuildSetup
     parent_module: "ModuleBuilder" = None
@@ -199,9 +210,6 @@ class ModuleBuilder:
             self.parent_module = parent_module
 
         self.modules = ModuleCollection(self, desired=desired)
-        self.set_default_xenv("ARCHFLAGS", ("-arch ", self.target.architecture))
-        if self.target.is_macos:
-            self.set_default_xenv("MACOSX_DEPLOYMENT_TARGET", default="10.14")
 
         self.m_src_build = self.setup.build_folder / "build" / self.m_name
 
@@ -282,25 +290,32 @@ class ModuleBuilder:
     def deps_lib(self):
         return self.deps / "lib"
 
-    def set_default_xenv(self, name, value=None, default=None):
-        """Set xenv_ attribute, if not already defined by descendant"""
-        field_name = "xenv_%s" % name
-        if not hasattr(self, field_name):
-            if value is None:
-                value = os.environ.get(name, default)
+    def xenv_ARCHFLAGS(self):
+        yield "-arch ", self.target.architecture
 
-            if value:
-                setattr(self, field_name, value)
+    def xenv_CPATH(self):
+        if self.modules.selected:
+            # By default, set CPATH only for modules that have sub-modules (descendants can override this easily)
+            folder = self.deps / "include"
+            yield folder
+            for module in self.modules:
+                if module.m_include:
+                    yield folder / module.m_include
+
+    def xenv_LDFLAGS(self):
+        yield f"-L{self.deps_lib}"
+
+    def xenv_MACOSX_DEPLOYMENT_TARGET(self):
+        if self.target.is_macos:
+            yield os.environ.get("MACOSX_DEPLOYMENT_TARGET", "10.14")
 
     def xenv_PATH(self):
-        yield self.checked_deps_folder("bin")
+        yield f"{self.deps}/bin"
         yield "/usr/bin"
         yield "/bin"
 
-    def checked_deps_folder(self, path, prefix=""):
-        path = self.deps / path
-        if path.is_dir():
-            return f"{prefix}{path}"
+    def xenv_PKG_CONFIG_PATH(self):
+        yield f"{self.deps_lib}/pkgconfig"
 
     def run(self, program, *args, fatal=True):
         return runez.run(program, *args, passthrough=self._log_handler or True, fatal=fatal)
@@ -368,17 +383,6 @@ class ModuleBuilder:
                     REST_CLIENT.download(self.url, path)
 
                 runez.decompress(path, self.m_src_build)
-
-            if self.modules.selected:
-                cpath = [
-                    self.checked_deps_folder("include"),
-                    self.checked_deps_folder("include/readline"),
-                    self.checked_deps_folder("include/openssl"),
-                    self.checked_deps_folder("include/uuid"),
-                ]
-                self.set_default_xenv("CPATH", cpath)
-                self.set_default_xenv("LDFLAGS", f"-L{self.deps_lib}")
-                self.set_default_xenv("PKG_CONFIG_PATH", f"{self.deps_lib}/pkgconfig")
 
             for var_name in sorted(dir(self)):
                 if var_name.startswith("xenv_"):
@@ -549,19 +553,18 @@ class CLibInfo:
 
 class SoInfo:
 
-    _ignored = [
-        "/usr/lib/libSystem.B.dylib",
-        "linux-vdso.so",
-        "/lib/x86_64-linux-gnu/libc.so.6",
-        "/lib/x86_64-linux-gnu/libpthread.so.0",
-        "/lib64/ld-linux-x86-64.so.2",
+    # See https://github.com/pypa/auditwheel/blob/master/auditwheel/policy/manylinux-policy.json
+    _base_lib_paths = ["/usr/lib/libSystem.B.dylib"]
+    _base_lib_names = [
+        "libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0", "librt.so.1", "libnsl.so.1", "libutil.so.1",
+        "libX11.so.6", "libXext.so.6", "libXrender.so.1", "libICE.so.6", "libSM.so.6", "libGL.so.1", "libgobject-2.0.so.0",
+        "libgthread-2.0.so.0", "libglib-2.0.so.0", "libresolv.so.2", "libexpat.so.1"
     ]
-    _sys_prefixes = ["@rpath", "/lib", "/usr/lib", "/System/Library/Frameworks/"]
 
     def __init__(self, path):
         self.path = runez.to_path(path)
         self.short_name = os.path.basename(path).partition(".")[0]
-        self.ignored_libs = []
+        self.base_libs = []
         self.system_libs = []
         self.other_libs = []
         self.missing_libs = []
@@ -603,45 +606,58 @@ class SoInfo:
         for line in output.splitlines():
             m = re.match(r"^(\S+).+current version ([0-9.]+).*$", line.strip())
             if m:
-                self.add_ref(m.group(1), m.group(2))
+                self.add_ref(m.group(1), version=m.group(2))
 
     def parse_ldd(self, output):
         for line in output.splitlines():
             line = line.strip()
             if line and line != "statically linked":
-                missing = False
                 if "=>" in line:
-                    name, _, path = line.partition("=")
-                    path = path[1:].strip().partition("(")[0]
-                    if path == "not found":
-                        path = name.strip()
-                        missing = True
+                    basename, _, path = line.partition("=")
+                    basename = basename.strip()
+                    path = path[1:].partition("(")[0].strip()
 
                 else:
                     path, _, _ = line.partition(" ")
+                    basename = None
 
-                m = re.match(r"^.*?([\d.]+)[^\d]*$", os.path.basename(path))
-                version = m.group(1) if m else "?"
-                self.add_ref(path, version.strip("."), missing=missing)
+                self.add_ref(path.strip(), basename=basename)
 
-    def short_lib_name(self, path):
-        basename = os.path.basename(path)
-        if basename.startswith("lib"):
-            basename = basename[3:]
+    def is_base_lib(self, path, basename):
+        if path.startswith("@rpath/") or path in self._base_lib_paths or basename in self._base_lib_names:
+            return True
 
-        return basename.partition(".")[0]
+        if basename.startswith(("linux-vdso.so", "ld-linux-x86-64")):
+            return True
 
-    def add_ref(self, path, version, missing=False):
-        if missing:
-            self.missing_libs.append(CLibInfo(path, runez.red, version, self.short_lib_name(path) + "?"))
+    def is_system_lib(self, path):
+        if path.startswith(("/lib", "/usr/lib", "/System/Library/Frameworks/")):
+            return True
+
+    def add_ref(self, path, version=None, basename=None):
+        if not basename:
+            basename = os.path.basename(path)
+
+        if not version:
+            m = re.match(r"^.*?([\d.]+)[^\d]*$", basename)
+            if m:
+                version = m.group(1).strip(".")
+
+        short_name = basename
+        if short_name.startswith("lib"):
+            short_name = short_name[3:]
+
+        short_name = short_name.partition(".")[0]
+        if path == "not found":
+            self.missing_libs.append(CLibInfo(basename, runez.red, version, short_name))
             return
 
-        if any(path.startswith(x) for x in self._ignored):
-            self.ignored_libs.append(path)
+        if self.is_base_lib(path, basename):
+            self.base_libs.append(path)
             return
 
-        if any(path.startswith(x) for x in self._sys_prefixes):
-            self.system_libs.append(CLibInfo(path, runez.blue, version, self.short_lib_name(path)))
+        if self.is_system_lib(path):
+            self.system_libs.append(CLibInfo(path, runez.blue, version, short_name))
             return
 
         self.other_libs.append(CLibInfo(path, runez.brown, version))
