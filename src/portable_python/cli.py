@@ -4,7 +4,8 @@ import sys
 import click
 import runez
 
-from portable_python import BuildSetup, LOG, PythonInspector
+from portable_python import BuildSetup, LOG
+from portable_python.inspect import PythonInspector
 from portable_python.versions import PythonVersions
 
 

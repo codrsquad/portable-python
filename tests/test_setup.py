@@ -1,10 +1,8 @@
-from unittest.mock import patch
-
-from portable_python import BuildSetup, ModuleBuilder, PythonInspector, SoInfo
+from portable_python import BuildSetup, ModuleBuilder
 from portable_python.versions import PythonVersions
 
 
-def test_edge_cases(monkeypatch):
+def test_edge_cases():
     setup = BuildSetup(None, modules="+readline")
     assert setup.python_spec.version == PythonVersions.cpython.latest
     assert str(setup.python_builder.modules) == "+readline"
@@ -19,57 +17,3 @@ def test_edge_cases(monkeypatch):
     assert not mb.url
     assert not mb.version
     assert str(mb.modules) == "no sub-modules"
-
-    inspector = PythonInspector("0.1.2")
-    assert str(inspector) == "0.1.2 [not available]"
-
-    monkeypatch.setattr(inspector.python, "problem", None)
-    monkeypatch.setattr(inspector, "output", "foo")
-    assert inspector.report() == "0.1.2 [cpython:0.1.2]:\nfoo"
-
-
-LDD_SAMPLE = """
-    linux-vdso.so.1 (...)
-    libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (...)
-    libtinfo.so.5 => not found
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (...)
-    /lib64/ld-linux-x86-64.so.2 (...)
-"""
-
-OTOOL_SAMPLE = """
-.../lib/python3.9/lib-dynload/_dbm.cpython-39-darwin.so:
- ....../foo/bar.dylib (compatibility version 8.0.0, current version 8.4.0)
- /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib (compatibility version 5.0.0, current version 5.0.0)
- @rpath/libssl.45.dylib (compatibility version 46.0.0, current version 46.1.0)
- /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1281.0.0)
-"""
-
-
-def test_inspect_lib():
-    with patch("runez.which", return_value=None):
-        info = SoInfo("_dbm...so")
-        assert str(info) == "_dbm*.so"
-        info.parse_otool(OTOOL_SAMPLE)
-        assert str(info) == "_dbm*.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0"
-
-        info = SoInfo("_tkinter...so")
-        info.parse_ldd(LDD_SAMPLE)
-        assert str(info) == "_tkinter*.so tcl8:8.6 missing: tinfo:5"
-
-
-def test_inspect_module(logged):
-    # Exercise _inspect code
-    import portable_python._inspect
-
-    portable_python._inspect.main("readline,zlib,sys,os,foo-bar")
-    assert '"readline": {' in logged.pop()
-
-    portable_python._inspect.main("sysconfig")
-    assert "VERSION:" in logged.pop()
-
-    assert portable_python._inspect.pymodule_version_info("key", b"foo", None) == {"version_field": "key", "version": "foo"}
-    assert portable_python._inspect.pymodule_version_info("key", (1, 2), None) == {"version_field": "key", "version": "1.2"}
-
-    # Verify edge cases don't crash
-    assert portable_python._inspect.pymodule_info("foo", [])
-    assert not logged
