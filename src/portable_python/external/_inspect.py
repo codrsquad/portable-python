@@ -58,10 +58,12 @@ def pymodule_info(module_name, pymodule):
 
 
 def module_report(module_name):
+    x = None
     try:
-        return pymodule_info(module_name, __import__(module_name))
+        x = __import__(module_name)
+        return pymodule_info(module_name, x)
 
-    except ImportError as e:
+    except Exception as e:
         return dict(version="*absent*", note=str(e))
 
 

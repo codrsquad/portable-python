@@ -26,7 +26,7 @@ LDD_SAMPLE = """
 def test_inspect_lib(logged):
     with patch("runez.which", return_value="yup"):
         not_there = SoInfo("/dev/null/foo")
-        assert str(not_there) == "foo*_failed.so"
+        assert str(not_there) == "foo_failed*.so"
         assert not_there.size == 0
         assert "otool exited with code" in logged.pop()
 
@@ -53,6 +53,10 @@ def test_inspect_lib(logged):
 def test_find_python(monkeypatch):
     inspector = PythonInspector("invoker")
     r = inspector.full_so_report
+    if not r.ok:
+        # Trigger a dump
+        assert inspector.full_so_report.represented() == ""
+
     assert r.ok
     if r.problematic:  # Will depend on how "clean" the python we're running this test with is
         r.problematic = []  # Clear any inherited problematics for this test
@@ -74,22 +78,22 @@ def test_find_python(monkeypatch):
 
     monkeypatch.setattr(inspector.python, "problem", None)
     monkeypatch.setattr(inspector, "output", "foo")
-    assert inspector.report() == "0.1.2 [cpython:0.1.2]:\nfoo"
+    assert inspector.represented() == "0.1.2 [cpython:0.1.2]:\nfoo"
 
 
 def test_inspect_module(logged):
     # Exercise _inspect code
-    import portable_python._inspect
+    from portable_python.external import _inspect
 
-    portable_python._inspect.main("readline,zlib,sys,os,foo-bar")
+    _inspect.main("readline,zlib,sys,os,foo-bar")
     assert '"readline": {' in logged.pop()
 
-    portable_python._inspect.main("sysconfig")
+    _inspect.main("sysconfig")
     assert "VERSION:" in logged.pop()
 
-    assert portable_python._inspect.pymodule_version_info("key", b"foo", None) == {"version_field": "key", "version": "foo"}
-    assert portable_python._inspect.pymodule_version_info("key", (1, 2), None) == {"version_field": "key", "version": "1.2"}
+    assert _inspect.pymodule_version_info("key", b"foo", None) == {"version_field": "key", "version": "foo"}
+    assert _inspect.pymodule_version_info("key", (1, 2), None) == {"version_field": "key", "version": "1.2"}
 
     # Verify edge cases don't crash
-    assert portable_python._inspect.pymodule_info("foo", [])
+    assert _inspect.pymodule_info("foo", [])
     assert not logged

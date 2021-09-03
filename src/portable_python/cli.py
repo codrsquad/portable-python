@@ -62,7 +62,7 @@ def inspect(modules, verbose, pythons):
 
         count += 1
         inspector = PythonInspector(spec, modules)
-        print(inspector.report(verbose=verbose))
+        print(inspector.represented(indent="  " if verbose else None))
         if verbose is not None:
             if not inspector.full_so_report or not inspector.full_so_report.is_valid:
                 exit_code = 1

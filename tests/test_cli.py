@@ -9,8 +9,9 @@ from portable_python.versions import PythonVersions
 from .conftest import dummy_tarball
 
 
-def test_module_invocation(cli):
-    cli.exercise_main("-mportable_python", "src/portable_python/cli.py")
+def test_invoker(cli):
+    cli.run("inspect", "invoker")
+    assert " 0 OK" not in cli.logged
 
 
 def test_build(cli):
@@ -149,6 +150,10 @@ def test_invalid(cli):
     cli.run("--dryrun", "build", "conda:1.2.3")
     assert cli.failed
     assert "Python family 'conda' is not yet supported" in cli.logged
+
+
+def test_module_invocation(cli):
+    cli.exercise_main("-mportable_python", "src/portable_python/cli.py")
 
 
 def test_scan(cli):

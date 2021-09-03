@@ -71,7 +71,7 @@ class BuildSetup:
             self.python_builder.compile(x_debug)
             if self.python_builder.install_folder.is_dir():
                 inspector = PythonInspector(self.python_builder.install_folder)
-                print(inspector.report(verbose=False))
+                print(inspector.represented(indent=""))
                 if not inspector.full_so_report or not inspector.full_so_report.is_valid:
                     runez.abort("Build failed", fatal=not runez.DRYRUN)
 
