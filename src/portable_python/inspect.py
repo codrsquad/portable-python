@@ -1,3 +1,4 @@
+import enum
 import json
 import logging
 import os
@@ -7,55 +8,8 @@ import re
 import runez
 from runez.render import PrettyTable
 
+from portable_python.tracking import Trackable, Tracker
 from portable_python.versions import PythonVersions
-
-
-def _rcolor(text, color_on, color=None):
-    """
-    Args:
-        text (str): Text to optionally color
-        color_on (bool | callable | None): Color to use, or flag (de)activating coloring
-        color (callable | None): Color to use if coloring is active
-
-    Returns:
-        (callable): Color function to use
-    """
-    if callable(color_on):
-        color = color_on
-
-    elif not color_on or color is None:
-        color = str
-
-    return color(text)
-
-
-def _rep(items, color, indent, name):
-    if items:
-        if name.endswith(":"):
-            yield _rcolor(name, color)
-
-        elif indent:
-            yield "%s%s:" % (indent, name)
-
-        for item in sorted(items):
-            x = "%s%s" % (indent or "", item.represented(color=color, indent=indent))
-            yield x
-
-
-class Representable:
-
-    def __repr__(self):
-        return self.represented(color=False)
-
-    def represented(self, color=True, indent=None):
-        """
-        Args:
-            color (callable | None):  Use colors if true-ish
-            indent (str | None): Compact representation when None, non-compact otherwise
-
-        Returns:
-            (str): Textual representation
-        """
 
 
 class SysLibInfo:
@@ -80,13 +34,26 @@ class SysLibInfo:
 
         self.rx_base_path = re.compile(r"^(%s)$" % runez.joined(base_paths, delimiter="|"))
 
-    def is_base_lib(self, path, basename):
-        """A base lib is OK to use by a portable program"""
-        return self.rx_base_path.match(path) or basename in self.basenames
+    def get_lib_type(self, path, basename):
+        if not path or path == "not found":
+            return LibType.missing
 
-    def is_system_lib(self, path):
-        """A system lib is NOT ok to use by a portable program"""
-        return self.rx_syslib.match(path)
+        if self.rx_base_path.match(path) or basename in self.basenames:
+            return LibType.base
+
+        if self.rx_syslib.match(path):
+            return LibType.system
+
+        return LibType.other
+
+
+class LibType(enum.Enum):
+    """Categorization for used .so-s, value being the color we want to show them as"""
+
+    base = ""
+    missing = "red"
+    other = "brown"
+    system = "blue"
 
 
 class TargetSystem:
@@ -125,145 +92,140 @@ class ModuleInfo:
         self.inspector = inspector
         self.name = name
         self.payload = payload
-        self.filepath = payload.get("path")
+        self.filepath = runez.to_path(payload.get("path"))
         self.note = payload.get("note")
         self.version = payload.get("version")
         self.version_field = payload.get("version_field")
 
-    @staticmethod
-    def represented_version(version):
-        if version:
-            version = str(version)
-            if version == "built-in":
-                return runez.blue(version)
-
-            if version.startswith("*"):
-                return runez.orange(version)
-
-            return runez.bold(version)
+    def __repr__(self):
+        return runez.short(self.filepath)  # pragma: no cover, for debugger
 
     @runez.cached_property
     def additional_info(self):
-        if self.filepath:
-            path = runez.to_path(self.filepath)
+        path = self.filepath
+        if path:
             if path.name.endswith(".so"):
-                info = SoInfo(self.filepath, self.inspector.sys_lib_info)
+                info = SoInfo(self.inspector, path)
                 return info
 
             if path.name.startswith("__init__."):
                 path = path.parent
 
-            # 3.6 does not have Path.relative_to()
-            pp = str(self.inspector.python.folder.parent)
-            cp = str(path)
-            if cp.startswith(pp):
-                path = runez.to_path(cp[len(pp) + 1:])
-
+            path = self.inspector.relative_path(path)
             return runez.green(path)
 
         if self.note and "No module named" not in self.note:
             return self.note
 
     def report_rows(self):
-        version = self.represented_version(self.version)
+        version = self.version
+        if version:
+            version = str(version)
+            if version == "built-in":
+                version = runez.blue(version)
+
+            elif version.startswith("*"):
+                version = runez.orange(version)
+
+            else:
+                version = runez.bold(version)
+
         info = self.additional_info
-        if isinstance(info, SoInfo):
+        if hasattr(info, "represented"):
             info = info.represented()
 
-        yield self.name, runez.joined(version, info, keep_empty=None)
+        yield self.name, runez.joined(version, info)
 
 
-class CLibInfo(Representable):
+class CLibInfo(Trackable):
 
-    def __init__(self, path, color, version, short_name=None):
-        self.path = path
-        self.color = color
+    def __init__(self, inspector: "PythonInspector", path: str, version: str, basename: str):
+        self.inspector = inspector
+        self.relative_path = inspector.relative_path(path)
+        if not basename:
+            basename = os.path.basename(path)
+
+        self.basename = basename
+        self.tracked_category = self.inspector.sys_lib_info.get_lib_type(path, basename)
+        if not version:
+            m = re.match(r"^.*?([\d.]+)[^\d]*$", basename)
+            if m:
+                version = m.group(1).strip(".")
+
         self.version = version
-        self.short_name = short_name
+        self.filepath = runez.to_path(path)
 
-    def __eq__(self, other):
-        return isinstance(other, CLibInfo) and self.path == other.path and self.version == other.version
+    def __str__(self):
+        return runez.joined(self.short_name, self.version)  # pragma: no cover, for debugger
 
-    def __hash__(self):
-        return hash((self.path, self.version))
+    @runez.cached_property
+    def short_name(self):
+        if self.tracked_category is LibType.other:
+            return self.relative_path
 
-    def __lt__(self, other):
-        if isinstance(other, CLibInfo):
-            return (self.path, self.version) < (other.path, other.version)
+        short_name = self.basename
+        if short_name.startswith("lib"):
+            short_name = short_name[3:]
 
-    def represented(self, color=True, indent=None):
-        if indent:
-            r = "%s%s" % (indent, os.path.basename(self.path))
+        return short_name.partition(".")[0]
+
+    def represented(self, verbose=False):
+        tc = self.tracked_category
+        if verbose:
+            yield runez.joined("[%s]" % runez.colored(tc.name, color=tc.value), self.relative_path, self.version, delimiter=" ")
 
         else:
-            r = self.short_name or self.path
-
-        m = re.match(r"^.*\.\.\.\./(.*)$", r)
-        if m:
-            r = m.group(1)
-
-        if self.version:
-            r += ":%s" % self.version
-
-        return _rcolor(r, color, self.color)
+            yield runez.colored(runez.joined(self.short_name, self.version, delimiter=":"), color=tc.value)
 
 
-class SoInfo(Representable):
+class SoInfo(Trackable):
 
-    def __init__(self, path, sys_lib_info=None):
+    def __init__(self, inspector: "PythonInspector", path):
+        self.inspector = inspector
         self.path = runez.to_path(path)
-        self.sys_lib_info = sys_lib_info or SysLibInfo()
+        self.lib_tracker = Tracker(LibType)
+        program, output = self._dot_so_listing(self.path)
         self.is_failed = "_failed" in self.path.name
-        self.base_libs = []
-        self.system_libs = []
-        self.other_libs = []
-        self.missing_libs = []
+        self.short_name = self.path.name.partition(".")[0]
+        if self.is_failed:
+            self.short_name += "_failed"
+
+        if program and output:
+            func = getattr(self, "parse_%s" % program)
+            func(output)
+
+        else:
+            self.is_failed = True
+            self.short_name += "!"
+
+    def __str__(self):
+        return runez.joined(self.represented())
+
+    def __iter__(self):
+        yield from self.lib_tracker.items
+
+    @staticmethod
+    def _dot_so_listing(path):
         for cmd in ("otool -L", "ldd"):
             cmd = runez.flattened(cmd, split=" ")
             program = cmd[0]
             if runez.which(program):
-                r = runez.run(*cmd, self.path, fatal=False, logger=None)
+                r = runez.run(*cmd, path, fatal=False, logger=None)
                 if not r.succeeded:
                     logging.warning("%s exited with code %s for %s: %s" % (program, r.exit_code, path, r.full_output))
-                    self.is_failed = True
-                    break
+                    return program, None
 
-                func = getattr(self, "parse_%s" % program)
-                func(r.output)
-                break
+                return program, r.output
 
-        self.short_name = runez.joined(os.path.basename(path).partition(".")[0], keep_empty=None)
-        if self.is_failed:
-            self.short_name += "_failed"
-
-    def __eq__(self, other):
-        return isinstance(other, SoInfo) and self.path == other.path
-
-    def __lt__(self, other):
-        return isinstance(other, SoInfo) and self.short_name < other.short_name
-
-    def represented(self, color=True, indent=None):
-        delimiter = "\n" if indent else " "
-        name = "%s%s" % (indent, self.path.name) if indent else "%s*.so" % self.short_name
-        name = _rcolor(name, color, self.is_failed and runez.red or runez.green)
-        x = runez.joined(
-            name,
-            _rep(self.system_libs, color and runez.blue, indent, "system libs"),
-            _rep(self.other_libs, color and runez.brown, indent, "other libs"),
-            _rep(self.missing_libs, color and runez.red, indent, "missing:"),
-            keep_empty=None,
-            delimiter=delimiter,
-        )
-        return x
+        return None, None
 
     @property
     def is_problematic(self):
-        return self.is_failed or self.missing_libs or self.other_libs
+        return self.is_failed or bool(self.lib_tracker.category[LibType.missing] or self.lib_tracker.category[LibType.other])
 
     @runez.cached_property
     def size(self):
-        path = runez.to_path(self.path)
-        return path.stat().st_size if path.exists() else 0
+        return self.path.stat().st_size if self.path.exists() else 0
 
     def parse_otool(self, output):
         for line in output.splitlines():
@@ -287,35 +249,40 @@ class SoInfo(Representable):
                 self.add_ref(path.strip(), basename=basename)
 
     def add_ref(self, path, version=None, basename=None):
-        if not basename:
-            basename = os.path.basename(path)
+        info = CLibInfo(self.inspector, path, version, basename)
+        self.lib_tracker.add(info)
 
-        if not version:
-            m = re.match(r"^.*?([\d.]+)[^\d]*$", basename)
-            if m:
-                version = m.group(1).strip(".")
+    def represented(self, verbose=False):
+        report = []
+        if verbose:
+            path = self.inspector.relative_path(self.path, lib_dynload=False)
+            delimiter = "\n"
 
-        short_name = basename
-        if short_name.startswith("lib"):
-            short_name = short_name[3:]
+        else:
+            path = "%s*.so" % self.short_name
+            delimiter = " "
 
-        short_name = short_name.partition(".")[0]
-        if path == "not found":
-            self.missing_libs.append(CLibInfo(basename, runez.red, version, short_name))
-            return
+        types = [LibType.missing, LibType.other, LibType.system]
+        if verbose:
+            types.append(LibType.base)
 
-        if self.sys_lib_info.is_base_lib(path, basename):
-            self.base_libs.append(path)
-            return
+        report.append(runez.green(path))
+        for tp in types:
+            c = self.lib_tracker.category[tp]
+            if c.items:
+                r = c.represented(verbose)
+                if verbose:
+                    r = "  %s" % runez.joined(r, delimiter="\n  ")
 
-        if self.sys_lib_info.is_system_lib(path):
-            self.system_libs.append(CLibInfo(path, runez.blue, version, short_name))
-            return
+                elif tp is LibType.missing:
+                    r = "%s: %s" % (runez.red("missing"), runez.joined(r, delimiter=delimiter))
 
-        self.other_libs.append(CLibInfo(path, runez.brown, version))
+                report.append(r)
+
+        return runez.joined(report, delimiter=delimiter)
 
 
-class PythonInspector(Representable):
+class PythonInspector:
 
     default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
     additional = "_asyncio,_functools,_tracemalloc,dbm.gnu,ensurepip,ossaudiodev,spwd,tkinter,venv"
@@ -324,7 +291,7 @@ class PythonInspector(Representable):
         self.spec = spec
         self.modules = self.resolved_names(modules)
         self.sys_lib_info = SysLibInfo(target)
-        self.module_names = runez.flattened(self.modules, keep_empty=None, split=",")
+        self.module_names = runez.flattened(self.modules, split=",")
         self.python = PythonVersions.find_python(self.spec)
 
     def __repr__(self):
@@ -360,74 +327,114 @@ class PythonInspector(Representable):
             return json.loads(self.output)
 
     @runez.cached_property
-    def full_so_report(self):
+    def srcdir(self):
+        """'srcdir' as reported by inspected python's sysconfig"""
         if self.payload:
-            folder = runez.to_path(self.payload.get("so"))
-            if folder and folder.exists():
-                return FullSoReport(folder, self.sys_lib_info)
+            return runez.to_path(self.payload.get("srcdir"))
 
-    def represented(self, color=True, indent=None):
+    @runez.cached_property
+    def lib_dynload(self):
+        return _find_parent_subfolder(self.srcdir, "lib-dynload")
+
+    @runez.cached_property
+    def lib_folder(self):
+        return _find_parent_subfolder(self.srcdir, "lib")
+
+    @runez.cached_property
+    def full_so_report(self):
+        return FullSoReport(self)
+
+    def relative_path(self, path, lib_dynload=True):
+        with runez.Anchored(lib_dynload and self.lib_dynload, self.python.folder.parent):
+            p = runez.short(path, size=4096)
+            m = re.match(r"^.*\.\.\./(.*)$", p)
+            if m:
+                p = m.group(1)
+
+            return p
+
+    def represented(self, verbose=False):
         if self.python.problem:
             return "%s: %s" % (runez.blue(runez.short(self.python.executable)), runez.red(self.python.problem))
 
-        table = None
+        report = []
+        if verbose:
+            # Temporary, inspecting remote and unusual lib/libpython.so
+            folders = [self.lib_folder, self.lib_dynload]
+            report.append("Scanning %s" % folders)
+            for folder in folders:
+                for path in runez.ls_dir(folder):
+                    if path.name.endswith(".so"):
+                        program, output = SoInfo._dot_so_listing(path)
+                        if program and output:
+                            report.append("Sample %s output on %s:" % (program, path))
+                            report.append(output)
+                            report.append("----")
+                            if len(report) > 7:
+                                break
+
         if self.module_info:
             table = PrettyTable(2)
             table.header[0].align = "right"
+            table.add_row("srcdir", self.srcdir)
+            table.add_row("lib", self.lib_folder)
+            table.add_row("lib-dynload", self.lib_dynload)
             for v in self.module_info.values():
                 table.add_rows(*v.report_rows())
 
-            table = [table, self.full_so_report.represented(color=color, indent=indent)]
+            report.append(table)
+            report.append(self.full_so_report)
+            pb = self.full_so_report.problematic.represented(verbose)
+            report.append(runez.joined(pb, delimiter="\n"))
 
-        return runez.joined(runez.blue(self.python), table or self.output, keep_empty=None, delimiter=":\n")
+        if verbose:
+            pb = self.full_so_report.ok.represented(verbose)
+            report.append(runez.joined(pb, delimiter="\n"))
+
+        report = runez.joined(report, delimiter="\n") or self.output
+        return runez.joined(runez.blue(self.python), report, delimiter=":\n")
 
 
-class FullSoReport(Representable):
+def _find_parent_subfolder(folder, *basenames, max_up=3):
+    if folder:
+        if folder.name in basenames:
+            return folder
 
-    def __init__(self, folder, sys_lib_info):
-        self.folder = folder
-        self.sys_lib_info = sys_lib_info
-        self.ok = []
-        self.problematic = []
-        self.uses_sytem_lib = []
+        for basename in basenames:
+            ld = folder / basename
+            if ld.is_dir():
+                return ld
+
+        if max_up > 0:
+            return _find_parent_subfolder(folder.parent, *basenames, max_up=max_up - 1)
+
+
+class FullSoReport:
+
+    def __init__(self, inspector: PythonInspector):
+        self.inspector = inspector
         self.size = 0
-        self.system_libs = set()
-        for path in runez.ls_dir(folder):
+        self.lib_tracker = Tracker(LibType, ".so")
+        self.ok = Tracker(LibType, "OK")
+        self.problematic = Tracker(LibType, "problematic")
+        for path in runez.ls_dir(inspector.lib_dynload):
             if path.name.endswith(".so"):
-                info = SoInfo(path, self.sys_lib_info)
+                info = SoInfo(inspector, path)
+                self.lib_tracker.add(info)
                 self.size += info.size
-                self.system_libs.update(info.system_libs)
-                if info.system_libs:
-                    self.uses_sytem_lib.append(info)
-
                 if info.is_problematic:
-                    self.problematic.append(info)
+                    self.problematic.add(info)
 
                 else:
-                    self.ok.append(info)
+                    self.ok.add(info)
+
+    def __repr__(self):
+        return runez.joined(".so files: %s" % runez.represented_bytesize(self.size), self.problematic, self.ok, delimiter=", ")
 
     @property
     def is_valid(self):
-        if self.sys_lib_info.target.is_linux and self.system_libs:
+        c = self.lib_tracker.category[LibType.system]
+        if self.inspector.sys_lib_info.target.is_linux and c:
             return False
 
         return self.ok and not self.problematic
-
-    def represented(self, color=True, indent=None, full=False):
-        msg = runez.joined(
-            ".so files: %s" % runez.represented_bytesize(self.size),
-            "%s problematic" % len(self.problematic),
-            "%s OK" % len(self.ok),
-            delimiter=", "
-        )
-        msg = runez.joined(
-            msg,
-            _rep(self.problematic, color, None, "problematic lib"),
-            indent is not None and _rep(self.uses_sytem_lib, color, indent, "using system lib"),
-            keep_empty=None,
-            delimiter="\n"
-        )
-        if indent:
-            msg = runez.joined(msg, _rep(self.ok, color, indent, "OK lib"), delimiter="\n")
-
-        return msg

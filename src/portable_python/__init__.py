@@ -71,8 +71,8 @@ class BuildSetup:
             self.python_builder.compile(x_debug)
             if self.python_builder.install_folder.is_dir():
                 inspector = PythonInspector(self.python_builder.install_folder)
-                print(inspector.represented(indent=""))
-                if not inspector.full_so_report or not inspector.full_so_report.is_valid:
+                print(inspector.represented())
+                if not inspector.full_so_report.is_valid:
                     runez.abort("Build failed", fatal=not runez.DRYRUN)
 
 
@@ -116,7 +116,7 @@ class ModuleCollection:
             self.reasons = {k: explicitly_requested for k in self.reasons}
             return
 
-        desired = runez.flattened(desired, keep_empty=None, split=",")
+        desired = runez.flattened(desired, split=",")
         unknown = [x for x in desired if x.strip("+-") not in self.reasons]
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
@@ -235,7 +235,7 @@ class ModuleBuilder:
 
             return False, msg
 
-        telltale = runez.flattened(telltale, keep_empty=None)
+        telltale = runez.flattened(telltale)
         by_platform = []
         while telltale and telltale[0][0] in "-+":
             by_platform.append(telltale.pop(0))
@@ -341,7 +341,7 @@ class ModuleBuilder:
             prefix = f"--prefix={prefix}"
 
         program = program.split()
-        cmd = runez.flattened(*program, prefix, *args, keep_empty=None)
+        cmd = runez.flattened(*program, prefix, *args)
         return self.run(*cmd)
 
     def run_make(self, *args, program="make", cpu_count=None):
@@ -403,7 +403,7 @@ class ModuleBuilder:
                         if callable(value):
                             value = value()  # Allow for generators
 
-                        value = runez.joined(value, delimiter=delimiter, keep_empty=None)  # All yielded values are auto-joined
+                        value = runez.joined(value, delimiter=delimiter)  # All yielded values are auto-joined
                         if value:
                             LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
                             os.environ[var_name] = value

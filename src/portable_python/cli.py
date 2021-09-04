@@ -56,15 +56,15 @@ def inspect(modules, verbose, pythons):
 
     exit_code = 0
     count = 0
-    for spec in runez.flattened(pythons, keep_empty=None, split=","):
+    for spec in runez.flattened(pythons, split=","):
         if count:
             print()
 
         count += 1
         inspector = PythonInspector(spec, modules)
-        print(inspector.represented(indent="  " if verbose else None))
+        print(inspector.represented(verbose=verbose))
         if verbose is not None:
-            if not inspector.full_so_report or not inspector.full_so_report.is_valid:
+            if not inspector.full_so_report.is_valid:
                 exit_code = 1
 
     sys.exit(exit_code)

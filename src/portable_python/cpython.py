@@ -38,7 +38,7 @@ class Cpython(PythonBuilder):
             self.active_module(Gdbm) and "gdbm",
             self.active_module(Bdb) and "bdb",
         ]
-        db_order = runez.joined(db_order, keep_empty=None, delimiter=":")
+        db_order = runez.joined(db_order, delimiter=":")
         if db_order:
             yield f"--with-dbmliborder={db_order}"
 

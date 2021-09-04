@@ -10,7 +10,7 @@ from .conftest import dummy_tarball
 
 
 def test_invoker(cli):
-    cli.run("inspect", "invoker")
+    cli.run("inspect", "invoker", "-v")
     assert " 0 OK" not in cli.logged
 
 

@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from portable_python.inspect import PythonInspector, SoInfo, SysLibInfo, TargetSystem
+from portable_python.inspect import LibType, PythonInspector, SoInfo, SysLibInfo, TargetSystem
 
 
 OTOOL_SAMPLE = """
@@ -24,52 +24,44 @@ LDD_SAMPLE = """
 
 
 def test_inspect_lib(logged):
+    inspector = PythonInspector("invoker")
     with patch("runez.which", return_value="yup"):
-        not_there = SoInfo("/dev/null/foo")
-        assert str(not_there) == "foo_failed*.so"
+        not_there = SoInfo(inspector, "/dev/null/foo.platform.so")
+        assert str(not_there) == "foo!*.so"
+        assert not_there.is_failed
+        assert not_there.is_problematic
         assert not_there.size == 0
         assert "otool exited with code" in logged.pop()
 
     with patch("runez.which", return_value=None):
-        info1 = SoInfo("_dbm...so", SysLibInfo(TargetSystem("darwin-x86_64")))
-        assert str(info1) == "_dbm*.so"
+        inspector.sys_lib_info = SysLibInfo(TargetSystem("darwin-x86_64"))
+        info1 = SoInfo(inspector, "_dbm...so")
+        assert str(info1) == "_dbm!*.so"
         info1.parse_otool(OTOOL_SAMPLE)
-        assert str(info1) == "_dbm*.so ncurses:5.4.0 foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0"
+        assert str(info1) == "_dbm!*.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
 
-        # Exercise sorting / hashing / comparing
-        other1 = sorted(info1.other_libs)
-        assert len(other1) == 2
-        assert other1[0] != other1[1]
-        assert len(other1) == len(set(other1))
-
-        info2 = SoInfo("_tkinter...so", SysLibInfo(TargetSystem("linux-x86_64")))
+        inspector.sys_lib_info = SysLibInfo(TargetSystem("linux-x86_64"))
+        info2 = SoInfo(inspector, "_tkinter...so")
         info2.parse_ldd(LDD_SAMPLE)
-        assert str(info2) == "_tkinter*.so bz2:1.0 tcl8:8.6 missing: tinfo:5"
-        assert info1 != info2
-        assert not (info1 == info2)
-        assert not logged
+        assert str(info2) == "_tkinter!*.so missing: tinfo:5 tcl8:8.6 bz2:1.0"
 
 
 def test_find_python(monkeypatch):
     inspector = PythonInspector("invoker")
     r = inspector.full_so_report
-    if not r.ok:
-        # Trigger a dump
-        assert inspector.full_so_report.represented() == ""
 
-    assert r.ok
-    if r.problematic:  # Will depend on how "clean" the python we're running this test with is
-        r.problematic = []  # Clear any inherited problematics for this test
-
-    if not r.system_libs:
-        r.system_libs = ["foo"]  # Simulate presence of system libs
+    # Simulate a nice and clean report, with one system lib used
+    r.problematic.items = []
+    r.ok.items = ["foo"]
+    c = r.lib_tracker.category[LibType.system]
+    c.items = ["foo"]
 
     # Verify using system libs on darwin is considered OK
-    r.sys_lib_info.target.platform = "darwin"
+    inspector.sys_lib_info.target.platform = "darwin"
     assert r.is_valid
 
     # Verify using system libs on linux is considered a fail
-    r.sys_lib_info.target.platform = "linux"
+    inspector.sys_lib_info.target.platform = "linux"
     assert not r.is_valid
 
     # Verify no crash on bogus python installs inspection
