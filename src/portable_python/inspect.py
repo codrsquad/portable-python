@@ -101,7 +101,7 @@ class ModuleInfo:
         self.version_field = payload.get("version_field")
 
     def __repr__(self):
-        return runez.short(self.filepath)  # pragma: no cover, for debugger
+        return runez.short(self.filepath)
 
     @runez.cached_property
     def additional_info(self):

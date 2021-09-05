@@ -70,40 +70,46 @@ def module_report(module_name):
 def get_srcdir():
     srcdir = sysconfig.get_config_var("srcdir")
     if not srcdir or len(srcdir) < 3:
-        srcdir = sysconfig.get_config_var("DESTSHARED")  # pragma: no cover, py2 reports an odd '.' as srcdir
+        srcdir = sysconfig.get_config_var("DESTSHARED")  # edge case: py2 reports an odd '.' as srcdir
 
     return srcdir
 
 
+def get_simplified_dirs(path):
+    result = []
+    if path:
+        path = os.path.dirname(path)
+        result.append(path)
+        if path.startswith("/private"):
+            result.append(path[8:])  # whoever compiled didn't use realpath(tmp)
+
+        elif not path.startswith("/tmp"):  # nosec, just simplifying paths
+            result.append(os.path.dirname(result[0]))
+
+    return result
+
+
 def main(arg):
     if arg == "sysconfig":
-        abs_builddir = sysconfig.get_config_var("abs_builddir")
-        secondary = None
         marker = "$^"
-        if abs_builddir:
-            abs_builddir = os.path.dirname(abs_builddir)
-            if abs_builddir.startswith("/private"):
-                secondary = abs_builddir[8:]  # pragma: no cover, edge case: whoever compiled didn't use realpath(tmp)
-
-            elif not abs_builddir.startswith("/tmp"):  # nosec, just simplifying paths
-                abs_builddir = os.path.dirname(abs_builddir)
-
-            print("%s: %s  # original abs_builddir" % (marker, abs_builddir))
+        simplified_dirs = get_simplified_dirs(sysconfig.get_config_var("abs_builddir"))
+        if simplified_dirs:
+            print("# '%s' is original abs_builddir:" % marker)
+            print("%s: %s\n" % (marker, simplified_dirs[0]))
 
         for k, v in sorted(sysconfig.get_config_vars().items()):
-            if abs_builddir:
-                v = str(v).replace(abs_builddir, marker)
-                if secondary:
-                    v = v.replace(secondary, marker)  # pragma: no cover
+            for sp in simplified_dirs:
+                v = str(v).replace(sp, marker)
 
             print("%s: %s" % (k, v))
 
         return
 
-    report = dict((k, module_report(k)) for k in arg.split(","))
-    report = dict(srcdir=get_srcdir(), report=report)
-    print(json.dumps(report, indent=2, sort_keys=True))
+    if arg and not arg.startswith("-"):
+        report = dict((k, module_report(k)) for k in arg.split(","))
+        report = dict(srcdir=get_srcdir(), report=report)
+        print(json.dumps(report, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])  # pragma: no cover
+    main(sys.argv[1] if len(sys.argv) > 1 else "")

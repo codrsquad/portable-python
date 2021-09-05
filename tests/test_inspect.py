@@ -52,13 +52,16 @@ def test_inspect_lib(logged):
 
 def test_find_python(monkeypatch):
     inspector = PythonInspector("invoker")
+    assert str(inspector)
+    assert str(inspector.module_info["_ctypes"])
     r = inspector.full_so_report
+    assert r.ok
 
-    # Simulate a nice and clean report, with one system lib used
-    r.problematic.items = []
-    r.ok.items = ["foo"]
+    if r.problematic:
+        r.problematic.items = []  # Simulate a nice/clean report, even if invoker is not clean
+
     c = r.lib_tracker.category[LibType.system]
-    c.items = ["foo"]
+    assert c.items  # At least one system lib must be used by invoker
 
     # Verify using system libs on darwin is considered OK
     inspector.target.platform = "darwin"
@@ -68,18 +71,17 @@ def test_find_python(monkeypatch):
     inspector.target.platform = "linux"
     assert not r.is_valid
 
-    # Verify no crash on bogus python installs inspection
-    inspector = PythonInspector("0.1.2")
-    assert str(inspector) == "0.1.2 [not available]"
-
-    monkeypatch.setattr(inspector.python, "problem", None)
-    monkeypatch.setattr(inspector, "output", "foo")
-    assert inspector.represented() == "0.1.2 [cpython:0.1.2]:\nfoo"
-
 
 def test_inspect_module(logged):
     # Exercise _inspect code
     from portable_python.external import _inspect
+
+    with patch("sysconfig.get_config_var", return_value="."):
+        assert _inspect.get_srcdir()  # Just covering py2 edge case
+
+    assert _inspect.get_simplified_dirs("/tmp/foo/bar") == ["/tmp/foo"]
+    assert _inspect.get_simplified_dirs("/private/tmp/foo") == ["/private/tmp", "/tmp"]
+    assert _inspect.get_simplified_dirs("/bar/foo/baz") == ["/bar/foo", "/bar"]
 
     _inspect.main("readline,zlib,sys,os,foo-bar")
     assert '"readline": {' in logged.pop()

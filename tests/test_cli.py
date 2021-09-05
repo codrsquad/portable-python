@@ -165,6 +165,7 @@ def test_list(cli):
 
 
 def test_module_invocation(cli):
+    cli.exercise_main("src/portable_python/external/_inspect.py")
     cli.exercise_main("-mportable_python", "src/portable_python/cli.py")
 
 
