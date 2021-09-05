@@ -29,8 +29,9 @@ REST_CLIENT = RestClient()
 
 class Cleanable(enum.Enum):
 
-    bin = "bin"
-    libpython = "libpython"
+    bin = "clean bin/ folder, all files except bin/python and bin/pip"
+    pip = "clean bin/pip*"
+    libpython = "clean lib/*/libpython*"
 
 
 CLEANABLE_CHOICES = runez.joined([x.name for x in Cleanable], delimiter=", ")
@@ -71,7 +72,10 @@ class BuildSetup:
         for x in runez.flattened(text, split=","):
             v = getattr(Cleanable, x, None)
             if not v:
-                runez.abort("'%s' is not a valid value for --clean" % x)
+                help = {x.name: x.value for x in Cleanable}
+                msg = ["  %s: %s" % (runez.green(k), v) for k, v in sorted(help.items())]
+                msg = runez.joined("Pick one of:", msg, delimiter="\n")
+                runez.abort("'%s' is not a valid value for --clean\n\n%s" % (runez.red(x), msg))
 
             self.requested_clean.add(v)
 

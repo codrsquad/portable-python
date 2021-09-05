@@ -39,7 +39,7 @@ def main(debug):
 @click.option("--x-debug", is_flag=True, hidden=True, help="For debugging, allows to build one module at a time")
 @click.argument("python_spec")
 def build(build, clean, dist, modules, prefix, x_debug, target, python_spec):
-    """Build a python binary"""
+    """Build a portable python binary"""
     setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, modules=modules, prefix=prefix, target=target)
     setup.set_requested_clean(clean)
     setup.compile(x_debug=x_debug)
@@ -73,7 +73,7 @@ def inspect(modules, verbose, pythons):
 @main.command()
 @click.argument("family", nargs=-1)
 def list(family):
-    """List supported versions"""
+    """List latest versions"""
     if not family:
         family = list(PythonVersions.families.keys())
 
@@ -99,7 +99,7 @@ def list(family):
 @click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
 @click.argument("python_spec", required=False)
 def scan(modules, target, python_spec):
-    """Scan all buildable modules, see if system already has equivalent"""
+    """Show status of buildable modules, which will be auto-compiled"""
     setup = BuildSetup(python_spec, modules=modules, target=target)
     print(runez.bold(setup.python_spec))
     print(setup.python_builder.modules.report())

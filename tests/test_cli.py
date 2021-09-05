@@ -44,7 +44,7 @@ def test_build_cleanup(cli):
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--clean", "libpython")
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--clean", "pip,libpython")
     assert cli.succeeded
     assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged

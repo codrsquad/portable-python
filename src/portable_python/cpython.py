@@ -140,7 +140,10 @@ class Cpython(PythonBuilder):
             symlinks = {}
             cleanable = set()
             if Cleanable.bin in self.setup.requested_clean:
-                cleanable.update(["2to3", "easy_install", "idle3", "pip", "pydoc", "wheel"])
+                cleanable.update(["2to3", "easy_install", "idle3", "pydoc", "wheel"])
+
+            if Cleanable.pip in self.setup.requested_clean:
+                cleanable.add("pip")
 
             for f in runez.ls_dir(self.bin_folder):
                 if any(f.name.startswith(x) for x in cleanable):
@@ -162,10 +165,9 @@ class Cpython(PythonBuilder):
     def ensure_main_symlink(self, all_files, *basenames):
         for basename in basenames:
             if basename not in all_files:
-                if basename == "python" or Cleanable.bin not in self.setup.requested_clean:
-                    main_basename = self._find_main_basename(basename)
-                    if main_basename:
-                        runez.symlink(main_basename, basename)
+                main_basename = self._find_main_basename(basename)
+                if main_basename:
+                    runez.symlink(main_basename, basename)
 
     def _find_main_basename(self, basename):
         candidates = [basename, "%s%s" % (basename, self.version.major)]
