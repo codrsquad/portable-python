@@ -14,7 +14,7 @@ OTOOL_SAMPLE = """
 
 LDD_SAMPLE = """
     linux-vdso.so.1 (...)
-    libpython3.6m.so.1.0 => BASE/lib/libpython3.6m.dylib.1.0 (...)
+    libpython3.6m.so.1.0 => BASE/lib/libpython3.6m.dylib.1.0 (...)  # basename taken from left side
     libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (...)
     libtinfo.so.5 => not found
     libbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (...)

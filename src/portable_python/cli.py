@@ -50,7 +50,7 @@ def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
 @click.option("--verbose", "-v", is_flag=True, multiple=True, default=None, help="Show full so report")
 @click.argument("pythons", nargs=-1)
 def inspect(modules, verbose, pythons):
-    """Overview of python internals"""
+    """Inspect a python installation for non-portable dynamic lib usage"""
     verbose = len(verbose)
     exit_code = 0
     count = 0
@@ -59,6 +59,9 @@ def inspect(modules, verbose, pythons):
             print()
 
         count += 1
+        if spec != "invoker":
+            spec = runez.resolved_path(spec)
+
         inspector = PythonInspector(spec, modules)
         print(inspector.represented(verbose=verbose))
         if modules is None and not inspector.full_so_report.is_valid:

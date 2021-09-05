@@ -1,5 +1,5 @@
 import os
-import sys
+import re
 from unittest.mock import patch
 
 import runez
@@ -7,14 +7,6 @@ import runez
 from portable_python.versions import PythonVersions
 
 from .conftest import dummy_tarball
-
-
-def test_invoker(cli):
-    # Check that invoker python has at least one OK lib used
-    # if not: means we're not detecting properly on whatever system this is running on
-    cli.run("inspect", "invoker", "-vv")
-    assert " 0 OK" not in cli.logged
-    assert False
 
 
 def test_build_bogus_platform(cli):
@@ -121,17 +113,24 @@ def test_finalization(cli):
     assert runez.basename(bin / "python", follow=True) == "foo-python"
 
 
+def test_invoker(cli):
+    cli.run("inspect", "invoker", "-vv", "-m+sys")
+    assert cli.succeeded
+
+    # Invoker may not be completely clean, but it has to have at least one OK .so usage
+    m = re.search(r"^\.so files: .+(\d+) OK", cli.logged.stdout.contents(), re.MULTILINE)
+    assert m
+    reported = int(m.group(1))
+    assert reported > 0
+
+
 def test_inspect(cli):
-    cli.run("inspect", sys.executable, "-m+sys")
-    assert cli.succeeded
+    cli.run("--dryrun", "inspect", "foo")
+    assert cli.failed  # Fails when no -m custom modules specified
+    assert "foo: not an executable" in cli.logged
 
-    cli.run("inspect", sys.executable)
-    assert ".so files:" in cli.logged
-
-    cli.run("inspect", sys.executable, "foo", "-mall")
-    assert cli.succeeded
-    assert "readline" in cli.logged
-    assert "foo: not available" in cli.logged
+    cli.run("--dryrun", "inspect", "foo", "bar", "-mall")
+    assert cli.succeeded  # We don't report failed run when -m is specified
 
 
 def test_invalid(cli):

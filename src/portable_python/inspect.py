@@ -194,6 +194,7 @@ class SoInfo(Trackable):
     def __init__(self, inspector: "PythonInspector", path):
         self.inspector = inspector
         self.path = runez.to_path(path)
+        self.relative_path = inspector.relative_path(self.path)
         self.extension = self.path.name.rpartition(".")[2]
         self.lib_tracker = Tracker(LibType, ".so")
         program, output = self._dot_so_listing(self.path)
@@ -368,17 +369,6 @@ class PythonInspector:
             return "%s: %s" % (runez.blue(runez.short(self.python.executable)), runez.red(self.python.problem))
 
         report = []
-        if verbose > 1:
-            # Temporary, inspecting remote and unusual lib/libpython
-            for path in self.find_so_files():
-                program, output = SoInfo._dot_so_listing(path)
-                if program and output:
-                    report.append("Sample %s output on %s:" % (program, path))
-                    report.append(output)
-                    report.append("----")
-                    if len(report) > 7:
-                        break
-
         if self.module_info:
             table = PrettyTable(2)
             table.header[0].align = "right"
@@ -391,6 +381,11 @@ class PythonInspector:
                 table.add_row("lib-dynload", runez.short(self.lib_dynload))
                 table.add_row("srcdir", runez.short(self.srcdir))
 
+            lp = self.full_so_report.libpythons
+            if lp:
+                lp = runez.joined(x.relative_path for x in lp)
+
+            table.add_row("libpython", lp or runez.green("-not used-"))
             report.append(table)
             report.append(self.full_so_report)
             if self.full_so_report.problematic:
@@ -434,8 +429,12 @@ class FullSoReport:
         self.lib_tracker = Tracker(LibType)
         self.ok = Tracker(LibType, "OK")
         self.problematic = Tracker(LibType, "problematic")
+        self.libpythons = []
         for path in inspector.find_so_files():
             info = SoInfo(inspector, path)
+            if path.name.startswith("libpython"):
+                self.libpythons.append(info)
+
             self.lib_tracker.add(info)
             self.size += info.size
             if info.is_problematic:
