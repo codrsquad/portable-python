@@ -48,8 +48,9 @@ def build(build, clean, dist, modules, prefix, x_debug, target, python_spec):
 @main.command()
 @click.option("--modules", "-m", help="Modules to inspect")
 @click.option("--verbose", "-v", is_flag=True, multiple=True, default=None, help="Show full so report")
+@click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
 @click.argument("pythons", nargs=-1)
-def inspect(modules, verbose, pythons):
+def inspect(modules, verbose, validate, pythons):
     """Inspect a python installation for non-portable dynamic lib usage"""
     verbose = len(verbose)
     exit_code = 0
@@ -64,7 +65,7 @@ def inspect(modules, verbose, pythons):
 
         inspector = PythonInspector(spec, modules)
         print(inspector.represented(verbose=verbose))
-        if modules is None and not inspector.full_so_report.is_valid:
+        if validate and not inspector.full_so_report.is_valid:
             exit_code = 1
 
     sys.exit(exit_code)

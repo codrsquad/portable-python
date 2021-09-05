@@ -118,7 +118,7 @@ def test_finalization(cli):
 
 
 def test_invoker(cli):
-    cli.run("inspect", "invoker", "-vv", "-m+sys")
+    cli.run("inspect", "invoker", "-vv", "-mall")
     assert cli.succeeded
 
     # Invoker may not be completely clean, but it has to have at least one OK .so usage
@@ -129,12 +129,12 @@ def test_invoker(cli):
 
 
 def test_inspect(cli):
-    cli.run("--dryrun", "inspect", "foo")
-    assert cli.failed  # Fails when no -m custom modules specified
-    assert "foo: not an executable" in cli.logged
+    cli.run("--dryrun", "inspect", "foo", "bar", "-m+sys")
+    assert cli.succeeded
 
-    cli.run("--dryrun", "inspect", "foo", "bar", "-mall")
-    assert cli.succeeded  # We don't report failed run when -m is specified
+    cli.run("--dryrun", "inspect", "foo", "--validate")
+    assert cli.failed  # Fails with --validate
+    assert "foo: not an executable" in cli.logged
 
 
 def test_invalid(cli):
