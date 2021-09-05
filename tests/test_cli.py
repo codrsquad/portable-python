@@ -14,6 +14,7 @@ def test_invoker(cli):
     # if not: means we're not detecting properly on whatever system this is running on
     cli.run("inspect", "invoker", "-vv")
     assert " 0 OK" not in cli.logged
+    assert False
 
 
 def test_build_bogus_platform(cli):
