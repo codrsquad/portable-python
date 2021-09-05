@@ -5,6 +5,12 @@ class Trackable:
 
     tracked_category = None
 
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
+
     def __iter__(self):
         yield self
 
@@ -22,7 +28,8 @@ class TrackedCollection:
         return bool(self.items)
 
     def add(self, item):
-        self.items.append(item)
+        if item not in self.items:
+            self.items.append(item)
 
     def represented(self, verbose=False):
         if self.items:
@@ -37,16 +44,26 @@ class Tracker(TrackedCollection):
         super().__init__(name or self.kind)
         self.enum = enum
         self.category = {}
+        self.users = {}
         for x in enum:
             c = TrackedCollection("%s %s" % (x.name, self.kind))
             self.category[x] = c
 
     def add(self, item):
-        self.items.append(item)
+        if item not in self.items:
+            self.items.append(item)
+
         for trackable in item:
             if trackable.tracked_category:
                 c = self.category[trackable.tracked_category]
                 c.add(trackable)
+                if trackable is not item:
+                    u = self.users.get(trackable)
+                    if u is None:
+                        u = set()
+                        self.users[trackable] = u
+
+                    u.add(item)
 
     def represented(self, verbose=False):
         report = []

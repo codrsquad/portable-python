@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from portable_python.inspect import LibType, PythonInspector, SoInfo, SysLibInfo, TargetSystem
+from portable_python.inspect import LibType, PythonInspector, SoInfo, TargetSystem
 
 
 OTOOL_SAMPLE = """
@@ -14,6 +14,7 @@ OTOOL_SAMPLE = """
 
 LDD_SAMPLE = """
     linux-vdso.so.1 (...)
+    libpython3.6m.so.1.0 => BASE/lib/libpython3.6m.dylib.1.0 (...)
     libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (...)
     libtinfo.so.5 => not found
     libbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (...)
@@ -27,23 +28,26 @@ def test_inspect_lib(logged):
     inspector = PythonInspector("invoker")
     with patch("runez.which", return_value="yup"):
         not_there = SoInfo(inspector, "/dev/null/foo.platform.so")
-        assert str(not_there) == "foo!*.so"
+        assert str(not_there) == "foo*!.so"
         assert not_there.is_failed
         assert not_there.is_problematic
         assert not_there.size == 0
         assert "otool exited with code" in logged.pop()
 
     with patch("runez.which", return_value=None):
-        inspector.sys_lib_info = SysLibInfo(TargetSystem("darwin-x86_64"))
+        inspector.target = TargetSystem("darwin-x86_64")
+        inspector.install_folder = "BASE"
         info1 = SoInfo(inspector, "_dbm...so")
-        assert str(info1) == "_dbm!*.so"
+        assert str(info1) == "_dbm*!.so"
         info1.parse_otool(OTOOL_SAMPLE)
-        assert str(info1) == "_dbm!*.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
+        r = info1.represented()
+        assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
 
-        inspector.sys_lib_info = SysLibInfo(TargetSystem("linux-x86_64"))
+        inspector.target = TargetSystem("linux-x86_64")
         info2 = SoInfo(inspector, "_tkinter...so")
         info2.parse_ldd(LDD_SAMPLE)
-        assert str(info2) == "_tkinter!*.so missing: tinfo:5 tcl8:8.6 bz2:1.0"
+        r = info2.represented()
+        assert r == "_tkinter*!.so missing: tinfo:5 libpython3.6m.so.1.0 tcl8:8.6 bz2:1.0"
 
 
 def test_find_python(monkeypatch):
@@ -57,11 +61,11 @@ def test_find_python(monkeypatch):
     c.items = ["foo"]
 
     # Verify using system libs on darwin is considered OK
-    inspector.sys_lib_info.target.platform = "darwin"
+    inspector.target.platform = "darwin"
     assert r.is_valid
 
     # Verify using system libs on linux is considered a fail
-    inspector.sys_lib_info.target.platform = "linux"
+    inspector.target.platform = "linux"
     assert not r.is_valid
 
     # Verify no crash on bogus python installs inspection

@@ -47,13 +47,11 @@ def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
 
 @main.command()
 @click.option("--modules", "-m", help="Modules to inspect")
-@click.option("--verbose", "-v", is_flag=True, default=None, help="Show full so report")
+@click.option("--verbose", "-v", is_flag=True, multiple=True, default=None, help="Show full so report")
 @click.argument("pythons", nargs=-1)
 def inspect(modules, verbose, pythons):
     """Overview of python internals"""
-    if modules is None and verbose is None:
-        verbose = False
-
+    verbose = len(verbose)
     exit_code = 0
     count = 0
     for spec in runez.flattened(pythons, split=","):
@@ -63,9 +61,8 @@ def inspect(modules, verbose, pythons):
         count += 1
         inspector = PythonInspector(spec, modules)
         print(inspector.represented(verbose=verbose))
-        if verbose is not None:
-            if not inspector.full_so_report.is_valid:
-                exit_code = 1
+        if modules is None and not inspector.full_so_report.is_valid:
+            exit_code = 1
 
     sys.exit(exit_code)
 

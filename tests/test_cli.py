@@ -10,32 +10,24 @@ from .conftest import dummy_tarball
 
 
 def test_invoker(cli):
-    cli.run("inspect", "invoker", "-v")
+    # Check that invoker python has at least one OK lib used
+    # if not: means we're not detecting properly on whatever system this is running on
+    cli.run("inspect", "invoker", "-vv")
     assert " 0 OK" not in cli.logged
 
 
-def test_build(cli):
-    v = PythonVersions.cpython.latest
-    mm = f"{v.major}.{v.minor}"
+def test_build_bogus_platform(cli):
     cli.run("--dryrun", "build", "2.7.1", "-m+bdb", "--target=foo-bar")
     assert cli.failed
     assert "Modules selected: [+bdb] -> " in cli.logged
     assert " bdb:" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
-    bf = runez.to_path(f"build/cpython-{v}")
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-m+bdb,-openssl")
-    assert cli.succeeded
-    assert " openssl:" not in cli.logged
-    assert " bdb:" in cli.logged
-    assert f" --prefix=/{v} " in cli.logged
-    assert f" install DESTDIR={bf}" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mnone", "--prefix", "/apps/python")
-    assert cli.succeeded
-    assert "Modules selected: [none]\n" in cli.logged
-    assert " --prefix=/apps/python " in cli.logged
-    assert f" install DESTDIR={bf}/root" in cli.logged
+def test_build_cleanup(cli):
+    v = PythonVersions.cpython.latest
+    mm = f"{v.major}.{v.minor}"
+    bf = runez.to_path(f"build/cpython-{v}")
 
     # Simulate presence of some key files to verify code that is detecting them is hit
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
@@ -57,21 +49,33 @@ def test_build(cli):
     assert cli.succeeded
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
+    assert f" install DESTDIR={bf}\n" in cli.logged
 
     cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
     assert cli.succeeded
     assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
-    assert cli.succeeded
-    assert f" --prefix=/apps/foo{v} " in cli.logged
 
-    cli.run("--dryrun", "list")
+def test_build_darwin(cli):
+    cli.run("--dryrun", "build", "latest", "--target=darwin-x86_64", "-m+bdb,-openssl")
     assert cli.succeeded
+    assert " openssl:" not in cli.logged
+    assert " bdb:" in cli.logged
 
-    cli.run("--dryrun", "list", "conda", "cpython")
+
+def test_build_prefix(cli):
+    v = PythonVersions.cpython.latest
+    bf = runez.to_path(f"build/cpython-{v}")
+    cli.run("--dryrun", "build", "latest", "--target=linux-x86_64", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
+    assert "Modules selected: [none]\n" in cli.logged
+    assert " --prefix=/apps/python " in cli.logged
+    assert f" install DESTDIR={bf}/root\n" in cli.logged
+
+    cli.run("--dryrun", "build", "latest", "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
+    assert cli.succeeded
+    assert f" --prefix=/apps/foo{PythonVersions.cpython.latest} " in cli.logged
 
 
 def test_failed_run(cli):
@@ -150,6 +154,14 @@ def test_invalid(cli):
     cli.run("--dryrun", "build", "conda:1.2.3")
     assert cli.failed
     assert "Python family 'conda' is not yet supported" in cli.logged
+
+
+def test_list(cli):
+    cli.run("--dryrun", "list")
+    assert cli.succeeded
+
+    cli.run("--dryrun", "list", "conda", "cpython")
+    assert cli.succeeded
 
 
 def test_module_invocation(cli):

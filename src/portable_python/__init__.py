@@ -39,7 +39,7 @@ class BuildSetup:
     log_counter = 0
 
     def __init__(self, python_spec, build_base="build", dist_folder="dist", modules=None, prefix=None, target=None):
-        if not python_spec:
+        if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PythonVersions.cpython.latest
 
         self.python_spec = PythonVersions.validated_spec(python_spec)
