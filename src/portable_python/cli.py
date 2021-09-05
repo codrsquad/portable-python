@@ -4,7 +4,7 @@ import sys
 import click
 import runez
 
-from portable_python import BuildSetup, LOG
+from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG
 from portable_python.inspect import PythonInspector
 from portable_python.versions import PythonVersions
 
@@ -31,17 +31,17 @@ def main(debug):
 
 @main.command()
 @click.option("--build", "-b", default="build", metavar="PATH", show_default=True, help="Build folder to use")
+@click.option("--clean", "-c", multiple=True, metavar="CSV", help="State what to cleanup, one of: %s" % CLEANABLE_CHOICES)
 @click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compiled binary tarball")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Build a shared-libs python targeting given prefix folder")
-@click.option("--static/--no-static", is_flag=True, default=BuildSetup.static, show_default=True, help="Keep static library?")
 @click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
 @click.option("--x-debug", is_flag=True, hidden=True, help="For debugging, allows to build one module at a time")
 @click.argument("python_spec")
-def build(build, dist, modules, prefix, static, x_debug, target, python_spec):
+def build(build, clean, dist, modules, prefix, x_debug, target, python_spec):
     """Build a python binary"""
     setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, modules=modules, prefix=prefix, target=target)
-    setup.static = static
+    setup.set_requested_clean(clean)
     setup.compile(x_debug=x_debug)
 
 

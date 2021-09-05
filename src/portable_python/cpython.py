@@ -3,7 +3,7 @@ import os
 import runez
 from runez.pyenv import Version
 
-from portable_python import LOG, PythonBuilder
+from portable_python import Cleanable, LOG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, TkInter, Uuid, Xz, Zlib
 
 
@@ -65,11 +65,7 @@ class Cpython(PythonBuilder):
     @property
     def main_python(self):
         if self._main_python is None:
-            main_python_candidates = ("python", "python%s" % self.version.major, self.python_mm)
-            for f in runez.ls_dir(self.bin_folder):
-                if f.name in main_python_candidates:
-                    self._main_python = runez.basename(f, extension_marker=None, follow=True)
-                    break
+            self._main_python = self._find_main_basename("python")
 
         return self._main_python or "python"
 
@@ -100,40 +96,24 @@ class Cpython(PythonBuilder):
             if shorter_size == longer_size:  # Double-check that they are the same size (they should be identical)
                 runez.symlink(longer, shorter)
 
-    @runez.cached_property
-    def cleanable_basenames(self):
-        """Folders that are not useful in deliverable (test suites etc)"""
-        r = {
+    def cleanup_distribution(self):
+        cleanable_prefixes = set()
+        cleanable_basenames = {
             "__phello__.foo.py",
             "__pycache__",  # Clear it because lots of unneeded stuff is in there initially, -mcompileall regenerates it
             "idle_test",
             "test",
             "tests",
         }
-        if not self.setup.static:
-            # Don't keep static compilation file unless --static
-            r.add(f"lib{self.python_mm}.a")
+        if Cleanable.libpython in self.setup.requested_clean:
+            cleanable_prefixes.add(f"lib{self.python_mm}")
+            cleanable_prefixes.add("config-%s.%s-" % (self.version.major, self.version.minor))
 
-        return r
-
-    @runez.cached_property
-    def cleanable_prefixes(self):
-        """Files/folders that are not useful in deliverable, but name varies, can be identified by their prefix"""
-        r = set()
-        if not self.setup.static:
-            r.add("config-%s.%s-" % (self.version.major, self.version.minor))
-
-        return r
-
-    def should_clean(self, basename):
-        return basename in self.cleanable_basenames or any(basename.startswith(x) for x in self.cleanable_prefixes)
-
-    def cleanup_distribution(self):
         cleaned = []
         for dirpath, dirnames, filenames in os.walk(self.install_folder):
             removed = []
             for name in dirnames:
-                if self.should_clean(name):
+                if name in cleanable_basenames or any(name.startswith(x) for x in cleanable_prefixes):
                     # Remove unnecessary file, to save on space
                     full_path = os.path.join(dirpath, name)
                     removed.append(name)
@@ -144,7 +124,7 @@ class Cpython(PythonBuilder):
                 dirnames.remove(name)
 
             for name in filenames:
-                if self.should_clean(name):
+                if name in cleanable_basenames or any(name.startswith(x) for x in cleanable_prefixes):
                     full_path = os.path.join(dirpath, name)
                     cleaned.append(name)
                     runez.delete(full_path, logger=None)
@@ -158,10 +138,13 @@ class Cpython(PythonBuilder):
             all_files = {}
             files = {}
             symlinks = {}
-            cleanable = ("2to3", "easy_install", "idle3", "pip", "pydoc", "wheel")
+            cleanable = set()
+            if Cleanable.bin in self.setup.requested_clean:
+                cleanable.update(["2to3", "easy_install", "idle3", "pip", "pydoc", "wheel"])
+
             for f in runez.ls_dir(self.bin_folder):
-                if f.name.startswith(cleanable):
-                    runez.delete(f)  # Get rid of old junk, can be pip installed if needed
+                if any(f.name.startswith(x) for x in cleanable):
+                    runez.delete(f)  # Get rid of old junk from bin/ folder, can be pip installed if needed
                     continue
 
                 all_files[f.name] = f
@@ -171,12 +154,27 @@ class Cpython(PythonBuilder):
                 else:
                     files[f.name] = f
 
-            if "python" not in all_files:
-                runez.symlink(self.main_python, "python")
-
+            self.ensure_main_symlink(all_files, "python", "pip")
             for f in files.values():
                 if f.name != self.main_python:
                     self._auto_correct_shebang(f)
+
+    def ensure_main_symlink(self, all_files, *basenames):
+        for basename in basenames:
+            if basename not in all_files:
+                if basename == "python" or Cleanable.bin not in self.setup.requested_clean:
+                    main_basename = self._find_main_basename(basename)
+                    if main_basename:
+                        runez.symlink(main_basename, basename)
+
+    def _find_main_basename(self, basename):
+        candidates = [basename, "%s%s" % (basename, self.version.major)]
+        if basename == "python":
+            candidates.append(self.python_mm)
+
+        for f in runez.ls_dir(self.bin_folder):
+            if f.name in candidates:
+                return runez.basename(f, extension_marker=None, follow=True)
 
     def _auto_correct_shebang(self, path):
         lines = []

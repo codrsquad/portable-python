@@ -9,6 +9,7 @@ Can be used programmatically too, example usage:
 """
 
 import contextlib
+import enum
 import logging
 import multiprocessing
 import os
@@ -26,6 +27,15 @@ LOG = logging.getLogger(__name__)
 REST_CLIENT = RestClient()
 
 
+class Cleanable(enum.Enum):
+
+    bin = "bin"
+    libpython = "libpython"
+
+
+CLEANABLE_CHOICES = runez.joined([x.name for x in Cleanable], delimiter=", ")
+
+
 class BuildSetup:
     """
     This class drives the compilation, external modules first, then the target python itself.
@@ -33,7 +43,7 @@ class BuildSetup:
     """
 
     # Optional extra settings (not taken as part of constructor)
-    static = False
+    requested_clean = set()
 
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
@@ -55,6 +65,15 @@ class BuildSetup:
 
     def __repr__(self):
         return runez.short(self.build_folder)
+
+    def set_requested_clean(self, text):
+        self.requested_clean = set()
+        for x in runez.flattened(text, split=","):
+            v = getattr(Cleanable, x, None)
+            if not v:
+                runez.abort("'%s' is not a valid value for --clean" % x)
+
+            self.requested_clean.add(v)
 
     @runez.log.timeit("Overall compilation", color=runez.bold)
     def compile(self, x_debug=None):

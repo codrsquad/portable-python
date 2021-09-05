@@ -38,13 +38,13 @@ def test_build_cleanup(cli):
     runez.touch(lib1, logger=None)
     runez.touch(lib2, logger=None)
 
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "--static")
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64")
     assert cli.succeeded
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--no-static")
+    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--clean", "libpython")
     assert cli.succeeded
     assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
@@ -82,6 +82,10 @@ def test_failed_run(cli):
 
 
 def test_finalization(cli):
+    cli.run("--dryrun", "build", "latest", "--clean", "foo")
+    assert cli.failed
+    assert "'foo' is not a valid value for --clean" in cli.logged
+
     v = PythonVersions.cpython.latest
     dummy_tarball(f"Python-{v}.tar.xz")
     dummy_tarball("bzip2-1.0.8.tar.gz")
@@ -99,7 +103,7 @@ def test_finalization(cli):
     runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
     runez.write(bin / "some-exe3", "#!/bin/sh\nhello", logger=None)
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
-        cli.run("build", v, "-mbzip2", "--x-debug")
+        cli.run("build", v, "-mbzip2", "--x-debug", "--clean", "bin,libpython")
         assert cli.failed
         assert "Modules selected: [bzip2] -> bzip2:" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
