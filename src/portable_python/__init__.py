@@ -254,7 +254,7 @@ class ModuleBuilder:
         if not telltale:
             msg = runez.blue("on demand")
             if self.target.is_linux and self.m_debian:
-                msg += " (needs debian %s)" % self.m_debian
+                msg += " (with debian %s)" % self.m_debian
 
             return False, msg
 
@@ -267,7 +267,7 @@ class ModuleBuilder:
             if pp == "-%s" % self.target.platform:
                 msg = runez.blue("on demand on %s" % self.target.platform)
                 if self.target.is_linux and self.m_debian:
-                    msg += " (needs debian %s)" % self.m_debian
+                    msg += " (with debian %s)" % self.m_debian
 
                 return False, msg
 
@@ -280,7 +280,7 @@ class ModuleBuilder:
             if path:
                 return True, "%s (on top of %s, for static compile)" % (runez.green("needed on linux"), self.m_debian)
 
-            return True, "%s for static compile" % runez.red("needs %s" % self.m_debian)
+            return True, "%s for static compile" % runez.red("!needs %s" % self.m_debian)
 
         if path:
             return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))

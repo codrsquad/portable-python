@@ -180,7 +180,11 @@ def test_scan(cli):
     with patch("portable_python.cpython.runez.which", return_value=None):
         cli.run("scan", "--target", "linux-x86_64")
         assert cli.succeeded
-        assert "requires tclsh" in cli.logged
+        assert "!needs tclsh" in cli.logged
+
+        cli.run("scan", "--target", "linux-x86_64", "--validate")
+        assert cli.failed
+        assert "!needs tclsh" in cli.logged
 
     with patch("portable_python.ModuleBuilder._find_telltale", return_value="foo"):
         cli.run("scan", "--target", "linux-x86_64")

@@ -97,12 +97,16 @@ def list(family):
 @main.command()
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
+@click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
 @click.argument("python_spec", required=False)
-def scan(modules, target, python_spec):
+def scan(modules, target, validate, python_spec):
     """Show status of buildable modules, which will be auto-compiled"""
     setup = BuildSetup(python_spec, modules=modules, target=target)
     print(runez.bold(setup.python_spec))
-    print(setup.python_builder.modules.report())
+    report = setup.python_builder.modules.report()
+    print(report)
+    if validate and "!needs " in report:
+        runez.abort("Note: build won't be fully portable, or complete")
 
 
 if __name__ == "__main__":

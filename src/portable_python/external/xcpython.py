@@ -191,7 +191,7 @@ class Sqlite(ModuleBuilder):
 
     def auto_use_with_reason(self):
         if not runez.which("tclsh"):
-            return None, "%s (apt install tcl)" % runez.brown("requires tclsh")
+            return None, "%s (apt install tcl)" % runez.brown("!needs tclsh")
 
         return super().auto_use_with_reason()
 
