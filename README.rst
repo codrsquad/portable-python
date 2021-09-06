@@ -29,7 +29,7 @@ and used from there without further ado (ie: no need to run an "installer" and t
 
 The idea here is to allow for automated systems to:
 
-- Easily obtain a python binary, that can be use it in sandboxes / workstations / laptops / instances...
+- Easily obtain a python binary, that can be used in sandboxes / workstations / laptops / instances...
 
 - Have an open source tool that can compile such portable pythons reliably,
   without having to worry about the compilation part.
