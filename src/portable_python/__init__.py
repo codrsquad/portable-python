@@ -49,16 +49,20 @@ class BuildSetup:
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
 
-    def __init__(self, python_spec, build_base="build", dist_folder="dist", modules=None, prefix=None, target=None):
+    def __init__(self, python_spec, build_base="build", dist_folder="dist", ext=None, modules=None, prefix=None, target=None):
         if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PythonVersions.cpython.latest
 
-        self.python_spec = PythonVersions.validated_spec(python_spec)
+        pspec = PythonVersions.validated_spec(python_spec)
+        self.python_spec = pspec
         self.build_base = runez.to_path(build_base, no_spaces=True).absolute()
         self.dist_folder = runez.to_path(dist_folder).absolute()
         self.desired_modules = modules
         self.prefix = prefix
-        self.target_system = runez.system.PlatformId(target)
+        ts = runez.system.PlatformId(target)
+        self.target_system = ts
+        dest = ts.composed_basename(pspec.family, pspec.version, extension=ext)
+        self.tarball_path = self.dist_folder / dest
         self.build_folder = self.build_base / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
         builder = PythonVersions.family(self.python_spec.family).builder
@@ -79,12 +83,7 @@ class BuildSetup:
 
             self.requested_clean.add(v)
 
-    @property
-    def tarball_path(self):
-        dest = self.target_system.composed_basename(self.python_spec.family, self.python_spec.version)
-        return self.dist_folder / dest
-
-    @runez.log.timeit("Overall compilation", color=runez.bold)
+    @runez.log.timeit("Overall compilation")
     def compile(self, x_debug=None):
         """Compile selected python family and version"""
         self.log_counter = 0
@@ -445,7 +444,7 @@ class ModuleBuilder:
             if not func:
                 runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
 
-            with runez.log.timeit("Compiling %s" % self.m_name, color=runez.bold):
+            with runez.log.timeit("Compiling %s" % self.m_name):
                 folder = self.m_src_build
                 if self.m_build_cwd:
                     folder = folder / self.m_build_cwd

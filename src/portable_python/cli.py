@@ -21,7 +21,6 @@ def main(debug):
     Build (optionally portable) python binaries
     """
     runez.system.AbortException = SystemExit
-    runez.log.timeit.logger = LOG.info
     runez.log.setup(
         debug=debug,
         console_format="%(levelname)s %(message)s",
@@ -31,18 +30,19 @@ def main(debug):
     )
 
 
-@main.command()
+@main.command(name="build")
 @click.option("--build", "-b", default="build", metavar="PATH", show_default=True, help="Build folder to use")
 @click.option("--clean", "-c", multiple=True, metavar="CSV", help="State what to cleanup, one of: %s" % CLEANABLE_CHOICES)
-@click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compiled binary tarball")
+@click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compressed binary")
+@click.option("--ext", type=click.Choice(runez.SYS_INFO.platform_id.supported_compression), help="Desired binary compression")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Build a shared-libs python targeting given prefix folder")
 @click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: macos-x86_64")
 @click.option("--x-debug", is_flag=True, hidden=True, help="For debugging, allows to build one module at a time")
 @click.argument("python_spec")
-def build(build, clean, dist, modules, prefix, x_debug, target, python_spec):
+def build_cmd(build, clean, dist, ext, modules, prefix, x_debug, target, python_spec):
     """Build a portable python binary"""
-    setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, modules=modules, prefix=prefix, target=target)
+    setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, ext=ext, modules=modules, prefix=prefix, target=target)
     setup.set_requested_clean(clean)
     setup.compile(x_debug=x_debug)
 
@@ -86,9 +86,9 @@ def inspect(modules, verbose, validate, pythons):
     sys.exit(exit_code)
 
 
-@main.command()
+@main.command(name="list")
 @click.argument("family", nargs=-1)
-def list(family):
+def list_cmd(family):
     """List latest versions"""
     if not family:
         family = list(PythonVersions.families.keys())
@@ -123,6 +123,81 @@ def scan(modules, target, validate, python_spec):
     print(report)
     if validate and "!needs " in report:
         runez.abort("Note: build won't be fully portable, or complete")
+
+
+def _find_recompress_source(dist, path):
+    path = runez.to_path(path)
+    if path.exists() or path.is_absolute():
+        return path.absolute() if path.exists() else None
+
+    candidates = ["{path}", "build/{path}", "build/cpython-{path}/{path}"]
+    for candidate in candidates:
+        cp = candidate.format(path=path)
+        for p in (dist / cp, dist.parent / cp):
+            if p.exists():
+                return p.absolute()
+
+
+@runez.log.timeit
+def recompress_folder(dist, path, extension):
+    """Recompress folder"""
+    dest = runez.SYS_INFO.platform_id.composed_basename("cpython", path.name, extension=extension)
+    dest = dist / dest
+    runez.compress(path, dest, logger=print)
+    return dest
+
+
+@runez.log.timeit
+def recompress_archive(dist, path, extension):
+    stem = path.name.rpartition(".")[0]
+    if stem.endswith(".tar"):
+        stem = stem.rpartition(".")[0]
+
+    dest = "%s.%s" % (stem, extension)
+    dest = dist / dest
+    if dest == path:
+        dest = "%s.%s" % (stem + "-recompressed", extension)
+        dest = dist / dest
+
+    with runez.TempFolder() as _:
+        tmp_folder = runez.to_path("tmp")
+        runez.decompress(path, tmp_folder, simplify=False, logger=print)
+        unpacked = list(runez.ls_dir(tmp_folder))
+        if len(unpacked) == 1:
+            tmp_folder = unpacked[0]
+
+        runez.compress(tmp_folder, dest.name, logger=print)
+        runez.move(dest.name, dest, logger=print)
+
+    return dest
+
+
+@main.command()
+@click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put recompressed binary")
+@click.argument("path", required=True)
+@click.argument("ext", required=True, type=click.Choice(runez.SYS_INFO.platform_id.supported_compression))
+def recompress(dist, path, ext):
+    """
+    Re-compress an existing binary tarball, or folder
+
+    \b
+    Mildly useful for comparing sizes from different compressions
+    """
+    extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
+    dist = runez.to_path(dist).absolute()
+    with runez.Anchored(dist.parent):
+        actual_path = _find_recompress_source(dist, path)
+        if not actual_path:
+            runez.abort("'%s' does not exist" % runez.red(runez.short(path)))
+
+        if actual_path.is_dir():
+            dest = recompress_folder(dist, actual_path, extension)
+
+        else:
+            dest = recompress_archive(dist, actual_path, extension)
+
+        print("Size of %s: %s" % (runez.short(actual_path), runez.bold(runez.represented_bytesize(actual_path))))
+        print("Size of %s: %s" % (runez.short(dest), runez.bold(runez.represented_bytesize(dest))))
 
 
 if __name__ == "__main__":
