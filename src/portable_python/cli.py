@@ -3,6 +3,8 @@ import sys
 
 import click
 import runez
+from runez.pyenv import PythonDepot
+from runez.render import PrettyTable
 
 from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG
 from portable_python.inspector import PythonInspector
@@ -43,6 +45,19 @@ def build(build, clean, dist, modules, prefix, x_debug, target, python_spec):
     setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, modules=modules, prefix=prefix, target=target)
     setup.set_requested_clean(clean)
     setup.compile(x_debug=x_debug)
+
+
+@main.command()
+def diagnostics():
+    """Show diagnostics info"""
+    depot = PythonDepot(use_path=True)
+    depot.scan_path_env_var()
+
+    def _diagnostics():
+        yield "invoker python", depot.invoker
+        yield from runez.SYS_INFO.diagnostics()
+
+    print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation()))
 
 
 @main.command()

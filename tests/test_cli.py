@@ -71,6 +71,11 @@ def test_build_prefix(cli):
     assert f" --prefix=/apps/foo{PythonVersions.cpython.latest} " in cli.logged
 
 
+def test_diagnostics(cli):
+    cli.run("diagnostics")
+    assert cli.succeeded
+
+
 def test_failed_run(cli):
     v = PythonVersions.cpython.latest
     dummy_tarball("zlib-1.2.11.tar.gz")
