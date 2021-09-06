@@ -63,7 +63,7 @@ def test_build_prefix(cli):
     assert cli.succeeded
     assert "Modules selected: [none]\n" in cli.logged
     assert " --prefix=/apps/python " in cli.logged
-    assert cli.match(f"make ... install DESTDIR=build/cpython-{v}/root\n")
+    assert f" install DESTDIR=build/cpython-{v}/root\n" in cli.logged
     assert f"Would tar build/cpython-{v}/root/apps/python -> dist/cpython-{v}-linux-x86_64.tar.gz" in cli.logged
 
     cli.run("--dryrun", "build", "latest", "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
