@@ -107,7 +107,7 @@ def main(arg):
 
     if arg and not arg.startswith("-"):
         report = dict((k, module_report(k)) for k in arg.split(","))
-        report = dict(srcdir=get_srcdir(), report=report)
+        report = dict(report=report, srcdir=get_srcdir())
         print(json.dumps(report, indent=2, sort_keys=True))
 
 

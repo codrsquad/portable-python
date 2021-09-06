@@ -8,7 +8,6 @@ def test_edge_cases():
     assert str(setup.python_builder.modules) == "+readline"
 
     setup = BuildSetup(None, target="linux-x86_64")
-    assert setup.target_system.is_linux
     assert str(setup)
     assert str(PythonVersions.cpython)
     assert str(setup.python_builder.modules).startswith("auto-detected:")

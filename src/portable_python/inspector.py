@@ -2,7 +2,6 @@ import enum
 import json
 import logging
 import os
-import platform
 import re
 
 import runez
@@ -10,71 +9,6 @@ from runez.render import PrettyTable
 
 from portable_python.tracking import Trackable, Tracker
 from portable_python.versions import PythonVersions
-
-
-class TargetSystem:
-    """Models target platform / architecture we're compiling for"""
-
-    architecture: str = None
-    platform: str = None
-    sys_include = None  # Include dirs to search for telltale presence
-
-    base_names: set = None  # Base system libraries that are considered OK to reference for a portable build
-    rx_sys_lib = None
-    rx_base_path = None
-
-    def __init__(self, target=None):
-        arch = plat = None
-        if target:
-            plat, _, arch = target.partition("-")
-
-        self.architecture = arch or platform.machine()
-        self.platform = plat or platform.system().lower()
-
-        base_paths = ["@rpath/.+"]
-        if self.is_linux:
-            self.sys_include = ["/usr/include", f"/usr/include/{self.architecture}-{self.platform}-gnu"]
-            self.base_names = {
-                # Similar to https://github.com/pypa/auditwheel/blob/master/auditwheel/policy/manylinux-policy.json
-                "libc.so.6", "libcrypt.so.1", "libdl.so.2", "libm.so.6", "libnsl.so.1", "libpthread.so.0", "librt.so.1", "libutil.so.1",
-            }
-            self.rx_sys_lib = re.compile(r"^(/usr)?/lib\d*/.+$")
-            base_paths.append(r"linux-vdso\.so.*")  # Special linux virtual dynamic shared object
-            base_paths.append(r"/lib\d*/ld-linux-.+")
-
-        elif self.is_macos:
-            self.sys_include = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include"
-            self.base_names = set()
-            self.rx_sys_lib = re.compile(r"^/(usr/lib\d*|System/Library)/.+$")
-            base_paths.append(r"/usr/lib/libSystem\.B\.dylib")
-
-        self.rx_base_path = re.compile(r"^(%s)$" % runez.joined(base_paths, delimiter="|"))
-
-    def __repr__(self):
-        return "%s-%s" % (self.platform, self.architecture)
-
-    def get_lib_type(self, install_folder, path, basename):
-        if basename.startswith("libpython") and path.startswith(install_folder):
-            return LibType.libpython
-
-        if not path or path == "not found":
-            return LibType.missing
-
-        if self.rx_base_path.match(path) or basename in self.base_names:
-            return LibType.base
-
-        if self.rx_sys_lib.match(path):
-            return LibType.system
-
-        return LibType.other
-
-    @property
-    def is_linux(self):
-        return self.platform == "linux"
-
-    @property
-    def is_macos(self):
-        return self.platform == "darwin"
 
 
 class LibType(enum.Enum):
@@ -148,7 +82,7 @@ class CLibInfo(Trackable):
             basename = os.path.basename(path)
 
         self.basename = basename
-        self.tracked_category = self.inspector.target.get_lib_type(self.inspector.install_folder, path, basename)
+        self.tracked_category = self.inspector.get_lib_type(self.inspector.install_folder, path, basename)
         if self.tracked_category is LibType.missing:
             self.relative_path = basename
 
@@ -309,7 +243,7 @@ class PythonInspector:
     def __init__(self, spec, modules=None):
         self.spec = spec
         self.modules = self.resolved_names(modules)
-        self.target = TargetSystem()
+        self.target = runez.SYS_INFO.platform_id
         self.module_names = runez.flattened(self.modules, split=",")
         self.python = PythonVersions.find_python(self.spec)
         arg = self.resolved_names(self.modules)
@@ -327,6 +261,21 @@ class PythonInspector:
 
     def __repr__(self):
         return str(self.python)
+
+    def get_lib_type(self, install_folder, path, basename):
+        if basename.startswith("libpython") and path.startswith(install_folder):
+            return LibType.libpython
+
+        if not path or path == "not found":
+            return LibType.missing
+
+        if self.target.is_base_lib(path, basename):
+            return LibType.base
+
+        if self.target.is_system_lib(path, basename):
+            return LibType.system
+
+        return LibType.other
 
     def resolved_names(self, names):
         if not names:
@@ -383,9 +332,9 @@ class PythonInspector:
 
             lp = self.full_so_report.libpythons
             if lp:
-                lp = runez.joined(x.relative_path for x in lp)
+                lp = runez.bold(runez.joined((x.relative_path for x in lp), delimiter=", "))
 
-            table.add_row("libpython", lp or runez.green("-not used-"))
+            table.add_row("libpython.so", lp or runez.green("-not used-"))
             report.append(table)
             report.append(self.full_so_report)
             if self.full_so_report.problematic:

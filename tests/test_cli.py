@@ -38,20 +38,20 @@ def test_build_cleanup(cli):
     runez.touch(lib1, logger=None)
     runez.touch(lib2, logger=None)
 
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64")
+    cli.run("--dryrun", "build", v, "--target=macos-x86_64")
     assert cli.succeeded
     assert f"Would symlink {lib2} <- {lib1}" in cli.logged
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--target=darwin-x86_64", "-mall", "--clean", "pip,libpython")
+    cli.run("--dryrun", "build", v, "--target=macos-x86_64", "-mall", "--clean", "pip,libpython")
     assert cli.succeeded
     assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
-    assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-darwin-x86_64.tar.gz" in cli.logged
+    assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-macos-x86_64.tar.gz" in cli.logged
 
 
-def test_build_darwin(cli):
-    cli.run("--dryrun", "build", "latest", "--target=darwin-x86_64", "-m+bdb,-openssl")
+def test_build_macos(cli):
+    cli.run("--dryrun", "build", "latest", "--target=macos-x86_64", "-m+bdb,-openssl")
     assert cli.succeeded
     assert " openssl:" not in cli.logged
     assert " bdb:" in cli.logged
@@ -59,12 +59,12 @@ def test_build_darwin(cli):
 
 def test_build_prefix(cli):
     v = PythonVersions.cpython.latest
-    bf = runez.to_path(f"build/cpython-{v}")
     cli.run("--dryrun", "build", "latest", "--target=linux-x86_64", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
     assert "Modules selected: [none]\n" in cli.logged
     assert " --prefix=/apps/python " in cli.logged
-    assert f" install DESTDIR={bf}/root\n" in cli.logged
+    assert cli.match(f"make ... install DESTDIR=build/cpython-{v}/root\n")
+    assert f"Would tar build/cpython-{v}/root/apps/python -> dist/cpython-{v}-linux-x86_64.tar.gz" in cli.logged
 
     cli.run("--dryrun", "build", "latest", "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
     assert cli.succeeded
@@ -174,7 +174,7 @@ def test_module_invocation(cli):
 
 
 def test_scan(cli):
-    cli.run("scan", "--target", "darwin-x86_64")
+    cli.run("scan", "--target", "macos-x86_64")
     assert cli.succeeded
 
     with patch("portable_python.cpython.runez.which", return_value=None):

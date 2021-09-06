@@ -50,7 +50,7 @@ class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
     m_debian = "libgdbm-dev"
-    m_telltale = ["-linux", "+darwin", "{include}/gdbm.h"]  # Needed on macos to override brew-installed gdbm from /usr/local
+    m_telltale = ["-linux", "+macos", "{include}/gdbm.h"]  # Needed on macos to override brew-installed gdbm from /usr/local
 
     @property
     def url(self):
@@ -82,7 +82,7 @@ class Gdbm(ModuleBuilder):
 class LibFFI(ModuleBuilder):
 
     m_debian = "libffi-dev"
-    m_telltale = ["-darwin", "{include}/ffi.h", "{include}/ffi/ffi.h"]
+    m_telltale = ["-macos", "{include}/ffi.h", "{include}/ffi/ffi.h"]
 
     @property
     def url(self):
@@ -126,10 +126,10 @@ class Openssl(ModuleBuilder):
         yield "-DPEDANTIC"
         yield "no-shared", "no-idea", "no-tests"
         if self.target.is_macos:
-            yield "darwin64-%s-cc" % self.target.architecture
+            yield "darwin64-%s-cc" % self.target.arch
 
         else:
-            yield "%s-%s" % (self.target.platform, self.target.architecture)
+            yield "%s-%s" % (self.target.platform, self.target.arch)
 
     def _do_linux_compile(self):
         self.run_configure("./Configure", self.c_configure_args())
@@ -187,7 +187,7 @@ class Readline(ModuleBuilder):
 class Sqlite(ModuleBuilder):
 
     m_debian = "libsqlite3-dev"
-    m_telltale = ["-darwin", "{include}/sqlite3.h"]
+    m_telltale = ["-macos", "{include}/sqlite3.h"]
 
     def auto_use_with_reason(self):
         if not runez.which("tclsh"):
@@ -310,7 +310,7 @@ class Uuid(ModuleBuilder):
 
     m_debian = "uuid-dev"
     m_include = "uuid"
-    m_telltale = ["-darwin", "{include}/uuid/uuid.h"]
+    m_telltale = ["-macos", "{include}/uuid/uuid.h"]
 
     @property
     def url(self):

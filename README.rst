@@ -104,7 +104,7 @@ Once you've installed ``portable-python``, you can get going like so::
     ls -l dist/cpython-*.tar.gz
 
     # Unpack it somewhere
-    tar -C ~/.pyenv/versions/ -xf dist/cpython-3.9.6-darwin-x86_64.tar.gz
+    tar -C ~/.pyenv/versions/ -xf dist/cpython-3.9.6-macos-x86_64.tar.gz
     ls -l ~/.pyenv/versions/
 
     # It's ready to be used
@@ -139,7 +139,7 @@ Build folder structure
         downloads/
             openssl-1.1.1k.tar.gz           # Downloaded artifacts (downloaded only once)
     dist/
-        cpython-3.9.6-darwin-x86_64.tar.gz  # Ready-to-go binary tarball
+        cpython-3.9.6-macos-x86_64.tar.gz   # Ready-to-go binary tarball
 
 
 

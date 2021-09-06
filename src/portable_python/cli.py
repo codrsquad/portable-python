@@ -5,7 +5,7 @@ import click
 import runez
 
 from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG
-from portable_python.inspect import PythonInspector
+from portable_python.inspector import PythonInspector
 from portable_python.versions import PythonVersions
 
 
@@ -35,7 +35,7 @@ def main(debug):
 @click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compiled binary tarball")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Build a shared-libs python targeting given prefix folder")
-@click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
+@click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: macos-x86_64")
 @click.option("--x-debug", is_flag=True, hidden=True, help="For debugging, allows to build one module at a time")
 @click.argument("python_spec")
 def build(build, clean, dist, modules, prefix, x_debug, target, python_spec):
@@ -97,7 +97,7 @@ def list(family):
 
 @main.command()
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
-@click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: darwin-x86_64")
+@click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: macos-x86_64")
 @click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
 @click.argument("python_spec", required=False)
 def scan(modules, target, validate, python_spec):

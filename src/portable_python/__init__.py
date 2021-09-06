@@ -19,7 +19,7 @@ import runez
 from runez.http import RestClient
 from runez.render import Header, PrettyTable
 
-from portable_python.inspect import PythonInspector, TargetSystem
+from portable_python.inspector import PythonInspector
 from portable_python.versions import PythonVersions
 
 
@@ -58,7 +58,7 @@ class BuildSetup:
         self.dist_folder = runez.to_path(dist_folder).absolute()
         self.desired_modules = modules
         self.prefix = prefix
-        self.target_system = TargetSystem(target)
+        self.target_system = runez.system.PlatformId(target)
         self.build_folder = self.build_base / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
         builder = PythonVersions.family(self.python_spec.family).builder
@@ -90,6 +90,7 @@ class BuildSetup:
                 msg += " -> %s" % runez.joined(modules, delimiter=", ")
 
             LOG.info("Modules selected: %s" % msg)
+            LOG.info("Platform: %s" % self.target_system)
             runez.ensure_folder(self.build_folder, clean=not x_debug)
             self.python_builder.compile(x_debug)
             if self.python_builder.install_folder.is_dir():
@@ -290,7 +291,7 @@ class ModuleBuilder:
     def _find_telltale(self, telltales):
         for tt in telltales:
             for sys_include in runez.flattened(self.target.sys_include):
-                path = tt.format(include=sys_include, arch=self.target.architecture, platform=self.target.platform)
+                path = tt.format(include=sys_include)
                 if os.path.exists(path):
                     return path
 
@@ -323,7 +324,7 @@ class ModuleBuilder:
         return self.deps / "lib"
 
     def xenv_ARCHFLAGS(self):
-        yield "-arch ", self.target.architecture
+        yield "-arch ", self.target.arch
 
     def xenv_CPATH(self):
         if self.modules.selected:
@@ -448,7 +449,7 @@ class ModuleBuilder:
     def _prepare(self):
         """Ran before _do_*_compile()"""
 
-    def _do_darwin_compile(self):
+    def _do_macos_compile(self):
         """Compile on macos variants"""
         return self._do_linux_compile()
 

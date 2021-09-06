@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
-from portable_python.inspect import LibType, PythonInspector, SoInfo, TargetSystem
+import runez
+
+from portable_python.inspector import LibType, PythonInspector, SoInfo
 
 
 OTOOL_SAMPLE = """
@@ -35,7 +37,7 @@ def test_inspect_lib(logged):
         assert "otool exited with code" in logged.pop()
 
     with patch("runez.which", return_value=None):
-        inspector.target = TargetSystem("darwin-x86_64")
+        inspector.target = runez.system.PlatformId("macos-x86_64")
         inspector.install_folder = "BASE"
         info1 = SoInfo(inspector, "_dbm...so")
         assert str(info1) == "_dbm*!.so"
@@ -43,7 +45,7 @@ def test_inspect_lib(logged):
         r = info1.represented()
         assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
 
-        inspector.target = TargetSystem("linux-x86_64")
+        inspector.target = runez.system.PlatformId("linux-x86_64")
         info2 = SoInfo(inspector, "_tkinter...so")
         info2.parse_ldd(LDD_SAMPLE)
         r = info2.represented()
@@ -63,8 +65,8 @@ def test_find_python(monkeypatch):
     c = r.lib_tracker.category[LibType.system]
     assert c.items  # At least one system lib must be used by invoker
 
-    # Verify using system libs on darwin is considered OK
-    inspector.target.platform = "darwin"
+    # Verify using system libs on macos is considered OK
+    inspector.target.platform = "macos"
     assert r.is_valid
 
     # Verify using system libs on linux is considered a fail
