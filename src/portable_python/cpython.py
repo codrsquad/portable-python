@@ -79,7 +79,6 @@ class Cpython(PythonBuilder):
         self.cleanup_distribution()
         self._symlink_static_libs()
         self.run(bin_python, "-mcompileall")
-        runez.compress(self.install_folder, self.tarball_path)
 
     def _symlink_static_libs(self):
         """Symlink libpython*.a to save space"""

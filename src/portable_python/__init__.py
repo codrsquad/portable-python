@@ -79,6 +79,11 @@ class BuildSetup:
 
             self.requested_clean.add(v)
 
+    @property
+    def tarball_path(self):
+        dest = self.target_system.composed_basename(self.python_spec.family, self.python_spec.version)
+        return self.dist_folder / dest
+
     @runez.log.timeit("Overall compilation", color=runez.bold)
     def compile(self, x_debug=None):
         """Compile selected python family and version"""
@@ -93,11 +98,13 @@ class BuildSetup:
             LOG.info("Platform: %s" % self.target_system)
             runez.ensure_folder(self.build_folder, clean=not x_debug)
             self.python_builder.compile(x_debug)
-            if self.python_builder.install_folder.is_dir():
-                inspector = PythonInspector(self.python_builder.install_folder)
-                print(inspector.represented())
-                if not inspector.full_so_report.is_valid:
+            if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
+                py_inspector = PythonInspector(self.python_builder.install_folder)
+                print(py_inspector.represented())
+                if not py_inspector.full_so_report.is_valid:
                     runez.abort("Build failed", fatal=not runez.DRYRUN)
+
+            runez.compress(self.python_builder.install_folder, self.tarball_path)
 
 
 class ModuleCollection:
@@ -411,7 +418,9 @@ class ModuleBuilder:
 
             if self.url:
                 # Modules without a url just drive sub-modules compilation typically
-                path = self.setup.build_folder.parent / "downloads" / os.path.basename(self.url)
+                # Split on '#' for urls that include a checksum, such as #sha256=... fragment
+                basename = runez.basename(self.url, extension_marker="#")
+                path = self.setup.build_folder.parent / "downloads" / basename
                 if not path.exists():
                     REST_CLIENT.download(self.url, path)
 
@@ -487,11 +496,6 @@ class PythonBuilder(ModuleBuilder):
     def install_folder(self):
         """Folder where the python we compile gets installed"""
         return self.build_base / self.c_configure_prefix.strip("/")
-
-    @property
-    def tarball_path(self):
-        dest = "%s-%s-%s.tar.gz" % (self.setup.python_spec.family, self.version, self.target)
-        return self.setup.dist_folder / dest
 
     @property
     def version(self):
