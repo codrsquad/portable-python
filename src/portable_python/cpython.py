@@ -29,6 +29,7 @@ class Cpython(PythonBuilder):
         yield "--with-ensurepip=upgrade"
         yield "--enable-optimizations"
         yield "--with-lto"
+        yield "--with-pydebug"
         yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
         if self.active_module(LibFFI):
             yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
@@ -180,16 +181,20 @@ class Cpython(PythonBuilder):
     def _auto_correct_shebang(self, path):
         lines = []
         with open(path) as fh:
-            for line in fh:
-                if lines:
-                    lines.append(line)
+            try:
+                for line in fh:
+                    if lines:
+                        lines.append(line)
+                        continue
 
-                elif not line.startswith("#!") or "bin/python" not in line:
-                    return
+                    if not line.startswith("#!") or "bin/python" not in line:
+                        return
 
-                else:
                     lines.append("#!/bin/sh\n")
                     lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % self.main_python)
+
+            except UnicodeError:
+                return
 
         LOG.info("Auto-corrected shebang for %s" % runez.short(path))
         with open(path, "wt") as fh:

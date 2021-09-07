@@ -107,6 +107,7 @@ def test_finalization(cli):
     runez.symlink(bin / "foo-python", bin / "python3", logger=None)  # Simulate a funky symlink, to test edge cases
     runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
     runez.write(bin / "some-exe3", "#!/bin/sh\nhello", logger=None)
+    runez.write(bin / "pythond", b"\xe4", logger=None)  # Non-unicode char to trigger edge case
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("build", v, "-mbzip2", "--x-debug", "--clean", "bin,libpython")
         assert cli.failed
