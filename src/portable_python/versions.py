@@ -9,44 +9,103 @@ Usage:
     print(PythonVersions.cpython.versions)
 """
 
+import logging
+
 import runez
+from runez.http import RestClient
 from runez.pyenv import PythonDepot, PythonSpec, Version
 
 
-CPYTHON_VERSIONS = """
-3.9.7
-3.8.11
-3.7.11
-3.6.14
-"""
-
-
 class VersionFamily:
-    """Latest versions for a python family"""
+    """Common ancestor for python family implementations"""
 
-    def __init__(self, family, versions):
-        self.family = family
-        self.versions = sorted((Version(v) for v in versions.split()), reverse=True)
+    _latest = None
+    _versions = None
+
+    def __init__(self):
+        self.family_name = self.__class__.__name__[:7].lower()
 
     def __repr__(self):
-        return runez.plural(self.versions, "%s version" % self.family)
+        return self.family_name
 
-    @property
+    def _fetch_versions(self):
+        if self._versions is None:
+            self._versions = {}
+            versions = self.get_available_versions()
+            versions = versions and sorted((Version.from_text(x) for x in versions), reverse=True)
+            if versions:
+                self._latest = versions[0]
+                for v in versions:
+                    mm = Version("%s.%s" % (v.major, v.minor))
+                    if mm not in self._versions:
+                        self._versions[mm] = v
+
+    @runez.cached_property
     def latest(self) -> Version:
         """Latest version for this family"""
-        return self.versions[0]
+        self._fetch_versions()
+        return self._latest
 
-    @property
-    def builder(self):
-        if self.family == "cpython":
-            from portable_python.cpython import Cpython
+    @runez.cached_property
+    def available_versions(self):
+        """Supplied by descendant: list of available versions"""
+        self._fetch_versions()
+        return self._versions
 
-            return Cpython
+    def get_available_versions(self) -> list:
+        """Implementation supplied by descendant: iterable of available versions, can be strings"""
+
+    def get_builder(self):
+        """
+        Returns:
+            (portable_python.PythonBuilder)
+        """
+
+
+class CPythonFamily(VersionFamily):
+    """Implementation for cpython"""
+
+    client = RestClient("https://api.github.com")
+
+    def get_available_versions(self):
+        if runez.DRYRUN:  # pragma: no cover
+            yield "3.9.7"  # Don't bother hitting remote end point in dryrun
+            return
+
+        r = self.client.get("repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
+        for item in r:
+            ref = item.get("ref")
+            if ref and ref.startswith("refs/tags/v"):
+                ref = ref[11:]
+                v = Version(ref)
+                if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and (v.major, v.minor) > (3, 5):
+                    yield v
+
+    # def get_available_versions_ftp(self):
+    #     # Is there a better way than parsing html?
+    #     client = RestClient("https://www.python.org/")
+    #     r = self.client.get_response("ftp/python/", logger=logging.debug)
+    #     regex = re.compile(r'"(\d+\.\d+\.\d+)/"')
+    #     if r.text:
+    #         for line in r.text.splitlines():
+    #             line = line.strip()
+    #             if line:
+    #                 m = regex.search(line)
+    #                 if m:
+    #                     v = Version(m.group(1))
+    #                     if v.major >= 3 and v.minor >= 6 and v.is_valid and v.is_final:
+    #                         yield v
+
+    def get_builder(self):
+        from portable_python.cpython import Cpython
+
+        return Cpython
 
 
 class PythonVersions:
+    """Available python families, and their versions, as well as link to associated PythonBuilder class"""
 
-    cpython = VersionFamily("cpython", CPYTHON_VERSIONS)
+    cpython = CPythonFamily()
     families = dict(cpython=cpython)
 
     _depot = None

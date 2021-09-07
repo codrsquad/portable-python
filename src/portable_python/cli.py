@@ -87,27 +87,21 @@ def inspect(modules, verbose, validate, pythons):
 
 
 @main.command(name="list")
-@click.argument("family", nargs=-1)
-def list_cmd(family):
+@click.option("--json", is_flag=True, help="Json output")
+@click.argument("family", default="cpython")
+def list_cmd(json, family):
     """List latest versions"""
-    if not family:
-        family = list(PythonVersions.families.keys())
+    fam = PythonVersions.family(family, fatal=False)
+    if not fam:
+        runez.abort("Python family '%s' is not yet supported" % runez.red(family))
 
-    indent = "" if len(family) == 1 else "  "
-    for family_name in family:
-        if indent:
-            if family_name != family[0]:
-                print()
+    if json:
+        print(runez.represented_json(fam.available_versions))
+        return
 
-            print(f"{family_name}:")
-
-        fam = PythonVersions.family(family_name, fatal=False)
-        if fam:
-            for v in fam.versions:
-                print(f"{indent}{v}")
-
-        else:
-            print("%s%s" % (indent, runez.red("not supported")))
+    print("%s:" % runez.bold(family))
+    for mm, v in fam.available_versions.items():
+        print("  %s: %s" % (runez.bold(mm), v))
 
 
 @main.command()
@@ -161,12 +155,8 @@ def recompress_archive(dist, path, extension):
 
     with runez.TempFolder() as _:
         tmp_folder = runez.to_path("tmp")
-        runez.decompress(path, tmp_folder, simplify=False, logger=print)
-        unpacked = list(runez.ls_dir(tmp_folder))
-        if len(unpacked) == 1:
-            tmp_folder = unpacked[0]
-
-        runez.compress(tmp_folder, dest.name, logger=print)
+        runez.decompress(path, tmp_folder, simplify=True, logger=print)
+        runez.compress(tmp_folder, dest.name, arcname=dest.name, logger=print)
         runez.move(dest.name, dest, logger=print)
 
     return dest

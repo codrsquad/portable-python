@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import runez
 
-from portable_python.versions import PythonVersions
+from portable_python.versions import CPythonFamily, PythonVersions
 
 from .conftest import dummy_tarball
 
@@ -165,12 +165,38 @@ def test_invalid(cli):
     assert "Python family 'conda' is not yet supported" in cli.logged
 
 
-def test_list(cli):
-    cli.run("--dryrun", "list")
-    assert cli.succeeded
+# PYTHON_ORG_SAMPLE = """
+# <a href="3.9.5/">3.9.5/</a>
+# <a href="3.9.6/">3.9.6/</a>
+# <a href="3.9.7/">3.9.7/</a>
+# <a href="3.8.12/">3.9.12/</a>
+# """
 
-    cli.run("--dryrun", "list", "conda", "cpython")
+GH_CPYTHON_SAMPLE = """
+[{"ref": "refs/tags/v3.9.7"},{"ref": "refs/tags/v3.8.12"}]
+"""
+
+
+@CPythonFamily.client.mock({
+    # "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE
+    "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE
+})
+def test_list(cli):
+    cp = CPythonFamily()
+    assert str(cp.latest) == "3.9.7"  # Exercise cached property 'latest', which is otherwise mocked in conftest.py
+
+    cli.run("list")
     assert cli.succeeded
+    assert "3.9: 3.9.7" in cli.logged
+
+    cli.run("list", "--json")
+    assert cli.succeeded
+    assert cli.logged.stdout.contents().startswith("{")
+    assert '"3.9": "3.9.7"' in cli.logged
+
+    cli.run("list", "conda")
+    assert cli.failed
+    assert "Python family 'conda' is not yet supported" in cli.logged
 
 
 def test_module_invocation(cli):
@@ -196,7 +222,7 @@ def test_recompress(cli):
 
     cli.run("recompress", files[0], "bz2")
     assert cli.succeeded
-    assert "Tar tmp/3.9.7 -> cpython-3.9.7-" in cli.logged
+    assert "Tar tmp -> cpython-3.9.7-" in cli.logged
     files = list(runez.ls_dir("dist"))
     assert len(files) == 2
 

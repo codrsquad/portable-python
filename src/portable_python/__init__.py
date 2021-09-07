@@ -65,7 +65,7 @@ class BuildSetup:
         self.tarball_path = self.dist_folder / dest
         self.build_folder = self.build_base / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
-        builder = PythonVersions.family(self.python_spec.family).builder
+        builder = PythonVersions.family(self.python_spec.family).get_builder()
         self.python_builder = builder(self)
 
     def __repr__(self):
@@ -423,7 +423,7 @@ class ModuleBuilder:
                 if not path.exists():
                     REST_CLIENT.download(self.url, path)
 
-                runez.decompress(path, self.m_src_build)
+                runez.decompress(path, self.m_src_build, simplify=True)
 
             for var_name in sorted(dir(self)):
                 if var_name.startswith("xenv_"):
