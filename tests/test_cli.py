@@ -165,34 +165,32 @@ def test_invalid(cli):
     assert "Python family 'conda' is not yet supported" in cli.logged
 
 
-# PYTHON_ORG_SAMPLE = """
-# <a href="3.9.5/">3.9.5/</a>
-# <a href="3.9.6/">3.9.6/</a>
-# <a href="3.9.7/">3.9.7/</a>
-# <a href="3.8.12/">3.9.12/</a>
+# GH_CPYTHON_SAMPLE = """
+# [{"ref": "refs/tags/v3.9.7"},{"ref": "refs/tags/v3.8.12"}]
 # """
-
-GH_CPYTHON_SAMPLE = """
-[{"ref": "refs/tags/v3.9.7"},{"ref": "refs/tags/v3.8.12"}]
+PYTHON_ORG_SAMPLE = """
+<a href="3.9.5/">3.9.5/</a>
+<a href="3.9.6/">3.9.6/</a>
+<a href="3.9.7/">3.9.7/</a>
+<a href="3.8.12/">3.9.12/</a>
 """
 
 
 @CPythonFamily.client.mock({
-    # "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE
-    "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE
+    "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE,
+    # "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE,
 })
-def test_list(cli):
+def test_list(cli, monkeypatch):
+    monkeypatch.setattr(CPythonFamily, "_test_latest", None)
     cp = CPythonFamily()
-    assert str(cp.latest) == "3.9.7"  # Exercise cached property 'latest', which is otherwise mocked in conftest.py
+    assert str(cp.latest) == "3.9.7"  # Exercise cached property 'latest', which is otherwise mocked for tests/dryrun
 
     cli.run("list")
     assert cli.succeeded
-    assert "3.9: 3.9.7" in cli.logged
 
     cli.run("list", "--json")
     assert cli.succeeded
     assert cli.logged.stdout.contents().startswith("{")
-    assert '"3.9": "3.9.7"' in cli.logged
 
     cli.run("list", "conda")
     assert cli.failed

@@ -10,6 +10,7 @@ Usage:
 """
 
 import logging
+import re
 
 import runez
 from runez.http import RestClient
@@ -21,6 +22,7 @@ class VersionFamily:
 
     _latest = None
     _versions = None
+    _test_latest = "3.9.6"  # Pretend latest used in tests and dryruns
 
     def __init__(self):
         self.family_name = self.__class__.__name__[:7].lower()
@@ -30,6 +32,12 @@ class VersionFamily:
 
     def _fetch_versions(self):
         if self._versions is None:
+            if self._test_latest and (runez.DRYRUN or runez.DEV.current_test()):
+                self._latest = Version(self._test_latest)
+                mm = Version("%s.%s" % (self._latest.major, self._latest.minor))
+                self._versions = {mm: self._latest}
+                return
+
             self._versions = {}
             versions = self.get_available_versions()
             versions = versions and sorted((Version.from_text(x) for x in versions), reverse=True)
@@ -65,36 +73,33 @@ class VersionFamily:
 class CPythonFamily(VersionFamily):
     """Implementation for cpython"""
 
-    client = RestClient("https://api.github.com")
+    client = RestClient("https://www.python.org/")
+
+    # client = RestClient("https://api.github.com")
+    # def get_available_versions(self):
+    #     """Available versions as per github release tags"""
+    #     r = self.client.get("repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
+    #     for item in r:
+    #         ref = item.get("ref")
+    #         if ref and ref.startswith("refs/tags/v"):
+    #             ref = ref[11:]
+    #             v = Version(ref)
+    #             if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and (v.major, v.minor) > (3, 5):
+    #                 yield v
 
     def get_available_versions(self):
-        if runez.DRYRUN:  # pragma: no cover
-            yield "3.9.7"  # Don't bother hitting remote end point in dryrun
-            return
-
-        r = self.client.get("repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
-        for item in r:
-            ref = item.get("ref")
-            if ref and ref.startswith("refs/tags/v"):
-                ref = ref[11:]
-                v = Version(ref)
-                if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and (v.major, v.minor) > (3, 5):
-                    yield v
-
-    # def get_available_versions_ftp(self):
-    #     # Is there a better way than parsing html?
-    #     client = RestClient("https://www.python.org/")
-    #     r = self.client.get_response("ftp/python/", logger=logging.debug)
-    #     regex = re.compile(r'"(\d+\.\d+\.\d+)/"')
-    #     if r.text:
-    #         for line in r.text.splitlines():
-    #             line = line.strip()
-    #             if line:
-    #                 m = regex.search(line)
-    #                 if m:
-    #                     v = Version(m.group(1))
-    #                     if v.major >= 3 and v.minor >= 6 and v.is_valid and v.is_final:
-    #                         yield v
+        """Available versions as per python.org/ftp"""
+        r = self.client.get_response("ftp/python/", logger=logging.debug)
+        regex = re.compile(r'"(\d+\.\d+\.\d+)/"')
+        if r.text:
+            for line in r.text.splitlines():
+                line = line.strip()
+                if line:
+                    m = regex.search(line)
+                    if m:
+                        v = Version(m.group(1))
+                        if v.is_valid and v.is_final and "3.6" < v < "3.10":
+                            yield v
 
     def get_builder(self):
         from portable_python.cpython import Cpython
