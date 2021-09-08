@@ -68,9 +68,13 @@ def diagnostics():
 def inspect(modules, verbose, validate, pythons):
     """Inspect a python installation for non-portable dynamic lib usage"""
     verbose = len(verbose)
+    if not verbose and (validate or not modules or modules == "all"):
+        verbose = 1
+
     exit_code = 0
     count = 0
-    for spec in runez.flattened(pythons, split=","):
+    pythons = runez.flattened(pythons, split=",")
+    for spec in pythons:
         if count:
             print()
 
@@ -79,11 +83,20 @@ def inspect(modules, verbose, validate, pythons):
             spec = runez.resolved_path(spec)
 
         inspector = PythonInspector(spec, modules)
+        if inspector.python.problem:
+            print("%s: %s" % (runez.blue(runez.short(inspector.python.executable)), runez.red(inspector.python.problem)))
+            exit_code = 1
+            continue
+
+        if verbose > 1 or len(pythons) > 1:
+            print(runez.blue(inspector.python))
+
         print(inspector.represented(verbose=verbose))
-        if validate and not inspector.full_so_report.is_valid:
+        if not inspector.full_so_report.is_valid:
             exit_code = 1
 
-    sys.exit(exit_code)
+    if validate:
+        sys.exit(exit_code)
 
 
 @main.command(name="list")

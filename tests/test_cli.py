@@ -29,18 +29,12 @@ def test_build_cleanup(cli):
     runez.touch(deps_dir / "include/readline/readline.h", logger=None)
     runez.touch(deps_dir / "lib/libssl.a", logger=None)
     os.chmod(deps_dir / "lib/libssl.a", 0o755)
-    lib_static = f"libpython{mm}.a"
-    lp = bf / f"{v}/lib"
-    lpc = lp / f"python{mm}/config-{mm}-darwin"
-    lib1 = lp / lib_static
-    lib2 = lpc / lib_static
     runez.touch(bf / f"{v}/bin/python", logger=None)
-    runez.touch(lib1, logger=None)
-    runez.touch(lib2, logger=None)
+    runez.touch(bf / f"{v}/lib/libpython{mm}.a", logger=None)
+    runez.touch(bf / f"{v}/lib/python{mm}/config-{mm}-darwin/libpython{mm}.a", logger=None)
 
     cli.run("--dryrun", "build", v, "--target=macos-x86_64")
     assert cli.succeeded
-    assert f"Would symlink {lib2} <- {lib1}" in cli.logged
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
 
@@ -123,17 +117,6 @@ def test_finalization(cli):
     assert runez.basename(bin / "python", follow=True) == "foo-python"
 
 
-def test_invoker(cli):
-    cli.run("inspect", "invoker", "-vv", "-mall")
-    assert cli.succeeded
-
-    # Invoker may not be completely clean, but it has to have at least one OK .so usage
-    m = re.search(r"^\.so files: .+(\d+) OK", cli.logged.stdout.contents(), re.MULTILINE)
-    assert m
-    reported = int(m.group(1))
-    assert reported > 0
-
-
 def test_inspect(cli):
     cli.run("--dryrun", "inspect", "foo", "bar", "-m+sys")
     assert cli.succeeded
@@ -164,6 +147,17 @@ def test_invalid(cli):
     cli.run("--dryrun", "build", "conda:1.2.3")
     assert cli.failed
     assert "Python family 'conda' is not yet supported" in cli.logged
+
+
+def test_invoker(cli):
+    cli.run("inspect", "invoker", "-vv", "-mall")
+    assert cli.succeeded
+
+    # Invoker may not be completely clean, but it has to have at least one OK .so usage
+    m = re.search(r"^\.so files: .+(\d+) OK", cli.logged.stdout.contents(), re.MULTILINE)
+    assert m
+    reported = int(m.group(1))
+    assert reported > 0
 
 
 # GH_CPYTHON_SAMPLE = """

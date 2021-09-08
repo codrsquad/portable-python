@@ -1,3 +1,4 @@
+import builtins
 from unittest.mock import patch
 
 import runez
@@ -91,9 +92,12 @@ def test_inspect_module(logged):
     _inspect.main("sysconfig")
     assert "VERSION:" in logged.pop()
 
-    assert _inspect.pymodule_version_info("key", b"foo", None) == {"version_field": "key", "version": "foo"}
+    assert _inspect.pymodule_version_info("key", b"1.2", None) == {"version_field": "key", "version": "1.2"}
     assert _inspect.pymodule_version_info("key", (1, 2), None) == {"version_field": "key", "version": "1.2"}
+    with patch("portable_python.external._inspect.pymodule_version_info", side_effect=Exception):
+        assert "note" in _inspect.module_report("sys")
 
-    # Verify edge cases don't crash
+    # Edge cases
+    assert _inspect.pymodule_info("builtins", builtins)
     assert _inspect.pymodule_info("foo", [])
     assert not logged

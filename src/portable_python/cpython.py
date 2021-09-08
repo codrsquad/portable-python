@@ -72,29 +72,9 @@ class Cpython(PythonBuilder):
 
     def _finalize(self):
         bin_python = self.bin_folder / self.main_python
-        has_ssl = runez.run(bin_python, "-c", "import _ssl; print(_ssl.OPENSSL_VERSION)", fatal=False)
-        if has_ssl.succeeded and has_ssl.output and "openssl" in has_ssl.output.lower():
-            self.run(bin_python, "-mpip", "install", "-U", "wheel", fatal=False)
-
         self.correct_symlinks()
         self.cleanup_distribution()
-        self._symlink_static_libs()
         self.run(bin_python, "-mcompileall")
-
-    def _symlink_static_libs(self):
-        """Symlink libpython*.a to save space"""
-        libs = []
-        for dirpath, dirnames, filenames in os.walk(self.install_folder / "lib"):
-            for name in filenames:
-                if name.startswith("libpython"):
-                    libs.append(os.path.join(dirpath, name))
-
-        if len(libs) == 2:
-            shorter, longer = sorted(libs, key=lambda x: len(x))
-            shorter_size = runez.to_path(shorter).stat().st_size
-            longer_size = runez.to_path(longer).stat().st_size
-            if shorter_size == longer_size:  # Double-check that they are the same size (they should be identical)
-                runez.symlink(longer, shorter)
 
     def cleanup_distribution(self):
         cleanable_prefixes = set()

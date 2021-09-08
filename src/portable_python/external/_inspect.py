@@ -1,36 +1,43 @@
 import json
 import os
+import re
 import sys
 import sysconfig
 
+
+RX_VERSION = re.compile(r"\d\.\d")
 INSIGHTS = {
-    "_curses": "version __version__",
-    "_ctypes": "__version__",
-    "_dbm": "library",
     "_gdbm": "_GDBM_VERSION",
     "_tkinter": "TCL_VERSION TK_VERSION",
     "_sqlite3": "sqlite_version version",
     "_ssl": "OPENSSL_VERSION",
     "dbm.gnu": "_GDBM_VERSION",
-    "pip": "__version__",
+    "ensurepip": "_PIP_VERSION",
     "readline": "_READLINE_LIBRARY_VERSION",
-    "setuptools": "__version__",
     "tkinter": "TclVersion TkVersion",
-    "wheel": "__version__",
     "zlib": "ZLIB_VERSION ZLIB_RUNTIME_VERSION",
 }
 
 
+def get_version(text):
+    if text:
+        if isinstance(text, bytes):
+            text = text.decode("utf-8")
+
+        elif isinstance(text, tuple):
+            text = ".".join(str(x) for x in text)
+
+        else:
+            text = str(text)
+
+        if text and RX_VERSION.search(text):
+            return text.splitlines()[0]
+
+
 def pymodule_version_info(key, value, pymodule):
-    if value:
-        result = dict(version_field=key)
-        if isinstance(value, bytes):
-            value = value.decode("utf-8")
-
-        if isinstance(value, tuple):
-            value = ".".join(str(x) for x in value)
-
-        result["version"] = value
+    version = get_version(value)
+    if version:
+        result = dict(version_field=key, version=version)
         if hasattr(pymodule, "__file__"):
             result["path"] = pymodule.__file__
 
@@ -39,12 +46,11 @@ def pymodule_version_info(key, value, pymodule):
 
 def pymodule_info(module_name, pymodule):
     fields = INSIGHTS.get(module_name)
-    if fields:
-        fields = fields.split()
-        for f in fields:
-            v = pymodule_version_info(f, getattr(pymodule, f, None), pymodule)
-            if v:
-                return v
+    fields = fields.split() if fields else ["__version__", "version", "VERSION"]
+    for f in fields:
+        v = pymodule_version_info(f, getattr(pymodule, f, None), pymodule)
+        if v:
+            return v
 
     if hasattr(pymodule, "__file__"):
         return dict(path=pymodule.__file__)
@@ -58,10 +64,11 @@ def pymodule_info(module_name, pymodule):
 
 
 def module_report(module_name):
-    x = None
     try:
-        x = __import__(module_name)
-        return pymodule_info(module_name, x)
+        return pymodule_info(module_name, __import__(module_name))
+
+    except ModuleNotFoundError:
+        return dict(version="*absent*")
 
     except Exception as e:
         return dict(version="*absent*", note=str(e))

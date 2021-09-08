@@ -51,8 +51,7 @@ class ModuleInfo:
             path = self.inspector.relative_path(path)
             return runez.green(path)
 
-        if self.note and "No module named" not in self.note:
-            return self.note
+        return self.note
 
     def report_rows(self):
         version = self.version
@@ -237,7 +236,7 @@ def is_dyn_lib(path):
 
 class PythonInspector:
 
-    default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,wheel,zlib"
+    default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,zlib"
     additional = "_asyncio,_functools,_tracemalloc,dbm.gnu,ensurepip,ossaudiodev,spwd,sys,tkinter,venv"
 
     def __init__(self, spec, modules=None):
@@ -314,9 +313,6 @@ class PythonInspector:
             return p
 
     def represented(self, verbose=0):
-        if self.python.problem:
-            return "%s: %s" % (runez.blue(runez.short(self.python.executable)), runez.red(self.python.problem))
-
         report = []
         if self.module_info:
             table = PrettyTable(2)
@@ -330,30 +326,33 @@ class PythonInspector:
                 table.add_row("lib-dynload", runez.short(self.lib_dynload))
                 table.add_row("srcdir", runez.short(self.srcdir))
 
-            lp = self.full_so_report.libpythons
-            if lp:
-                lp = runez.bold(runez.joined((x.relative_path for x in lp), delimiter=", "))
+            if verbose:
+                lp = self.full_so_report.libpythons
+                if lp:
+                    lp = runez.bold(runez.joined((x.relative_path for x in lp), delimiter=", "))
 
-            table.add_row("libpython.so", lp or runez.green("-not used-"))
+                table.add_row("libpython.so", lp or runez.green("-not used-"))
+
             report.append(table)
-            report.append(self.full_so_report)
-            if self.full_so_report.problematic:
-                pb = self.full_so_report.problematic.represented(verbose)
-                report.append(runez.joined(pb, delimiter="\n"))
+            if verbose:
+                report.append(self.full_so_report)
+                if self.full_so_report.problematic:
+                    pb = self.full_so_report.problematic.represented(verbose > 1)
+                    report.append(runez.joined(pb, delimiter="\n"))
 
-        if verbose or self.full_so_report.problematic:
-            report.append("\n-- Library users:")
-            for what, users in self.full_so_report.lib_tracker.users.items():
-                color = what.tracked_category.value or "green"
-                overview = "%s %s: %s" % (runez.colored(what, color), runez.plural(users, "user"), runez.joined(users))
-                report.append(runez.short(overview))
+                if self.full_so_report.problematic:
+                    report.append("\n-- Library users:")
+                    for what, users in self.full_so_report.lib_tracker.users.items():
+                        color = what.tracked_category.value or "green"
+                        overview = "%s %s: %s" % (runez.colored(what, color), runez.plural(users, "user"), runez.joined(users))
+                        report.append(runez.short(overview))
 
-        if verbose > 1:
-            pb = self.full_so_report.ok.represented(verbose)
-            report.append(runez.joined(pb, delimiter="\n"))
+                if verbose > 1:
+                    pb = self.full_so_report.ok.represented(verbose=True)
+                    report.append(runez.joined(pb, delimiter="\n"))
 
-        report = runez.joined(report, delimiter="\n") or self.output
-        return runez.joined(runez.blue(self.python), report, delimiter=":\n")
+        report = runez.joined(report or self.output, delimiter="\n")
+        return runez.joined(report, delimiter="\n")
 
 
 def _find_parent_subfolder(folder, *base_names, max_up=3):
