@@ -25,7 +25,6 @@ class Cpython(PythonBuilder):
         yield "-Wno-unused-command-line-argument"
 
     def c_configure_args(self):
-        # See https://wiki.python.org/moin/BuildStatically
         yield "--with-ensurepip=upgrade"
         yield "--enable-optimizations"
         yield "--with-lto"
@@ -55,7 +54,6 @@ class Cpython(PythonBuilder):
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
-        # TODO: Remove mentions of /usr/local in configure, Makefile?
         self.run_make()
         self.run_make("install", f"DESTDIR={self.build_base}")
 
@@ -120,7 +118,7 @@ class Cpython(PythonBuilder):
             symlinks = {}
             cleanable = set()
             if Cleanable.bin in self.setup.requested_clean:
-                cleanable.update(["2to3", "easy_install", "idle3", "pydoc", "wheel"])
+                cleanable.update(["2to3", "easy_install", "idle3", "pydoc"])
 
             if Cleanable.pip in self.setup.requested_clean:
                 cleanable.add("pip")
