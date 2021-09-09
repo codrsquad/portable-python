@@ -6,7 +6,7 @@ import runez
 from runez.pyenv import PythonDepot
 from runez.render import PrettyTable
 
-from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG
+from portable_python import BuildBase, BuildSetup, CLEANABLE_CHOICES, LOG
 from portable_python.inspector import PythonInspector
 from portable_python.versions import PythonVersions
 
@@ -30,17 +30,15 @@ def main(debug):
     )
 
 
-@main.command(name="build")
-@click.option("--build", "-b", default="build", metavar="PATH", show_default=True, help="Build folder to use")
+@main.command()
 @click.option("--clean", "-c", multiple=True, metavar="CSV", help="State what to cleanup, one of: %s" % CLEANABLE_CHOICES)
-@click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compressed binary")
 @click.option("--ext", type=click.Choice(runez.SYS_INFO.platform_id.supported_compression), help="Desired binary compression")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Use given --prefix for python installation (not portable)")
 @click.argument("python_spec")
-def build_cmd(build, clean, dist, ext, modules, prefix, python_spec):
+def build(clean, ext, modules, prefix, python_spec):
     """Build a portable python binary"""
-    setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, ext=ext, modules=modules, prefix=prefix)
+    setup = BuildSetup(python_spec, ext=ext, modules=modules, prefix=prefix)
     setup.set_requested_clean(clean)
     setup.compile()
 
@@ -173,18 +171,18 @@ def recompress_archive(dist, path, extension):
 
 
 @main.command()
-@click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put recompressed binary")
 @click.argument("path", required=True)
 @click.argument("ext", required=True, type=click.Choice(runez.SYS_INFO.platform_id.supported_compression))
-def recompress(dist, path, ext):
+def recompress(path, ext):
     """
     Re-compress an existing binary tarball, or folder
 
     \b
     Mildly useful for comparing sizes from different compressions
     """
+    build_base = BuildBase()
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
-    dist = runez.to_path(dist).absolute()
+    dist = build_base.dist_folder
     with runez.Anchored(dist.parent):
         actual_path = _find_recompress_source(dist, path)
         if not actual_path:

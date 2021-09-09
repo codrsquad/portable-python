@@ -37,6 +37,19 @@ class Cleanable(enum.Enum):
 CLEANABLE_CHOICES = runez.joined([x.name for x in Cleanable], delimiter=", ")
 
 
+class BuildBase:
+    """Where we're generating our build/dist files"""
+
+    def __init__(self):
+        build_base = os.environ.get("PP_BASE", os.getcwd())
+        self.build_base = runez.to_path(build_base, no_spaces=True).absolute()
+        self.build_folder = self.build_base / "build"
+        self.dist_folder = self.build_base / "dist"
+
+    def __repr__(self):
+        return runez.short(self.build_base)
+
+
 class BuildSetup:
     """
     This class drives the compilation, external modules first, then the target python itself.
@@ -49,27 +62,30 @@ class BuildSetup:
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
 
-    def __init__(self, python_spec, build_base="build", dist_folder="dist", ext=None, modules=None, prefix=None):
+    def __init__(self, python_spec, ext=None, modules=None, prefix=None):
         if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PythonVersions.cpython.latest
 
         pspec = PythonVersions.validated_spec(python_spec)
         self.python_spec = pspec
-        self.build_base = runez.to_path(build_base, no_spaces=True).absolute()
-        self.dist_folder = runez.to_path(dist_folder).absolute()
+        self.build_base = BuildBase()
         self.desired_modules = modules
         self.prefix = prefix
+        self.build_folder = self.build_base.build_folder / self.python_spec.canonical.replace(":", "-")
+        self.deps_folder = self.build_folder / "deps"
         self.x_debug = os.environ.get("PP_X_DEBUG")
         self.target_system = runez.system.PlatformId(os.environ.get("PP_TARGET"))
         dest = self.target_system.composed_basename(pspec.family, pspec.version, extension=ext)
         self.tarball_path = self.dist_folder / dest
-        self.build_folder = self.build_base / self.python_spec.canonical.replace(":", "-")
-        self.deps_folder = self.build_folder / "deps"
         builder = PythonVersions.family(self.python_spec.family).get_builder()
         self.python_builder = builder(self)
 
     def __repr__(self):
         return runez.short(self.build_folder)
+
+    @property
+    def dist_folder(self):
+        return self.build_base.dist_folder
 
     def set_requested_clean(self, text):
         self.requested_clean = set()
@@ -87,7 +103,7 @@ class BuildSetup:
     def compile(self):
         """Compile selected python family and version"""
         self.log_counter = 0
-        with runez.Anchored(self.build_base.parent, self.dist_folder.parent):
+        with runez.Anchored(self.build_base.build_base):
             modules = list(self.python_builder.modules)
             msg = "[%s]" % self.python_builder.modules
             if modules:

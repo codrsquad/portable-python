@@ -145,10 +145,6 @@ def test_invalid(cli):
     assert cli.failed
     assert "Unknown modules: foo, bar" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--build", "foo bar")
-    assert cli.failed
-    assert "Refusing path with space" in cli.logged
-
     cli.run("--dryrun", "build", "conda:1.2.3")
     assert cli.failed
     assert "Python family 'conda' is not yet supported" in cli.logged
