@@ -32,13 +32,12 @@ def main(debug):
 
 @main.command()
 @click.option("--clean", "-c", multiple=True, metavar="CSV", help="State what to cleanup, one of: %s" % CLEANABLE_CHOICES)
-@click.option("--ext", type=click.Choice(runez.SYS_INFO.platform_id.supported_compression), help="Desired binary compression")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Use given --prefix for python installation (not portable)")
 @click.argument("python_spec")
-def build(clean, ext, modules, prefix, python_spec):
+def build(clean, modules, prefix, python_spec):
     """Build a portable python binary"""
-    setup = BuildSetup(python_spec, ext=ext, modules=modules, prefix=prefix)
+    setup = BuildSetup(python_spec, modules=modules, prefix=prefix)
     setup.set_requested_clean(clean)
     setup.compile()
 
@@ -46,6 +45,7 @@ def build(clean, ext, modules, prefix, python_spec):
 @main.command()
 def diagnostics():
     """Show diagnostics info"""
+    build_base = BuildBase()
     depot = PythonDepot(use_path=True)
     depot.scan_path_env_var()
 
@@ -53,7 +53,8 @@ def diagnostics():
         yield "invoker python", depot.invoker
         yield from runez.SYS_INFO.diagnostics()
 
-    print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation()))
+    config = build_base.config.represented()
+    print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation(), config))
 
 
 @main.command()

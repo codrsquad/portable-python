@@ -19,6 +19,7 @@ import runez
 from runez.http import RestClient
 from runez.render import Header, PrettyTable
 
+from portable_python.config import Config
 from portable_python.inspector import PythonInspector
 from portable_python.versions import PythonVersions
 
@@ -45,6 +46,8 @@ class BuildBase:
         self.build_base = runez.to_path(build_base, no_spaces=True).absolute()
         self.build_folder = self.build_base / "build"
         self.dist_folder = self.build_base / "dist"
+        self.target_system = runez.system.PlatformId(os.environ.get("PP_TARGET"))
+        self.config = Config(self)
 
     def __repr__(self):
         return runez.short(self.build_base)
@@ -62,7 +65,7 @@ class BuildSetup:
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
 
-    def __init__(self, python_spec, ext=None, modules=None, prefix=None):
+    def __init__(self, python_spec, modules=None, prefix=None):
         if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PythonVersions.cpython.latest
 
@@ -74,8 +77,12 @@ class BuildSetup:
         self.build_folder = self.build_base.build_folder / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
         self.x_debug = os.environ.get("PP_X_DEBUG")
-        self.target_system = runez.system.PlatformId(os.environ.get("PP_TARGET"))
-        dest = self.target_system.composed_basename(pspec.family, pspec.version, extension=ext)
+        configured_ext = self.build_base.config.get_value("ext")
+        ext = runez.SYS_INFO.platform_id.canonical_compress_extension(configured_ext, short_form=True)
+        if not ext:
+            runez.abort("Invalid extension '%s'" % runez.red(configured_ext))  # pragma: no cover
+
+        dest = self.build_base.target_system.composed_basename(pspec.family, pspec.version, extension=ext)
         self.tarball_path = self.dist_folder / dest
         builder = PythonVersions.family(self.python_spec.family).get_builder()
         self.python_builder = builder(self)
@@ -110,7 +117,7 @@ class BuildSetup:
                 msg += " -> %s" % runez.joined(modules, delimiter=", ")
 
             LOG.info("Modules selected: %s" % msg)
-            LOG.info("Platform: %s" % self.target_system)
+            LOG.info("Platform: %s" % self.build_base.target_system)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
             if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
@@ -323,7 +330,7 @@ class ModuleBuilder:
     @property
     def target(self):
         """Shortcut to setup's target system"""
-        return self.setup.target_system
+        return self.setup.build_base.target_system
 
     @property
     def url(self):
