@@ -36,15 +36,13 @@ def main(debug):
 @click.option("--dist", "-d", default="dist", metavar="PATH", show_default=True, help="Folder where to put compressed binary")
 @click.option("--ext", type=click.Choice(runez.SYS_INFO.platform_id.supported_compression), help="Desired binary compression")
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
-@click.option("--prefix", "-p", metavar="PATH", help="Build a shared-libs python targeting given prefix folder")
-@click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: macos-x86_64")
-@click.option("--x-debug", is_flag=True, hidden=True, help="For debugging, allows to build one module at a time")
+@click.option("--prefix", "-p", metavar="PATH", help="Use given --prefix for python installation (not portable)")
 @click.argument("python_spec")
-def build_cmd(build, clean, dist, ext, modules, prefix, x_debug, target, python_spec):
+def build_cmd(build, clean, dist, ext, modules, prefix, python_spec):
     """Build a portable python binary"""
-    setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, ext=ext, modules=modules, prefix=prefix, target=target)
+    setup = BuildSetup(python_spec, build_base=build, dist_folder=dist, ext=ext, modules=modules, prefix=prefix)
     setup.set_requested_clean(clean)
-    setup.compile(x_debug=x_debug)
+    setup.compile()
 
 
 @main.command()
@@ -119,12 +117,11 @@ def list_cmd(json, family):
 
 @main.command()
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
-@click.option("--target", hidden=True, help="Target system, useful only for --dryrun for now, example: macos-x86_64")
 @click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
 @click.argument("python_spec", required=False)
-def scan(modules, target, validate, python_spec):
+def scan(modules, validate, python_spec):
     """Show status of buildable modules, which will be auto-compiled"""
-    setup = BuildSetup(python_spec, modules=modules, target=target)
+    setup = BuildSetup(python_spec, modules=modules)
     print(runez.bold(setup.python_spec))
     report = setup.python_builder.modules.report()
     print(report)

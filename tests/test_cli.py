@@ -9,15 +9,16 @@ from portable_python.versions import CPythonFamily, PythonVersions
 from .conftest import dummy_tarball
 
 
-def test_build_bogus_platform(cli):
-    cli.run("--dryrun", "build", "2.7.1", "-m+bdb", "--target=foo-bar")
+def test_build_bogus_platform(cli, monkeypatch):
+    monkeypatch.setenv("PP_TARGET", "foo-bar")
+    cli.run("--dryrun", "build", "2.7.1", "-m+bdb")
     assert cli.failed
     assert "Modules selected: [+bdb] -> " in cli.logged
     assert " bdb:" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
 
-def test_build_cleanup(cli):
+def test_build_cleanup(cli, monkeypatch):
     v = PythonVersions.cpython.latest
     mm = f"{v.major}.{v.minor}"
     bf = runez.to_path(f"build/cpython-{v}")
@@ -33,34 +34,37 @@ def test_build_cleanup(cli):
     runez.touch(bf / f"{v}/lib/libpython{mm}.a", logger=None)
     runez.touch(bf / f"{v}/lib/python{mm}/config-{mm}-darwin/libpython{mm}.a", logger=None)
 
-    cli.run("--dryrun", "build", v, "--target=macos-x86_64")
+    monkeypatch.setenv("PP_TARGET", "macos-x86_64")
+    cli.run("--dryrun", "build", v)
     assert cli.succeeded
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
 
-    cli.run("--dryrun", "build", v, "--target=macos-x86_64", "-mall", "--clean", "pip,libpython")
+    cli.run("--dryrun", "build", v, "-mall", "--clean", "pip,libpython")
     assert cli.succeeded
     assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-macos-x86_64.tar.gz" in cli.logged
 
 
-def test_build_macos(cli):
-    cli.run("--dryrun", "build", "latest", "--target=macos-x86_64", "-m+bdb,-openssl")
+def test_build_macos(cli, monkeypatch):
+    monkeypatch.setenv("PP_TARGET", "macos-x86_64")
+    cli.run("--dryrun", "build", "latest", "-m+bdb,-openssl")
     assert cli.succeeded
     assert " openssl:" not in cli.logged
     assert " bdb:" in cli.logged
 
 
-def test_build_prefix(cli):
+def test_build_prefix(cli, monkeypatch):
+    monkeypatch.setenv("PP_TARGET", "linux-x86_64")
     v = PythonVersions.cpython.latest
-    cli.run("--dryrun", "build", "latest", "--target=linux-x86_64", "-mnone", "--prefix", "/apps/python")
+    cli.run("--dryrun", "build", "latest", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
     assert "Modules selected: [none]\n" in cli.logged
     assert " --prefix=/apps/python " in cli.logged
     assert f" install DESTDIR=build/cpython-{v}/root\n" in cli.logged
     assert f"Would tar build/cpython-{v}/root/apps/python -> dist/cpython-{v}-linux-x86_64.tar.gz" in cli.logged
 
-    cli.run("--dryrun", "build", "latest", "--target=linux-x86_64", "-mall", "--prefix", "/apps/foo{python_version}")
+    cli.run("--dryrun", "build", "latest", "-mall", "--prefix", "/apps/foo{python_version}")
     assert cli.succeeded
     assert f" --prefix=/apps/foo{PythonVersions.cpython.latest} " in cli.logged
 
@@ -80,7 +84,7 @@ def test_failed_run(cli):
     assert os.path.exists(build_path / "logs/01-zlib.log")
 
 
-def test_finalization(cli):
+def test_finalization(cli, monkeypatch):
     cli.run("--dryrun", "build", "latest", "--clean", "foo")
     assert cli.failed
     assert "'foo' is not a valid value for --clean" in cli.logged
@@ -91,7 +95,7 @@ def test_finalization(cli):
     base = runez.to_path(f"build/cpython-{v}")
     bin = base / f"{v}/bin"
 
-    runez.touch(base / "build/cpython/README", logger=None)  # Triggers compilation skip with --x-debug
+    runez.touch(base / "build/cpython/README", logger=None)
 
     # Create some files to be groomed by CPython
     runez.touch(bin.parent / "lib/idle_test/foo", logger=None)
@@ -102,8 +106,9 @@ def test_finalization(cli):
     runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
     runez.write(bin / "some-exe3", "#!/bin/sh\nhello", logger=None)
     runez.write(bin / "pythond", b"\xe4", logger=None)  # Non-unicode char to trigger edge case
+    monkeypatch.setenv("PP_X_DEBUG", "direct-finalize")
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
-        cli.run("build", v, "-mbzip2", "--x-debug", "--clean", "bin,libpython")
+        cli.run("build", v, "-mbzip2", "--clean", "bin,libpython")
         assert cli.failed
         assert "Modules selected: [bzip2] -> bzip2:" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
@@ -220,20 +225,22 @@ def test_recompress(cli):
     assert len(files) == 2
 
 
-def test_scan(cli):
-    cli.run("scan", "--target", "macos-x86_64")
+def test_scan(cli, monkeypatch):
+    monkeypatch.setenv("PP_TARGET", "macos-x86_64")
+    cli.run("scan")
     assert cli.succeeded
 
+    monkeypatch.setenv("PP_TARGET", "linux-x86_64")
     with patch("portable_python.cpython.runez.which", return_value=None):
-        cli.run("scan", "--target", "linux-x86_64")
+        cli.run("scan")
         assert cli.succeeded
         assert "!needs tclsh" in cli.logged
 
-        cli.run("scan", "--target", "linux-x86_64", "--validate")
+        cli.run("scan", "--validate")
         assert cli.failed
         assert "!needs tclsh" in cli.logged
 
     with patch("portable_python.ModuleBuilder._find_telltale", return_value="foo"):
-        cli.run("scan", "--target", "linux-x86_64")
+        cli.run("scan")
         assert cli.succeeded
         assert "on top of libffi-dev" in cli.logged

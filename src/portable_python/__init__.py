@@ -49,7 +49,7 @@ class BuildSetup:
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
 
-    def __init__(self, python_spec, build_base="build", dist_folder="dist", ext=None, modules=None, prefix=None, target=None):
+    def __init__(self, python_spec, build_base="build", dist_folder="dist", ext=None, modules=None, prefix=None):
         if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PythonVersions.cpython.latest
 
@@ -59,9 +59,9 @@ class BuildSetup:
         self.dist_folder = runez.to_path(dist_folder).absolute()
         self.desired_modules = modules
         self.prefix = prefix
-        ts = runez.system.PlatformId(target)
-        self.target_system = ts
-        dest = ts.composed_basename(pspec.family, pspec.version, extension=ext)
+        self.x_debug = os.environ.get("PP_X_DEBUG")
+        self.target_system = runez.system.PlatformId(os.environ.get("PP_TARGET"))
+        dest = self.target_system.composed_basename(pspec.family, pspec.version, extension=ext)
         self.tarball_path = self.dist_folder / dest
         self.build_folder = self.build_base / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
@@ -84,7 +84,7 @@ class BuildSetup:
             self.requested_clean.add(v)
 
     @runez.log.timeit("Overall compilation")
-    def compile(self, x_debug=None):
+    def compile(self):
         """Compile selected python family and version"""
         self.log_counter = 0
         with runez.Anchored(self.build_base.parent, self.dist_folder.parent):
@@ -95,8 +95,8 @@ class BuildSetup:
 
             LOG.info("Modules selected: %s" % msg)
             LOG.info("Platform: %s" % self.target_system)
-            runez.ensure_folder(self.build_folder, clean=not x_debug)
-            self.python_builder.compile(x_debug)
+            runez.ensure_folder(self.build_folder, clean=not self.x_debug)
+            self.python_builder.compile()
             if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
                 py_inspector = PythonInspector(self.python_builder.install_folder)
                 print(py_inspector.represented())
@@ -403,17 +403,18 @@ class ModuleBuilder:
                 logging.root.removeHandler(self._log_handler)
                 self._log_handler = None
 
-    def compile(self, x_debug):
+    def compile(self):
         """Effectively compile this external module"""
         for submodule in self.modules.selected:
-            submodule.compile(x_debug)
+            submodule.compile()
 
         print(Header.aerated(str(self)))
         with self.captured_logs():
-            if x_debug and self.m_src_build.is_dir():
-                # For quicker iteration: debugging directly finalization
-                self._finalize()
-                return
+            if self.setup.x_debug:
+                if "direct-finalize" in self.setup.x_debug:
+                    # For quicker iteration: debugging directly finalization
+                    self._finalize()
+                    return
 
             if self.url:
                 # Modules without a url just drive sub-modules compilation typically
