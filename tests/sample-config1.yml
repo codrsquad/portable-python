@@ -1,12 +1,20 @@
-# Sample configuration
+# Example configuration
 
-# Allow including other configs, for convenience
-include: sample-config2.yml
+include: sample-config2.yml                         # Allow including other configs, for convenience
 
-macos:
-  ext: zip  # Verify this gets picked up on macos (arm64 and/or x86_64)
+macos:                                              # Applies to macos only
+  ext: .tar.xz                                      # Verify this gets picked up on macos (arm64 and/or x86_64)
   env:
-    MACOSX_DEPLOYMENT_TARGET: 10.15  # Overridden on arm64 in sample-config2.yml
+    MACOSX_DEPLOYMENT_TARGET: 10.15                 # Overridden on arm64 in sample-config2.yml
 
   pip-install:
-    - wheel  # Exercise extra pip installs
+    - wheel                                         # Exercise extra pip installs
+
+  clean:
+  - bin/pip*                                        # Example: remove all bin/pip* commands after build (don't package them)
+
+# This would get picked up on all platforms
+clean:
+- bin/2to3* bin/easy_install* bin/idle3* bin/pydoc*
+- lib/*/config-{python_mm}-\w+/                     # Example to reduce space, if not used
+- libpython*.a
