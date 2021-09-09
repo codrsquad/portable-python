@@ -1,0 +1,5 @@
+# Sample config when target platform is macos
+macos:
+  ext: zip
+  env:
+    MACOSX_DEPLOYMENT_TARGET: 10.15

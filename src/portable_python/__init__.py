@@ -367,10 +367,6 @@ class ModuleBuilder:
     def xenv_LDFLAGS(self):
         yield f"-L{self.deps_lib}"
 
-    def xenv_MACOSX_DEPLOYMENT_TARGET(self):
-        if self.target.is_macos:
-            yield os.environ.get("MACOSX_DEPLOYMENT_TARGET", "10.14")
-
     def xenv_PATH(self):
         yield f"{self.deps}/bin"
         yield "/usr/bin"
@@ -449,20 +445,10 @@ class ModuleBuilder:
 
                 runez.decompress(path, self.m_src_build, simplify=True)
 
-            for var_name in sorted(dir(self)):
-                if var_name.startswith("xenv_"):
-                    # By convention, inject all xenv_* values as env vars
-                    value = getattr(self, var_name)
-                    var_name = var_name[5:]
-                    delimiter = os.pathsep if var_name.endswith("PATH") else " "
-                    if value:
-                        if callable(value):
-                            value = value()  # Allow for generators
-
-                        value = runez.joined(value, delimiter=delimiter)  # All yielded values are auto-joined
-                        if value:
-                            LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
-                            os.environ[var_name] = value
+            env_vars = self._get_env_vars()
+            for var_name, value in env_vars.items():
+                LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
+                os.environ[var_name] = value
 
             func = getattr(self, "_do_%s_compile" % self.target.platform, None)
             if not func:
@@ -477,6 +463,38 @@ class ModuleBuilder:
                     self._prepare()
                     func()
                     self._finalize()
+
+    def _get_env_vars(self):
+        """Yield all found env vars, first found wins"""
+        result = {}
+        for k, v in self._find_all_env_vars():
+            if v is not None:
+                if k not in result:
+                    result[k] = v
+
+        return result
+
+    def _find_all_env_vars(self):
+        """Env vars defined in code take precedence, the config can provide extra ones"""
+        for var_name in sorted(dir(self)):
+            if var_name.startswith("xenv_"):
+                # By convention, xenv_* values are used as env vars
+                value = getattr(self, var_name)
+                var_name = var_name[5:]
+                delimiter = os.pathsep if var_name.endswith("PATH") else " "
+                if value:
+                    if callable(value):
+                        value = value()  # Allow for generators
+
+                    value = runez.joined(value, delimiter=delimiter)  # All yielded values are auto-joined
+                    if value:
+                        yield var_name, value
+
+        env = self.setup.build_base.config.get_value("env")
+        if env:
+            for k, v in env.items():
+                if v is not None:
+                    yield k, str(v)
 
     def _prepare(self):
         """Ran before _do_*_compile()"""

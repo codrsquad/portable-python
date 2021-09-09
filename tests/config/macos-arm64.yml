@@ -1,0 +1,4 @@
+# Settings here are most specific, so will win
+macos:
+  env:
+    MACOSX_DEPLOYMENT_TARGET: 11
