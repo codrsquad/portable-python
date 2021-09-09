@@ -1,4 +1,4 @@
 macos:
-  arm64:
+  arm64:  # Verify that this setting is picked up on macos-arm64
     env:
       MACOSX_DEPLOYMENT_TARGET: 11

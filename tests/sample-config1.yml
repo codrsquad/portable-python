@@ -1,9 +1,12 @@
 # Sample configuration
+
+# Allow including other configs, for convenience
 include: sample-config2.yml
+
 macos:
-  ext: zip
+  ext: zip  # Verify this gets picked up on macos (arm64 and/or x86_64)
   env:
-    MACOSX_DEPLOYMENT_TARGET: 10.15
+    MACOSX_DEPLOYMENT_TARGET: 10.15  # Overridden on arm64 in sample-config2.yml
 
   pip-install:
-    - wheel
+    - wheel  # Exercise extra pip installs
