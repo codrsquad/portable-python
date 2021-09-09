@@ -25,11 +25,10 @@ class Cpython(PythonBuilder):
         yield "-Wno-unused-command-line-argument"
 
     def c_configure_args(self):
-        yield "--with-ensurepip=upgrade"
-        yield "--enable-optimizations"
-        yield "--with-lto"
-        yield "--with-pydebug"
-        yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
+        configured = self.setup.ppb.config.get_value("cpython-configure")
+        if configured:
+            yield from configured
+
         if self.active_module(LibFFI):
             yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
             yield "--with-system-ffi=no"
