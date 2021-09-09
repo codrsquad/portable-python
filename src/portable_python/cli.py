@@ -45,7 +45,7 @@ def build(clean, modules, prefix, python_spec):
 @main.command()
 def diagnostics():
     """Show diagnostics info"""
-    build_base = BuildBase()
+    ppb = BuildBase()
     depot = PythonDepot(use_path=True)
     depot.scan_path_env_var()
 
@@ -53,7 +53,7 @@ def diagnostics():
         yield "invoker python", depot.invoker
         yield from runez.SYS_INFO.diagnostics()
 
-    config = build_base.config.represented()
+    config = ppb.config.represented()
     print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation(), config))
 
 
@@ -181,9 +181,9 @@ def recompress(path, ext):
     \b
     Mildly useful for comparing sizes from different compressions
     """
-    build_base = BuildBase()
+    ppb = BuildBase()
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
-    dist = build_base.dist_folder
+    dist = ppb.dist_folder
     with runez.Anchored(dist.parent):
         actual_path = _find_recompress_source(dist, path)
         if not actual_path:

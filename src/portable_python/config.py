@@ -69,14 +69,14 @@ class ConfigSource:
 class Config:
     """Overall config, the 1st found (most specific) setting wins"""
 
-    def __init__(self, build_base):
-        self.build_base = build_base
+    def __init__(self, ppb):
+        self.ppb = ppb
         paths = self._key_paths(None)
         self.sources = []  # type: list[ConfigSource]
         for path in paths:
             basename = runez.joined(path, delimiter="-")
             if basename:
-                source = build_base.build_base / (basename + ".yml")
+                source = ppb.base_folder / (basename + ".yml")
                 if source.exists():
                     with open(source) as fh:
                         data = yaml.safe_load(fh)
@@ -87,7 +87,7 @@ class Config:
         self.sources.append(default)
 
     def __repr__(self):
-        return "%s [%s]" % (self.build_base, runez.plural(self.sources, "config source"))
+        return "%s [%s]" % (self.ppb, runez.plural(self.sources, "config source"))
 
     def represented(self):
         """Textual (yaml) representation of all configs"""
@@ -114,5 +114,5 @@ class Config:
                     return v
 
     def _key_paths(self, key):
-        ts = self.build_base.target_system
+        ts = self.ppb.target_system
         return (ts.platform, ts.arch, key), (ts.platform, key), key

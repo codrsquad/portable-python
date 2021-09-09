@@ -55,7 +55,7 @@ class Cpython(PythonBuilder):
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
         self.run_make()
-        self.run_make("install", f"DESTDIR={self.build_base}")
+        self.run_make("install", f"DESTDIR={self.build_root}")
 
     @property
     def python_mm(self):

@@ -42,15 +42,15 @@ class BuildBase:
     """Where we're generating our build/dist files"""
 
     def __init__(self):
-        build_base = os.environ.get("PP_BASE", os.getcwd())
-        self.build_base = runez.to_path(build_base, no_spaces=True).absolute()
-        self.build_folder = self.build_base / "build"
-        self.dist_folder = self.build_base / "dist"
+        base_folder = os.environ.get("PP_BASE", os.getcwd())
+        self.base_folder = runez.to_path(base_folder, no_spaces=True).absolute()
+        self.build_folder = self.base_folder / "build"
+        self.dist_folder = self.base_folder / "dist"
         self.target_system = runez.system.PlatformId(os.environ.get("PP_TARGET"))
         self.config = Config(self)
 
     def __repr__(self):
-        return runez.short(self.build_base)
+        return runez.short(self.base_folder)
 
 
 class BuildSetup:
@@ -71,18 +71,18 @@ class BuildSetup:
 
         pspec = PythonVersions.validated_spec(python_spec)
         self.python_spec = pspec
-        self.build_base = BuildBase()
+        self.ppb = BuildBase()  # Stands for "portable python build base" - unique name, simplifies usage searches
         self.desired_modules = modules
         self.prefix = prefix
-        self.build_folder = self.build_base.build_folder / self.python_spec.canonical.replace(":", "-")
+        self.build_folder = self.ppb.build_folder / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
         self.x_debug = os.environ.get("PP_X_DEBUG")
-        configured_ext = self.build_base.config.get_value("ext")
+        configured_ext = self.ppb.config.get_value("ext")
         ext = runez.SYS_INFO.platform_id.canonical_compress_extension(configured_ext, short_form=True)
         if not ext:
             runez.abort("Invalid extension '%s'" % runez.red(configured_ext))  # pragma: no cover
 
-        dest = self.build_base.target_system.composed_basename(pspec.family, pspec.version, extension=ext)
+        dest = self.ppb.target_system.composed_basename(pspec.family, pspec.version, extension=ext)
         self.tarball_path = self.dist_folder / dest
         builder = PythonVersions.family(self.python_spec.family).get_builder()
         self.python_builder = builder(self)
@@ -92,7 +92,7 @@ class BuildSetup:
 
     @property
     def dist_folder(self):
-        return self.build_base.dist_folder
+        return self.ppb.dist_folder
 
     def set_requested_clean(self, text):
         self.requested_clean = set()
@@ -110,14 +110,14 @@ class BuildSetup:
     def compile(self):
         """Compile selected python family and version"""
         self.log_counter = 0
-        with runez.Anchored(self.build_base.build_base):
+        with runez.Anchored(self.ppb.base_folder):
             modules = list(self.python_builder.modules)
             msg = "[%s]" % self.python_builder.modules
             if modules:
                 msg += " -> %s" % runez.joined(modules, delimiter=", ")
 
             LOG.info("Modules selected: %s" % msg)
-            LOG.info("Platform: %s" % self.build_base.target_system)
+            LOG.info("Platform: %s" % self.ppb.target_system)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
             if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
@@ -330,7 +330,7 @@ class ModuleBuilder:
     @property
     def target(self):
         """Shortcut to setup's target system"""
-        return self.setup.build_base.target_system
+        return self.setup.ppb.target_system
 
     @property
     def url(self):
@@ -490,7 +490,7 @@ class ModuleBuilder:
                     if value:
                         yield var_name, value
 
-        env = self.setup.build_base.config.get_value("env")
+        env = self.setup.ppb.config.get_value("env")
         if env:
             for k, v in env.items():
                 if v is not None:
@@ -525,8 +525,8 @@ class PythonBuilder(ModuleBuilder):
         return self.install_folder / "bin"
 
     @property
-    def build_base(self):
-        """Base folder where we'll compile python, with optional prefixed-layour (for debian-like packaging)"""
+    def build_root(self):
+        """Base folder where we'll compile python, with optional prefixed-layout (for debian-like packaging)"""
         folder = self.setup.build_folder
         if self.setup.prefix:
             folder = folder / "root"
@@ -536,7 +536,7 @@ class PythonBuilder(ModuleBuilder):
     @property
     def install_folder(self):
         """Folder where the python we compile gets installed"""
-        return self.build_base / self.c_configure_prefix.strip("/")
+        return self.build_root / self.c_configure_prefix.strip("/")
 
     @property
     def version(self):

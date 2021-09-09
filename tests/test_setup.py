@@ -14,8 +14,8 @@ def test_config(cli, monkeypatch):
 def test_edge_cases(monkeypatch):
     monkeypatch.setenv("PP_TARGET", "linux-x86_64")
     setup = BuildSetup(None, modules="+readline")
-    assert str(setup.build_base)
-    assert str(setup.build_base.config)
+    assert str(setup.ppb)
+    assert str(setup.ppb.config)
     assert setup.python_spec.version == PythonVersions.cpython.latest
     assert str(setup.python_builder.modules) == "+readline"
 
