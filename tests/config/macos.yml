@@ -3,3 +3,5 @@ macos:
   ext: zip
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.15
+  pip-install:
+    - wheel

@@ -70,6 +70,12 @@ class Cpython(PythonBuilder):
 
     def _finalize(self):
         bin_python = self.bin_folder / self.main_python
+        extras = self.setup.ppb.config.get_value("pip-install")
+        if extras:
+            extras = runez.flattened(extras, split=" ")
+            for extra in extras:
+                self.run(bin_python, "-mpip", "install", "-U", extra, fatal=False)
+
         self.correct_symlinks()
         self.cleanup_distribution()
         self.run(bin_python, "-mcompileall")
