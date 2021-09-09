@@ -112,8 +112,8 @@ def test_finalization(cli):
         assert f"Auto-corrected shebang for build/cpython-{v}/{v}/bin/some-exe" in cli.logged
         assert "Build failed" in cli.logged
 
-    assert runez.readlines(bin / "some-exe", logger=None) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
-    assert runez.readlines(bin / "some-exe3", logger=None) == ["#!/bin/sh", "hello"]
+    assert list(runez.readlines(bin / "some-exe")) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
+    assert list(runez.readlines(bin / "some-exe3")) == ["#!/bin/sh", "hello"]
     assert runez.basename(bin / "python", follow=True) == "foo-python"
 
 

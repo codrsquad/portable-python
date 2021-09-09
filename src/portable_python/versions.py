@@ -128,7 +128,7 @@ class PythonVersions:
         if cls._depot is None:
             cls._depot = PythonDepot(use_path=False)
 
-        return cls._depot.find_python(spec, fatal=False)
+        return cls._depot.find_python(spec)
 
     @classmethod
     def validated_spec(cls, spec: str) -> PythonSpec:
