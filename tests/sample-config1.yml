@@ -1,7 +1,9 @@
-# Sample config when target platform is macos
+# Sample configuration
+include: sample-config2.yml
 macos:
   ext: zip
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.15
+
   pip-install:
     - wheel

@@ -1,0 +1,4 @@
+macos:
+  arm64:
+    env:
+      MACOSX_DEPLOYMENT_TARGET: 11

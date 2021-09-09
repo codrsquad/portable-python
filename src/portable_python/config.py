@@ -1,3 +1,4 @@
+import os
 from io import StringIO
 
 import runez
@@ -69,25 +70,33 @@ class ConfigSource:
 class Config:
     """Overall config, the 1st found (most specific) setting wins"""
 
-    def __init__(self, ppb):
-        self.ppb = ppb
-        paths = self._key_paths(None)
+    def __init__(self, path=None):
+        self.path = runez.to_path(path or "portable-python.yml").absolute()
+        self.base_folder = runez.to_path(os.environ.get("PP_BASE") or os.getcwd(), no_spaces=True).absolute()
+        self.main_build_folder = self.base_folder / "build"
+        self.dist_folder = self.base_folder / "dist"
+        self.target = runez.system.PlatformId(os.environ.get("PP_TARGET"))
         self.sources = []  # type: list[ConfigSource]
-        for path in paths:
-            basename = runez.joined(path, delimiter="-")
-            if basename:
-                source = ppb.base_folder / (basename + ".yml")
-                if source.exists():
-                    with open(source) as fh:
-                        data = yaml.safe_load(fh)
-                        self.sources.append(ConfigSource(source, data))
-
+        self.by_path = {}
+        self.load(self.path)
         default = yaml.safe_load(DEFAULT_CONFIG)
         default = ConfigSource("default", default)
         self.sources.append(default)
 
     def __repr__(self):
-        return "%s [%s]" % (self.ppb, runez.plural(self.sources, "config source"))
+        return "%s, %s [%s]" % (runez.short(self.path), runez.plural(self.sources, "config source"), self.target)
+
+    def load(self, path):
+        if path.exists():
+            with open(path) as fh:
+                data = yaml.safe_load(fh)
+                source = ConfigSource(path, data)
+                self.sources.append(source)
+                self.by_path[str(path)] = source
+                include = source.get_value("include")
+                if include:
+                    include = runez.resolved_path(include, base=path.parent)
+                    self.load(runez.to_path(include))
 
     def represented(self):
         """Textual (yaml) representation of all configs"""
@@ -107,12 +116,11 @@ class Config:
             Associated value, if any
         """
         paths = self._key_paths(key)
-        for source in self.sources:
-            for k in paths:
+        for k in paths:
+            for source in self.sources:
                 v = source.get_value(k)
                 if v is not None:
                     return v
 
     def _key_paths(self, key):
-        ts = self.ppb.target_system
-        return (ts.platform, ts.arch, key), (ts.platform, key), key
+        return (self.target.platform, self.target.arch, key), (self.target.platform, key), key

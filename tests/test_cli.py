@@ -70,8 +70,9 @@ def test_build_prefix(cli, monkeypatch):
 
 
 def test_diagnostics(cli):
-    cli.run("diagnostics")
+    cli.run("-c", cli.tests_path("sample-config1.yml"), "diagnostics")
     assert cli.succeeded
+    assert "tests/sample-config2.yml config:" in cli.logged
 
 
 def test_failed_run(cli):

@@ -6,9 +6,13 @@ import runez
 from runez.pyenv import PythonDepot
 from runez.render import PrettyTable
 
-from portable_python import BuildBase, BuildSetup, CLEANABLE_CHOICES, LOG
+from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG
+from portable_python.config import Config
 from portable_python.inspector import PythonInspector
 from portable_python.versions import PythonVersions
+
+
+CONFIG_PATH = "portable-python.yml"
 
 
 @runez.click.group()
@@ -16,10 +20,14 @@ from portable_python.versions import PythonVersions
 @runez.click.color()
 @runez.click.debug("-v")
 @runez.click.dryrun("-n")
-def main(debug):
+@click.option("--config", "-c", metavar="PATH", default=CONFIG_PATH, show_default=True, help="Path to config file to use")
+def main(debug, config):
     """
     Build (optionally portable) python binaries
     """
+    global CONFIG_PATH
+    CONFIG_PATH = config
+
     runez.system.AbortException = SystemExit
     runez.log.setup(
         debug=debug,
@@ -37,7 +45,7 @@ def main(debug):
 @click.argument("python_spec")
 def build(clean, modules, prefix, python_spec):
     """Build a portable python binary"""
-    setup = BuildSetup(python_spec, modules=modules, prefix=prefix)
+    setup = BuildSetup(python_spec, CONFIG_PATH, modules=modules, prefix=prefix)
     setup.set_requested_clean(clean)
     setup.compile()
 
@@ -45,7 +53,6 @@ def build(clean, modules, prefix, python_spec):
 @main.command()
 def diagnostics():
     """Show diagnostics info"""
-    ppb = BuildBase()
     depot = PythonDepot(use_path=True)
     depot.scan_path_env_var()
 
@@ -53,7 +60,7 @@ def diagnostics():
         yield "invoker python", depot.invoker
         yield from runez.SYS_INFO.diagnostics()
 
-    config = ppb.config.represented()
+    config = Config(CONFIG_PATH).represented()
     print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation(), config))
 
 
@@ -120,7 +127,7 @@ def list_cmd(json, family):
 @click.argument("python_spec", required=False)
 def scan(modules, validate, python_spec):
     """Show status of buildable modules, which will be auto-compiled"""
-    setup = BuildSetup(python_spec, modules=modules)
+    setup = BuildSetup(python_spec, CONFIG_PATH, modules=modules)
     print(runez.bold(setup.python_spec))
     report = setup.python_builder.modules.report()
     print(report)
@@ -181,9 +188,9 @@ def recompress(path, ext):
     \b
     Mildly useful for comparing sizes from different compressions
     """
-    ppb = BuildBase()
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
-    dist = ppb.dist_folder
+    config = Config(CONFIG_PATH)
+    dist = config.dist_folder
     with runez.Anchored(dist.parent):
         actual_path = _find_recompress_source(dist, path)
         if not actual_path:

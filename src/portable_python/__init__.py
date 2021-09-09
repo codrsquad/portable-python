@@ -17,6 +17,7 @@ from typing import Dict, List
 
 import runez
 from runez.http import RestClient
+from runez.pyenv import PythonSpec
 from runez.render import Header, PrettyTable
 
 from portable_python.config import Config
@@ -38,21 +39,6 @@ class Cleanable(enum.Enum):
 CLEANABLE_CHOICES = runez.joined([x.name for x in Cleanable], delimiter=", ")
 
 
-class BuildBase:
-    """Where we're generating our build/dist files"""
-
-    def __init__(self):
-        base_folder = os.environ.get("PP_BASE", os.getcwd())
-        self.base_folder = runez.to_path(base_folder, no_spaces=True).absolute()
-        self.build_folder = self.base_folder / "build"
-        self.dist_folder = self.base_folder / "dist"
-        self.target_system = runez.system.PlatformId(os.environ.get("PP_TARGET"))
-        self.config = Config(self)
-
-    def __repr__(self):
-        return runez.short(self.base_folder)
-
-
 class BuildSetup:
     """
     This class drives the compilation, external modules first, then the target python itself.
@@ -65,24 +51,37 @@ class BuildSetup:
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
 
-    def __init__(self, python_spec, modules=None, prefix=None):
+    def __init__(self, python_spec=None, config=None, modules=None, prefix=None):
+        """
+        Args:
+            python_spec (str | PythonSpec | None): Python to build (family and version)
+            config (str): Path to config to use
+            modules (str | None): Modules to build (default: from config, or auto-detect)
+            prefix (str | None): --prefix to use
+        """
         if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PythonVersions.cpython.latest
 
-        pspec = PythonVersions.validated_spec(python_spec)
+        pspec = PythonSpec.to_spec(python_spec)
+        if not pspec.version or not pspec.version.is_valid:
+            runez.abort("Invalid python spec: %s" % runez.red(pspec))
+
+        if pspec.version.text not in pspec.text or len(pspec.version.given_components) < 3:
+            runez.abort("Please provide full desired version: %s is not good enough" % runez.red(pspec))
+
         self.python_spec = pspec
-        self.ppb = BuildBase()  # Stands for "portable python build base" - unique name, simplifies usage searches
+        self.config = Config(config)
         self.desired_modules = modules
         self.prefix = prefix
-        self.build_folder = self.ppb.build_folder / self.python_spec.canonical.replace(":", "-")
+        self.build_folder = self.config.main_build_folder / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
         self.x_debug = os.environ.get("PP_X_DEBUG")
-        configured_ext = self.ppb.config.get_value("ext")
+        configured_ext = self.config.get_value("ext")
         ext = runez.SYS_INFO.platform_id.canonical_compress_extension(configured_ext, short_form=True)
         if not ext:
             runez.abort("Invalid extension '%s'" % runez.red(configured_ext))  # pragma: no cover
 
-        dest = self.ppb.target_system.composed_basename(pspec.family, pspec.version, extension=ext)
+        dest = self.config.target.composed_basename(pspec.family, pspec.version, extension=ext)
         self.tarball_path = self.dist_folder / dest
         builder = PythonVersions.family(self.python_spec.family).get_builder()
         self.python_builder = builder(self)
@@ -92,7 +91,7 @@ class BuildSetup:
 
     @property
     def dist_folder(self):
-        return self.ppb.dist_folder
+        return self.config.dist_folder
 
     def set_requested_clean(self, text):
         self.requested_clean = set()
@@ -110,14 +109,14 @@ class BuildSetup:
     def compile(self):
         """Compile selected python family and version"""
         self.log_counter = 0
-        with runez.Anchored(self.ppb.base_folder):
+        with runez.Anchored(self.config.base_folder):
             modules = list(self.python_builder.modules)
             msg = "[%s]" % self.python_builder.modules
             if modules:
                 msg += " -> %s" % runez.joined(modules, delimiter=", ")
 
             LOG.info("Modules selected: %s" % msg)
-            LOG.info("Platform: %s" % self.ppb.target_system)
+            LOG.info("Platform: %s" % self.config.target)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
             if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
@@ -328,9 +327,13 @@ class ModuleBuilder:
         return self.modules.active_module(name)
 
     @property
+    def config(self):
+        return self.setup.config
+
+    @property
     def target(self):
         """Shortcut to setup's target system"""
-        return self.setup.ppb.target_system
+        return self.config.target
 
     @property
     def url(self):
@@ -490,7 +493,7 @@ class ModuleBuilder:
                     if value:
                         yield var_name, value
 
-        env = self.setup.ppb.config.get_value("env")
+        env = self.config.get_value("env")
         if env:
             for k, v in env.items():
                 if v is not None:

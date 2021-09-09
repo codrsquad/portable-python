@@ -25,7 +25,7 @@ class Cpython(PythonBuilder):
         yield "-Wno-unused-command-line-argument"
 
     def c_configure_args(self):
-        configured = self.setup.ppb.config.get_value("cpython-configure")
+        configured = self.config.get_value("cpython-configure")
         if configured:
             yield from configured
 
@@ -69,7 +69,7 @@ class Cpython(PythonBuilder):
 
     def _finalize(self):
         bin_python = self.bin_folder / self.main_python
-        extras = self.setup.ppb.config.get_value("pip-install")
+        extras = self.config.get_value("pip-install")
         if extras:
             extras = runez.flattened(extras, split=" ")
             for extra in extras:

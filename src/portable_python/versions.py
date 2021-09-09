@@ -14,7 +14,7 @@ import re
 
 import runez
 from runez.http import RestClient
-from runez.pyenv import PythonDepot, PythonSpec, Version
+from runez.pyenv import PythonDepot, Version
 
 
 class VersionFamily:
@@ -129,14 +129,3 @@ class PythonVersions:
             cls._depot = PythonDepot(use_path=False)
 
         return cls._depot.find_python(spec)
-
-    @classmethod
-    def validated_spec(cls, spec: str) -> PythonSpec:
-        spec = PythonSpec.to_spec(spec)
-        if not spec.version or not spec.version.is_valid:
-            runez.abort("Invalid python spec: %s" % runez.red(spec))
-
-        if spec.version.text not in spec.text or len(spec.version.given_components) < 3:
-            runez.abort("Please provide full desired version: %s is not good enough" % runez.red(spec))
-
-        return spec
