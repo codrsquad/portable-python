@@ -13,7 +13,7 @@ import enum
 import logging
 import multiprocessing
 import os
-from typing import Dict, List
+from typing import List
 
 import runez
 from runez.http import RestClient
@@ -84,7 +84,7 @@ class BuildSetup:
         dest = self.config.target.composed_basename(pspec.family, pspec.version, extension=ext)
         self.tarball_path = self.dist_folder / dest
         builder = PythonVersions.family(self.python_spec.family).get_builder()
-        self.python_builder = builder(self)
+        self.python_builder = builder(self)  # type: PythonBuilder
 
     def __repr__(self):
         return runez.short(self.build_folder)
@@ -105,17 +105,24 @@ class BuildSetup:
 
             self.requested_clean.add(v)
 
+    def validate_module_selection(self, fatal=True):
+        issues = []
+        for module in self.python_builder.modules.selected:
+            outcome, _ = module.linker_outcome(True)
+            if outcome is LinkerOutcome.failed:
+                issues.append(module)
+
+        if issues:
+            return runez.abort("Problematic modules: %s" % runez.joined(issues), fatal=fatal)
+
     @runez.log.timeit("Overall compilation")
     def compile(self):
         """Compile selected python family and version"""
         self.log_counter = 0
         with runez.Anchored(self.config.base_folder):
-            modules = list(self.python_builder.modules)
-            msg = "[%s]" % self.python_builder.modules
-            if modules:
-                msg += " -> %s" % runez.joined(modules, delimiter=", ")
-
-            LOG.info("Modules selected: %s" % msg)
+            self.validate_module_selection(fatal=not runez.DRYRUN)
+            modules = self.python_builder.modules
+            LOG.info(runez.joined(modules, list(modules)))
             LOG.info("Platform: %s" % self.config.target)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
@@ -134,13 +141,11 @@ class ModuleCollection:
     candidates: List["ModuleBuilder"] = None
     desired: str = None
     selected: List["ModuleBuilder"] = None
-    auto_detect_reasons: Dict[str, str] = None
 
     def __init__(self, parent_module: "ModuleBuilder", desired=None):
         self.selected = []
         self.candidates = []
         self.desired = desired
-        self.auto_detect_reasons = {}
         module_by_name = {}
         candidates = parent_module.candidate_modules()
         if candidates:
@@ -148,16 +153,8 @@ class ModuleCollection:
                 module = module(parent_module)
                 self.candidates.append(module)
                 module_by_name[module.m_name] = module
-                should_use, reason = module.auto_use_with_reason()
-                self.auto_detect_reasons[module.m_name] = reason
-                if should_use:
-                    self.selected.append(module)
 
-        if not desired:
-            return
-
-        if desired == "none":
-            self.selected = []
+        if not desired or desired == "none":
             return
 
         if desired == "all":
@@ -166,36 +163,14 @@ class ModuleCollection:
 
         desired = runez.flattened(desired, split=True)
         desired = runez.flattened(desired, split=",")
-        unknown = [x for x in desired if x.strip("+-") not in module_by_name]
+        unknown = [x for x in desired if x not in module_by_name]
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
 
-        selected = []
-        if "+" in self.desired or "-" in self.desired:
-            selected = [x.m_name for x in self.selected]
-
-        for name in desired:
-            remove = name[0] == "-"
-            if name[0] in "+-":
-                name = name[1:]
-
-            if remove:
-                if name in selected:
-                    selected.remove(name)
-
-            elif name not in selected:
-                selected.append(name)
-
-        self.selected = [module_by_name[x] for x in selected]
+        self.selected = [module_by_name[x] for x in desired]
 
     def __repr__(self):
-        if not self.candidates:
-            return "no sub-modules"
-
-        if self.desired:
-            return self.desired
-
-        return "auto-detected: %s" % runez.plural(self.selected, "module")
+        return "selected: %s (%s)" % (self.desired, runez.plural(self.selected, "module"))
 
     def __iter__(self):
         for module in self.selected:
@@ -216,8 +191,7 @@ class ModuleCollection:
                 return module
 
     def report(self):
-        table = PrettyTable(2, missing="")
-        # table.header[0].align = "right"
+        table = PrettyTable(4, missing="")
         rows = list(self.report_rows())
         table.add_rows(*rows)
         return str(table)
@@ -226,17 +200,25 @@ class ModuleCollection:
         indent_str = " +%s " % ("-" * indent) if indent else ""
         for module in self.candidates:
             name = module.m_name
-            if indent:
-                s = ""
+            is_selected = module in self.selected
+            note = module.scan_note()
+            outcome, problem = module.linker_outcome(is_selected)
+            if isinstance(outcome, LinkerOutcome):
+                outcome = runez.colored(outcome.name, outcome.value)
 
-            elif module in self.selected:
-                s = runez.green("selected")
+            elif outcome is runez.UNSET:
+                outcome = None
 
-            else:
-                s = runez.red("-")
-
-            yield "%s%s" % (indent_str, name), module.version, s, self.auto_detect_reasons[name]
+            yield "%s%s" % (indent_str, name), module.version, outcome, problem or note
             yield from module.modules.report_rows(indent + 1)
+
+
+class LinkerOutcome(enum.Enum):
+
+    absent = "orange"
+    failed = "red"
+    shared = "blue"
+    static = "green"
 
 
 class ModuleBuilder:
@@ -256,7 +238,6 @@ class ModuleBuilder:
             parent_module (BuildSetup | ModuleBuilder): Associated parent
         """
         self.m_name = ModuleCollection.get_module_name(self.__class__)
-        desired = None
         if isinstance(parent_module, BuildSetup):
             self.setup = parent_module
             desired = parent_module.desired_modules
@@ -264,10 +245,15 @@ class ModuleBuilder:
         else:
             self.setup = parent_module.setup
             self.parent_module = parent_module
+            desired = "all"
 
         self.modules = ModuleCollection(self, desired=desired)
-
         self.m_src_build = self.setup.build_folder / "build" / self.m_name
+        if hasattr(self, "m_telltale"):
+            self.resolved_telltale = self._find_telltale(runez.flattened(self.m_telltale))
+
+        else:
+            self.resolved_telltale = runez.UNSET
 
     def __repr__(self):
         return "%s:%s" % (self.m_name, self.version)
@@ -276,50 +262,33 @@ class ModuleBuilder:
     def candidate_modules(cls) -> list:
         """All possible candidate external modules for this builder"""
 
-    def auto_use_with_reason(self):
-        """
-        Returns:
-            (bool, str): True/False: auto-select module, None: won't build on target system; str states reason why or why not
-        """
-        telltale = getattr(self, "m_telltale", runez.UNSET)
-        if telltale is runez.UNSET:
-            return True, runez.dim("sub-module of %s" % self.parent_module)
+    def linker_outcome(self, is_selected):
+        if self.resolved_telltale is runez.UNSET:
+            return runez.UNSET, None
 
-        if not telltale:
-            msg = runez.blue("on demand")
-            if self.target.is_linux and self.m_debian:
-                msg += " (with debian %s)" % self.m_debian
+        if self.resolved_telltale:
+            outcome = LinkerOutcome.static if is_selected else LinkerOutcome.shared
+            return outcome, None
 
-            return False, msg
+        debian = self.m_debian
+        if self.target.is_linux and debian:
+            if debian.startswith("!"):
+                debian = debian[1:]
+                return LinkerOutcome.failed, "%s, can't compile without %s" % (runez.red("broken"), debian)
 
-        telltale = runez.flattened(telltale)
-        by_platform = []
-        while telltale and telltale[0][0] in "-+":
-            by_platform.append(telltale.pop(0))
+            return LinkerOutcome.absent, None
 
-        for pp in by_platform:
-            if pp == "-%s" % self.target.platform:
-                msg = runez.blue("on demand on %s" % self.target.platform)
-                if self.target.is_linux and self.m_debian:
-                    msg += " (with debian %s)" % self.m_debian
+        outcome = LinkerOutcome.static if is_selected else LinkerOutcome.absent
+        return outcome, None
 
-                return False, msg
+    def scan_note(self):
+        if self.resolved_telltale is runez.UNSET:
+            return runez.dim("sub-module of %s" % self.parent_module)
 
-            if pp == "+%s" % self.target.platform:
-                return True, runez.green("mandatory on %s" % self.target.platform)
+        if self.resolved_telltale:
+            return "has %s" % self.resolved_telltale
 
-        path = self._find_telltale(telltale)
-        telltale = runez.joined(telltale)
-        if self.target.is_linux and self.m_debian:
-            if path:
-                return True, "%s (on top of %s, for static compile)" % (runez.green("needed on linux"), self.m_debian)
-
-            return True, "%s for static compile" % runez.red("!needs %s" % self.m_debian)
-
-        if path:
-            return False, "%s, %s" % (runez.orange("skipped"), runez.dim("has %s" % runez.short(path)))
-
-        return True, "%s, no %s" % (runez.green("needed"), telltale)
+        return "no %s" % getattr(self, "m_telltale")
 
     def _find_telltale(self, telltales):
         for tt in telltales:

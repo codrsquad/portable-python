@@ -24,16 +24,12 @@ def test_edge_cases(monkeypatch):
     monkeypatch.setenv("PP_TARGET", "linux-x86_64")
     assert str(PythonVersions.cpython)
 
-    setup = BuildSetup(modules="+readline")
-    assert str(setup)
-    assert str(setup.config)
-    assert setup.python_spec.version == PythonVersions.cpython.latest
-    assert str(setup.python_builder.modules) == "+readline"
-
     setup = BuildSetup()
-    assert str(setup.python_builder.modules).startswith("auto-detected:")
+    assert "build/cpython-" in str(setup)
+    assert ", 1 config source" in str(setup.config)
+    assert setup.python_spec.version == PythonVersions.cpython.latest
+    assert str(setup.python_builder.modules) == "selected: None (0 modules)"
 
     mb = ModuleBuilder(setup)
     assert not mb.url
     assert not mb.version
-    assert str(mb.modules) == "no sub-modules"

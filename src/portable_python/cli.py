@@ -131,8 +131,8 @@ def scan(modules, validate, python_spec):
     print(runez.bold(setup.python_spec))
     report = setup.python_builder.modules.report()
     print(report)
-    if validate and "!needs " in report:
-        runez.abort("Note: build won't be fully portable, or complete")
+    if validate:
+        setup.validate_module_selection()
 
 
 def _find_recompress_source(dist, path):

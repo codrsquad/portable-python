@@ -1,6 +1,6 @@
 import runez
 
-from portable_python import ModuleBuilder
+from portable_python import LinkerOutcome, ModuleBuilder
 
 
 class Bdb(ModuleBuilder):
@@ -8,7 +8,7 @@ class Bdb(ModuleBuilder):
 
     m_build_cwd = "build_unix"
     m_debian = "libgdbm-compat-dev"
-    m_telltale = None  # "{include}/ndbm.h"
+    m_telltale = "{include}/ndbm.h"
 
     @property
     def url(self):
@@ -50,7 +50,13 @@ class Gdbm(ModuleBuilder):
     """See https://docs.python.org/2.7/library/gdbm.html"""
 
     m_debian = "libgdbm-dev"
-    m_telltale = ["-linux", "+macos", "{include}/gdbm.h"]  # Needed on macos to override brew-installed gdbm from /usr/local
+    m_telltale = ["{include}/gdbm.h"]
+
+    def linker_outcome(self, is_selected):
+        if self.target.is_macos and not is_selected:
+            return LinkerOutcome.failed, runez.red("Needed on macos to override brew-installed gdbm from /usr/local")
+
+        return super().linker_outcome(is_selected)
 
     @property
     def url(self):
@@ -81,8 +87,8 @@ class Gdbm(ModuleBuilder):
 
 class LibFFI(ModuleBuilder):
 
-    m_debian = "libffi-dev"
-    m_telltale = ["-macos", "{include}/ffi.h", "{include}/ffi/ffi.h"]
+    m_debian = "!libffi-dev"
+    m_telltale = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
 
     @property
     def url(self):
@@ -187,13 +193,13 @@ class Readline(ModuleBuilder):
 class Sqlite(ModuleBuilder):
 
     m_debian = "libsqlite3-dev"
-    m_telltale = ["-macos", "{include}/sqlite3.h"]
+    m_telltale = ["{include}/sqlite3.h"]
 
-    def auto_use_with_reason(self):
-        if not runez.which("tclsh"):
-            return None, "%s (apt install tcl)" % runez.brown("!needs tclsh")
+    def linker_outcome(self, is_selected):
+        if is_selected and not runez.which("tclsh"):
+            return LinkerOutcome.failed, "%s (apt install tcl)" % runez.red("needs tclsh")
 
-        return super().auto_use_with_reason()
+        return super().linker_outcome(is_selected)
 
     @property
     def url(self):
@@ -295,7 +301,7 @@ class TkInter(ModuleBuilder):
     """Build tcl/tk"""
 
     m_debian = "tk-dev"
-    m_telltale = None  # ["{include}/tk", "{include}/tk.h"]
+    m_telltale = ["{include}/tk", "{include}/tk.h"]
 
     @classmethod
     def candidate_modules(cls):
@@ -310,7 +316,7 @@ class Uuid(ModuleBuilder):
 
     m_debian = "uuid-dev"
     m_include = "uuid"
-    m_telltale = ["-macos", "{include}/uuid/uuid.h"]
+    m_telltale = ["{include}/uuid/uuid.h"]
 
     @property
     def url(self):
@@ -353,7 +359,7 @@ class Xz(ModuleBuilder):
 
 class Zlib(ModuleBuilder):
 
-    m_debian = "zlib1g-dev"
+    m_debian = "!zlib1g-dev"
     m_telltale = "{include}/zlib.h"
 
     @property

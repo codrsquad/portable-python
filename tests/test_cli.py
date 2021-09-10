@@ -11,10 +11,8 @@ from .conftest import dummy_tarball
 
 def test_build_bogus_platform(cli, monkeypatch):
     monkeypatch.setenv("PP_TARGET", "foo-bar")
-    cli.run("--dryrun", "build", "2.7.1", "-m+bdb")
+    cli.run("--dryrun", "build", "2.7.1")
     assert cli.failed
-    assert "Modules selected: [+bdb] -> " in cli.logged
-    assert " bdb:" in cli.logged
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
 
@@ -48,10 +46,9 @@ def test_build_cleanup(cli, monkeypatch):
 
 def test_build_macos(cli, monkeypatch):
     monkeypatch.setenv("PP_TARGET", "macos-x86_64")
-    cli.run("--dryrun", "build", "latest", "-m+bdb,-openssl")
+    cli.run("--dryrun", "build", "latest", "-mall")
     assert cli.succeeded
-    assert " openssl:" not in cli.logged
-    assert " bdb:" in cli.logged
+    assert "selected: all" in cli.logged
 
 
 def test_build_prefix(cli, monkeypatch):
@@ -59,7 +56,7 @@ def test_build_prefix(cli, monkeypatch):
     v = PythonVersions.cpython.latest
     cli.run("--dryrun", "build", "latest", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
-    assert "Modules selected: [none]\n" in cli.logged
+    assert "selected: none" in cli.logged
     assert " --prefix=/apps/python " in cli.logged
     assert f" install DESTDIR=build/cpython-{v}/root\n" in cli.logged
     assert f"Would tar build/cpython-{v}/root/apps/python -> dist/cpython-{v}-linux-x86_64.tar.gz" in cli.logged
@@ -111,7 +108,7 @@ def test_finalization(cli, monkeypatch):
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("build", v, "-mbzip2", "--clean", "bin,libpython")
         assert cli.failed
-        assert "Modules selected: [bzip2] -> bzip2:" in cli.logged
+        assert "selected: bzip2 (1 module)" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
         assert f"Deleted build/cpython-{v}/{v}/bin/2to3" in cli.logged
         assert "Symlink foo-python <- python" in cli.logged
@@ -224,20 +221,17 @@ def test_recompress(cli):
 
 def test_scan(cli, monkeypatch):
     monkeypatch.setenv("PP_TARGET", "macos-x86_64")
-    cli.run("scan")
+    cli.run("scan", "-mnone")
     assert cli.succeeded
+    assert "Needed on macos"  # gdbm is conservatively needed
 
     monkeypatch.setenv("PP_TARGET", "linux-x86_64")
     with patch("portable_python.cpython.runez.which", return_value=None):
-        cli.run("scan")
+        cli.run("scan", "-mall")
         assert cli.succeeded
-        assert "!needs tclsh" in cli.logged
+        assert "needs tclsh" in cli.logged
 
-        cli.run("scan", "--validate")
+        cli.run("scan", "-mall", "--validate")
         assert cli.failed
-        assert "!needs tclsh" in cli.logged
-
-    with patch("portable_python.ModuleBuilder._find_telltale", return_value="foo"):
-        cli.run("scan")
-        assert cli.succeeded
-        assert "on top of libffi-dev" in cli.logged
+        assert "needs tclsh" in cli.logged
+        assert "Problematic modules:" in cli.logged
