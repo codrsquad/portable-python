@@ -13,6 +13,7 @@ INSIGHTS = {
     "_ssl": "OPENSSL_VERSION",
     "dbm.gnu": "_GDBM_VERSION",
     "ensurepip": "_PIP_VERSION",
+    "pyexpat": "EXPAT_VERSION",
     "readline": "_READLINE_LIBRARY_VERSION",
     "tkinter": "TclVersion TkVersion",
     "zlib": "ZLIB_VERSION ZLIB_RUNTIME_VERSION",
@@ -67,11 +68,12 @@ def module_report(module_name):
     try:
         return pymodule_info(module_name, __import__(module_name))
 
-    except ModuleNotFoundError:
-        return dict(version="*absent*")
-
     except Exception as e:
-        return dict(version="*absent*", note=str(e))
+        note = str(e)
+        if "No module named" in note:
+            return dict(version="*absent*")
+
+        return dict(version="*absent*", note=note)
 
 
 def get_srcdir():

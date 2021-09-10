@@ -10,7 +10,7 @@ macos:                                              # Applies to macos only
   pip-install:
     - wheel                                         # Exercise extra pip installs
 
-  clean:
+  clean:                                            # Not "merged" with overall "clean:" section, taken as-is
   - bin/pip*                                        # Example: remove all bin/pip* commands after build (don't package them)
 
 # This would get picked up on all platforms

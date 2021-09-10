@@ -236,7 +236,7 @@ def is_dyn_lib(path):
 
 class PythonInspector:
 
-    default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,setuptools,zlib"
+    default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,pyexpat,setuptools,zlib"
     additional = "_asyncio,_functools,_tracemalloc,dbm.gnu,ensurepip,ossaudiodev,spwd,sys,tkinter,venv"
 
     def __init__(self, spec, modules=None):
