@@ -15,7 +15,8 @@ class LibType(enum.Enum):
     """Categorization for dynamic libs, value being the color we want to show them as"""
 
     base = ""
-    libpython = "bold"
+    lib_static = "static"
+    libpython_so = "dynamic"
     missing = "red"
     other = "brown"
     system = "blue"
@@ -48,8 +49,7 @@ class ModuleInfo:
             if path.name.startswith("__init__."):
                 path = path.parent
 
-            path = self.inspector.relative_path(path)
-            return runez.green(path)
+            return self.inspector.relative_path(path)
 
         return self.note
 
@@ -210,7 +210,7 @@ class SoInfo(Trackable):
             path = self.short_name
             delimiter = " "
 
-        types = [LibType.missing, LibType.libpython, LibType.other, LibType.system]
+        types = [LibType.missing, LibType.libpython_so, LibType.other, LibType.system]
         if verbose:
             types.append(LibType.base)
 
@@ -234,6 +234,15 @@ def is_dyn_lib(path):
     return path.name.endswith((".so", ".dylib"))
 
 
+def find_libs(folder):
+    for path in runez.ls_dir(folder):
+        if is_dyn_lib(path) or path.name.endswith(".a"):
+            yield path
+
+        elif path.is_dir() and path.name.startswith(("config-", "lib-dynload", "python")):
+            yield from find_libs(path)
+
+
 class PythonInspector:
 
     default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,pyexpat,setuptools,zlib"
@@ -254,7 +263,6 @@ class PythonInspector:
             self.payload = json.loads(self.output)
 
         self.srcdir = runez.to_path(self.payload and self.payload.get("srcdir"))
-        self.lib_dynload = _find_parent_subfolder(self.srcdir, "lib-dynload")
         self.lib_folder = _find_parent_subfolder(self.srcdir, "lib")
         self.install_folder = self.lib_folder and str(self.lib_folder.parent)
 
@@ -263,7 +271,7 @@ class PythonInspector:
 
     def get_lib_type(self, install_folder, path, basename):
         if basename.startswith("libpython") and path.startswith(install_folder):
-            return LibType.libpython
+            return LibType.libpython_so
 
         if not path or path == "not found":
             return LibType.missing
@@ -297,12 +305,6 @@ class PythonInspector:
         if self.payload:
             return {k: ModuleInfo(self, k, v) for k, v in self.payload.get("report", {}).items()}
 
-    def find_so_files(self):
-        for folder in (self.lib_folder, self.lib_dynload):
-            for path in runez.ls_dir(folder):
-                if is_dyn_lib(path):
-                    yield path
-
     def relative_path(self, path):
         with runez.Anchored(self.install_folder):
             p = runez.short(path, size=4096)
@@ -323,15 +325,14 @@ class PythonInspector:
             if verbose > 1:
                 table.add_row("install dir", runez.short(self.install_folder))
                 table.add_row("lib", runez.short(self.lib_folder))
-                table.add_row("lib-dynload", runez.short(self.lib_dynload))
                 table.add_row("srcdir", runez.short(self.srcdir))
 
             if verbose:
-                lp = self.full_so_report.libpythons
-                if lp:
-                    lp = runez.bold(runez.joined((x.relative_path for x in lp), delimiter=", "))
+                lp = self.full_so_report.lib_static
+                table.add_row("libpython*.a", runez.joined(lp, delimiter=", ") or runez.green("-not used-"))
 
-                table.add_row("libpython.so", lp or runez.green("-not used-"))
+                lp = self.full_so_report.libpython_so
+                table.add_row("libpython*.so", runez.joined((x.relative_path for x in lp), delimiter=", ") or runez.green("-not used-"))
 
             report.append(table)
             if verbose:
@@ -355,18 +356,12 @@ class PythonInspector:
         return runez.joined(report, delimiter="\n")
 
 
-def _find_parent_subfolder(folder, *base_names, max_up=3):
-    if folder:
-        if folder.name in base_names:
+def _find_parent_subfolder(folder, basename):
+    while folder and len(folder.parts) > 1:
+        if folder.name == basename:
             return folder
 
-        for basename in base_names:
-            ld = folder / basename
-            if ld.is_dir():
-                return ld
-
-        if max_up > 0:
-            return _find_parent_subfolder(folder.parent, *base_names, max_up=max_up - 1)
+        folder = folder.parent
 
 
 class FullSoReport:
@@ -377,11 +372,16 @@ class FullSoReport:
         self.lib_tracker = Tracker(LibType)
         self.ok = Tracker(LibType, "OK")
         self.problematic = Tracker(LibType, "problematic")
-        self.libpythons = []
-        for path in inspector.find_so_files():
+        self.libpython_so = []
+        self.lib_static = []
+        for path in find_libs(self.inspector.lib_folder):
+            if path.name.endswith(".a"):
+                self.lib_static.append(self.inspector.relative_path(path))
+                continue
+
             info = SoInfo(inspector, path)
             if path.name.startswith("libpython"):
-                self.libpythons.append(info)
+                self.libpython_so.append(info)
 
             self.lib_tracker.add(info)
             self.size += info.size

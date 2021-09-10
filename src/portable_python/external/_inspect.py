@@ -13,7 +13,7 @@ INSIGHTS = {
     "_ssl": "OPENSSL_VERSION",
     "dbm.gnu": "_GDBM_VERSION",
     "ensurepip": "_PIP_VERSION",
-    "pyexpat": "EXPAT_VERSION",
+    "pyexpat": "version_info",
     "readline": "_READLINE_LIBRARY_VERSION",
     "tkinter": "TclVersion TkVersion",
     "zlib": "ZLIB_VERSION ZLIB_RUNTIME_VERSION",
