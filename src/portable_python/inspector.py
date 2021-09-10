@@ -8,7 +8,7 @@ import runez
 from runez.render import PrettyTable
 
 from portable_python.tracking import Trackable, Tracker
-from portable_python.versions import PythonVersions
+from portable_python.versions import PPG
 
 
 class LibType(enum.Enum):
@@ -81,7 +81,7 @@ class CLibInfo(Trackable):
             basename = os.path.basename(path)
 
         self.basename = basename
-        self.tracked_category = self.inspector.get_lib_type(self.inspector.install_folder, path, basename)
+        self.tracked_category = get_lib_type(self.inspector.install_folder, path, basename)
         if self.tracked_category is LibType.missing:
             self.relative_path = basename
 
@@ -243,6 +243,22 @@ def find_libs(folder):
             yield from find_libs(path)
 
 
+def get_lib_type(install_folder, path, basename):
+    if basename.startswith("libpython") and path.startswith(install_folder):
+        return LibType.libpython_so
+
+    if not path or path == "not found":
+        return LibType.missing
+
+    if PPG.target.is_base_lib(path, basename):
+        return LibType.base
+
+    if PPG.target.is_system_lib(path, basename):
+        return LibType.system
+
+    return LibType.other
+
+
 class PythonInspector:
 
     default = "_bz2,_ctypes,_curses,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,pyexpat,setuptools,zlib"
@@ -251,9 +267,8 @@ class PythonInspector:
     def __init__(self, spec, modules=None):
         self.spec = spec
         self.modules = self.resolved_names(modules)
-        self.target = runez.SYS_INFO.platform_id
         self.module_names = runez.flattened(self.modules, split=",")
-        self.python = PythonVersions.find_python(self.spec)
+        self.python = PPG.find_python(self.spec)
         arg = self.resolved_names(self.modules)
         script = os.path.join(os.path.dirname(__file__), "external/_inspect.py")
         r = runez.run(self.python.executable, script, arg, fatal=False, logger=print if runez.DRYRUN else logging.debug)
@@ -268,21 +283,6 @@ class PythonInspector:
 
     def __repr__(self):
         return str(self.python)
-
-    def get_lib_type(self, install_folder, path, basename):
-        if basename.startswith("libpython") and path.startswith(install_folder):
-            return LibType.libpython_so
-
-        if not path or path == "not found":
-            return LibType.missing
-
-        if self.target.is_base_lib(path, basename):
-            return LibType.base
-
-        if self.target.is_system_lib(path, basename):
-            return LibType.system
-
-        return LibType.other
 
     def resolved_names(self, names):
         if not names:
@@ -394,10 +394,27 @@ class FullSoReport:
     def __repr__(self):
         return runez.joined(".so files: %s" % runez.represented_bytesize(self.size), self.problematic, self.ok, delimiter=", ")
 
-    @property
-    def is_valid(self):
-        c = self.lib_tracker.category[LibType.system]
-        if self.inspector.target.is_linux and c:
-            return False
+    def _problematic(self, *lib_types):
+        for lib_type in lib_types:
+            libs = [x.relative_path for x in self.lib_tracker.category[lib_type].items]
+            if libs:
+                allowed = PPG.config.get_value("allowed-%s-libs" % lib_type.name)
+                if allowed:
+                    allowed = re.compile(allowed)
+                    libs = [x for x in libs if not allowed.match(x)]
 
-        return self.ok and not self.problematic
+                if libs:
+                    yield "Uses %s libs: %s" % (lib_type.name, runez.joined(libs))
+
+    @property
+    def problem(self) -> str:
+        problems = list(self._problematic(LibType.system))
+        problems = runez.joined(problems, delimiter="\n")
+        if problems:
+            return problems
+
+        if self.problematic:
+            return runez.joined(self.problematic)
+
+        if not runez.DRYRUN and not self.ok:
+            return "Internal error: no OK libs found"

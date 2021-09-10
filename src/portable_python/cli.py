@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 import click
@@ -6,13 +7,7 @@ import runez
 from runez.pyenv import PythonDepot
 from runez.render import PrettyTable
 
-from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG
-from portable_python.config import Config
-from portable_python.inspector import PythonInspector
-from portable_python.versions import PythonVersions
-
-
-CONFIG_PATH = "portable-python.yml"
+from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG, PPG, PythonInspector
 
 
 @runez.click.group()
@@ -20,14 +15,12 @@ CONFIG_PATH = "portable-python.yml"
 @runez.click.color()
 @runez.click.debug("-v")
 @runez.click.dryrun("-n")
-@click.option("--config", "-c", metavar="PATH", default=CONFIG_PATH, show_default=True, help="Path to config file to use")
-def main(debug, config):
+@click.option("--config", "-c", metavar="PATH", default="portable-python.yml", show_default=True, help="Path to config file to use")
+@click.option("--target", "-t", hidden=True, help="For internal use / testing")
+def main(debug, config, target):
     """
     Build (optionally portable) python binaries
     """
-    global CONFIG_PATH
-    CONFIG_PATH = config
-
     runez.system.AbortException = SystemExit
     runez.log.setup(
         debug=debug,
@@ -36,6 +29,7 @@ def main(debug, config):
         default_logger=LOG.info,
         locations=None,
     )
+    PPG.grab_config(path=config, base_folder=os.environ.get("PP_BASE") or os.getcwd(), target=target)
 
 
 @main.command()
@@ -45,7 +39,7 @@ def main(debug, config):
 @click.argument("python_spec")
 def build(clean, modules, prefix, python_spec):
     """Build a portable python binary"""
-    setup = BuildSetup(python_spec, CONFIG_PATH, modules=modules, prefix=prefix)
+    setup = BuildSetup(python_spec, modules=modules, prefix=prefix)
     setup.set_requested_clean(clean)
     setup.compile()
 
@@ -60,7 +54,7 @@ def diagnostics():
         yield "invoker python", depot.invoker
         yield from runez.SYS_INFO.diagnostics()
 
-    config = Config(CONFIG_PATH).represented()
+    config = PPG.config.represented()
     print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation(), config))
 
 
@@ -86,7 +80,7 @@ def inspect(modules, verbose, validate, pythons):
         if spec != "invoker":
             spec = runez.resolved_path(spec)
 
-        inspector = PythonInspector(spec, modules)
+        inspector = PythonInspector(spec, modules=modules)
         if inspector.python.problem:
             print("%s: %s" % (runez.blue(runez.short(inspector.python.executable)), runez.red(inspector.python.problem)))
             exit_code = 1
@@ -96,7 +90,10 @@ def inspect(modules, verbose, validate, pythons):
             print(runez.blue(inspector.python))
 
         print(inspector.represented(verbose=verbose))
-        if not inspector.full_so_report.is_valid:
+        problem = inspector.full_so_report.problem
+        if problem:
+            logger = LOG.error if validate else LOG.debug
+            logger(f"Build problem: {problem}")
             exit_code = 1
 
     if validate:
@@ -108,7 +105,7 @@ def inspect(modules, verbose, validate, pythons):
 @click.argument("family", default="cpython")
 def list_cmd(json, family):
     """List latest versions"""
-    fam = PythonVersions.family(family, fatal=False)
+    fam = PPG.family(family, fatal=False)
     if not fam:
         runez.abort("Python family '%s' is not yet supported" % runez.red(family))
 
@@ -127,7 +124,7 @@ def list_cmd(json, family):
 @click.argument("python_spec", required=False)
 def scan(modules, validate, python_spec):
     """Show status of buildable modules, which will be auto-compiled"""
-    setup = BuildSetup(python_spec, CONFIG_PATH, modules=modules)
+    setup = BuildSetup(python_spec, modules=modules)
     print(runez.bold(setup.python_spec))
     report = setup.python_builder.modules.report()
     print(report)
@@ -189,8 +186,7 @@ def recompress(path, ext):
     Mildly useful for comparing sizes from different compressions
     """
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
-    config = Config(CONFIG_PATH)
-    dist = config.dist_folder
+    dist = PPG.config.dist_folder
     with runez.Anchored(dist.parent):
         actual_path = _find_recompress_source(dist, path)
         if not actual_path:

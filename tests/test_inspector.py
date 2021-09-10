@@ -1,9 +1,7 @@
 import builtins
 from unittest.mock import patch
 
-import runez
-
-from portable_python.inspector import LibType, PythonInspector, SoInfo
+from portable_python.inspector import LibType, PPG, PythonInspector, SoInfo
 
 
 OTOOL_SAMPLE = """
@@ -17,7 +15,7 @@ OTOOL_SAMPLE = """
 
 LDD_SAMPLE = """
     linux-vdso.so.1 (...)
-    libpython3.6m.so.1.0 => BASE/lib/libpython3.6m.dylib.1.0 (...)  # basename taken from left side
+    libpython3.6m.so.1.0 => /BASE/lib/libpython3.6m.dylib.1.0 (...)  # basename taken from left side
     libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (...)
     libtinfo.so.5 => not found
     libbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (...)
@@ -27,7 +25,7 @@ LDD_SAMPLE = """
 """
 
 
-def test_inspect_lib(logged):
+def test_inspect_lib(logged, monkeypatch):
     inspector = PythonInspector("invoker")
     with patch("runez.which", return_value="yup"):
         not_there = SoInfo(inspector, "/dev/null/foo.platform.so")
@@ -38,22 +36,22 @@ def test_inspect_lib(logged):
         assert "otool exited with code" in logged.pop()
 
     with patch("runez.which", return_value=None):
-        inspector.target = runez.system.PlatformId("macos-x86_64")
-        inspector.install_folder = "BASE"
+        PPG.grab_config(target="macos-x86_64")
         info1 = SoInfo(inspector, "_dbm...so")
         assert str(info1) == "_dbm*!.so"
         info1.parse_otool(OTOOL_SAMPLE)
         r = info1.represented()
         assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
 
-        inspector.target = runez.system.PlatformId("linux-x86_64")
+        PPG.grab_config(target="linux-x86_64")
+        inspector.install_folder = "/BASE"
         info2 = SoInfo(inspector, "_tkinter...so")
         info2.parse_ldd(LDD_SAMPLE)
         r = info2.represented()
         assert r == "_tkinter*!.so missing: tinfo:5 libpython3.6m.so.1.0 tcl8:8.6 bz2:1.0"
 
 
-def test_find_python(monkeypatch):
+def test_find_python(temp_folder):
     inspector = PythonInspector("invoker")
     assert str(inspector)
     assert str(inspector.module_info["_ctypes"])
@@ -67,12 +65,12 @@ def test_find_python(monkeypatch):
     assert c.items  # At least one system lib must be used by invoker
 
     # Verify using system libs on macos is considered OK
-    inspector.target.platform = "macos"
-    assert r.is_valid
+    PPG.grab_config(path="foo.yml", target="macos-arm64")
+    assert r.problem is None
 
     # Verify using system libs on linux is considered a fail
-    inspector.target.platform = "linux"
-    assert not r.is_valid
+    PPG.grab_config(path="foo.yml", target="linux-x86_64")
+    assert str(r.problem).startswith("Uses system libs:")
 
 
 def test_inspect_module(logged):

@@ -1,6 +1,6 @@
 import runez
 
-from portable_python import LinkerOutcome, ModuleBuilder
+from portable_python import LinkerOutcome, ModuleBuilder, PPG
 
 
 class Bdb(ModuleBuilder):
@@ -53,7 +53,7 @@ class Gdbm(ModuleBuilder):
     m_telltale = ["{include}/gdbm.h"]
 
     def linker_outcome(self, is_selected):
-        if self.target.is_macos and not is_selected:
+        if PPG.target.is_macos and not is_selected:
             return LinkerOutcome.failed, runez.red("Needed on macos to override brew-installed gdbm from /usr/local")
 
         return super().linker_outcome(is_selected)
@@ -107,7 +107,7 @@ class LibFFI(ModuleBuilder):
             "--enable-shared=no",
             "--enable-static=yes",
             "--with-pic=yes",
-            self.target.is_macos and "--disable-multi-os-directory",
+            PPG.target.is_macos and "--disable-multi-os-directory",
             "--disable-docs",
         )
         self.run_make()
@@ -131,11 +131,11 @@ class Openssl(ModuleBuilder):
         yield f"--openssldir={self.deps}"
         yield "-DPEDANTIC"
         yield "no-shared", "no-idea", "no-tests"
-        if self.target.is_macos:
-            yield "darwin64-%s-cc" % self.target.arch
+        if PPG.target.is_macos:
+            yield "darwin64-%s-cc" % PPG.target.arch
 
         else:
-            yield "%s-%s" % (self.target.platform, self.target.arch)
+            yield "%s-%s" % (PPG.target.platform, PPG.target.arch)
 
     def _do_linux_compile(self):
         self.run_configure("./Configure", self.c_configure_args())
@@ -257,7 +257,7 @@ class Tk(ModuleBuilder):
         yield "--enable-threads"
         yield f"--with-tcl={self.deps_lib}"
         yield "--without-x"
-        if self.target.is_macos:
+        if PPG.target.is_macos:
             yield "--enable-aqua=yes"
 
     def _do_linux_compile(self):

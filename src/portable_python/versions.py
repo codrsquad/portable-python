@@ -1,12 +1,6 @@
 """
 Tracking only a handful of most recent (and non-EOL) versions by design
 Not trying to do historical stuff here, older (or EOL-ed) versions will be removed from the list without notice
-
-Usage:
-    from portable_python.versions import PythonVersions
-
-    print(PythonVersions.cpython.latest)
-    print(PythonVersions.cpython.versions)
 """
 
 import logging
@@ -16,13 +10,14 @@ import runez
 from runez.http import RestClient
 from runez.pyenv import PythonDepot, Version
 
+from portable_python.config import Config
+
 
 class VersionFamily:
     """Common ancestor for python family implementations"""
 
     _latest = None
     _versions = None
-    _test_latest = "3.9.6"  # Pretend latest used in tests and dryruns
 
     def __init__(self):
         self.family_name = self.__class__.__name__[:7].lower()
@@ -32,12 +27,6 @@ class VersionFamily:
 
     def _fetch_versions(self):
         if self._versions is None:
-            if self._test_latest and (runez.DRYRUN or runez.DEV.current_test()):
-                self._latest = Version(self._test_latest)
-                mm = Version("%s.%s" % (self._latest.major, self._latest.minor))
-                self._versions = {mm: self._latest}
-                return
-
             self._versions = {}
             versions = self.get_available_versions()
             versions = versions and sorted((Version.from_text(x) for x in versions), reverse=True)
@@ -107,13 +96,20 @@ class CPythonFamily(VersionFamily):
         return Cpython
 
 
-class PythonVersions:
-    """Available python families, and their versions, as well as link to associated PythonBuilder class"""
+class PPG:
+    """Globals"""
 
     cpython = CPythonFamily()
     families = dict(cpython=cpython)
+    config = Config()
+    target = config.target
 
     _depot = None
+
+    @classmethod
+    def grab_config(cls, path=None, base_folder=None, target=None):
+        cls.config = Config(path=path, base_folder=base_folder, target=target, replaces=cls.config)
+        cls.target = cls.config.target
 
     @classmethod
     def family(cls, family_name, fatal=True) -> VersionFamily:

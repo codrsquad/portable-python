@@ -118,8 +118,9 @@ Invoke an inspection from python code::
 
     inspector = PythonInspector("/usr/bin/python3")
     print(inspector.represented())
-    if not inspector.full_so_report.is_valid:
-        print("oops, it is not portable!")
+    problem = inspector.full_so_report.problem
+    if problem:
+        print("oops, it is not portable!: %s" % problem)
 
 
 From source, contributions welcome!::

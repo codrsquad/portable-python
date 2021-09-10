@@ -20,9 +20,8 @@ from runez.http import RestClient
 from runez.pyenv import PythonSpec
 from runez.render import Header, PrettyTable
 
-from portable_python.config import Config
 from portable_python.inspector import PythonInspector
-from portable_python.versions import PythonVersions
+from portable_python.versions import PPG
 
 
 LOG = logging.getLogger(__name__)
@@ -51,55 +50,49 @@ class BuildSetup:
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
 
-    def __init__(self, python_spec=None, config=None, modules=None, prefix=None):
+    def __init__(self, python_spec=None, modules=None, prefix=None):
         """
         Args:
             python_spec (str | PythonSpec | None): Python to build (family and version)
-            config (str): Path to config to use
-            modules (str | None): Modules to build (default: from config, or auto-detect)
+            modules (str | None): Modules to build (default: from config)
             prefix (str | None): --prefix to use
         """
         if not python_spec or python_spec == "latest":
-            python_spec = "cpython:%s" % PythonVersions.cpython.latest
+            python_spec = "cpython:%s" % PPG.cpython.latest
 
-        pspec = PythonSpec.to_spec(python_spec)
-        if not pspec.version or not pspec.version.is_valid:
-            runez.abort("Invalid python spec: %s" % runez.red(pspec))
+        python_spec = PythonSpec.to_spec(python_spec)
+        if not python_spec.version or not python_spec.version.is_valid:
+            runez.abort("Invalid python spec: %s" % runez.red(python_spec))
 
-        if pspec.version.text not in pspec.text or len(pspec.version.given_components) < 3:
-            runez.abort("Please provide full desired version: %s is not good enough" % runez.red(pspec))
+        if python_spec.version.text not in python_spec.text or len(python_spec.version.given_components) < 3:
+            runez.abort("Please provide full desired version: %s is not good enough" % runez.red(python_spec))
 
-        self.python_spec = pspec
-        self.config = Config(config)
-        self.desired_modules = modules or self.config.get_value("modules")
+        self.python_spec = python_spec
+        self.desired_modules = modules
         self.prefix = prefix
-        self.build_folder = self.config.main_build_folder / self.python_spec.canonical.replace(":", "-")
+        self.build_folder = PPG.config.main_build_folder / python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
         self.x_debug = os.environ.get("PP_X_DEBUG")
-        configured_ext = self.config.get_value("ext")
+        configured_ext = PPG.config.get_value("ext")
         ext = runez.SYS_INFO.platform_id.canonical_compress_extension(configured_ext, short_form=True)
         if not ext:
             runez.abort("Invalid extension '%s'" % runez.red(configured_ext))  # pragma: no cover
 
-        dest = self.config.target.composed_basename(pspec.family, pspec.version, extension=ext)
-        self.tarball_path = self.dist_folder / dest
-        builder = PythonVersions.family(self.python_spec.family).get_builder()
+        dest = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
+        self.tarball_path = PPG.config.dist_folder / dest
+        builder = PPG.family(python_spec.family).get_builder()
         self.python_builder = builder(self)  # type: PythonBuilder
 
     def __repr__(self):
         return runez.short(self.build_folder)
-
-    @property
-    def dist_folder(self):
-        return self.config.dist_folder
 
     def set_requested_clean(self, text):
         self.requested_clean = set()
         for x in runez.flattened(text, split=","):
             v = getattr(Cleanable, x, None)
             if not v:
-                help = {x.name: x.value for x in Cleanable}
-                msg = ["  %s: %s" % (runez.green(k), v) for k, v in sorted(help.items())]
+                hlp = {x.name: x.value for x in Cleanable}
+                msg = ["  %s: %s" % (runez.green(k), v) for k, v in sorted(hlp.items())]
                 msg = runez.joined("Pick one of:", msg, delimiter="\n")
                 runez.abort("'%s' is not a valid value for --clean\n\n%s" % (runez.red(x), msg))
 
@@ -119,18 +112,19 @@ class BuildSetup:
     def compile(self):
         """Compile selected python family and version"""
         self.log_counter = 0
-        with runez.Anchored(self.config.base_folder):
+        with runez.Anchored(PPG.config.base_folder):
             self.validate_module_selection(fatal=not runez.DRYRUN)
             modules = self.python_builder.modules
             LOG.info(runez.joined(modules, list(modules)))
-            LOG.info("Platform: %s" % self.config.target)
+            LOG.info("Platform: %s" % PPG.target)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
             if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
                 py_inspector = PythonInspector(self.python_builder.install_folder)
                 print(py_inspector.represented())
-                if not py_inspector.full_so_report.is_valid:
-                    runez.abort("Build failed", fatal=not runez.DRYRUN)
+                problem = py_inspector.full_so_report.problem
+                if problem:
+                    runez.abort("Build failed: %s" % problem, fatal=not runez.DRYRUN)
 
             runez.compress(self.python_builder.install_folder, self.tarball_path)
 
@@ -221,6 +215,7 @@ class LinkerOutcome(enum.Enum):
     static = "green"
 
 
+# noinspection PyPep8Naming
 class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
@@ -240,20 +235,14 @@ class ModuleBuilder:
         self.m_name = ModuleCollection.get_module_name(self.__class__)
         if isinstance(parent_module, BuildSetup):
             self.setup = parent_module
-            desired = parent_module.desired_modules
 
         else:
             self.setup = parent_module.setup
             self.parent_module = parent_module
-            desired = "all"
 
-        self.modules = ModuleCollection(self, desired=desired)
+        self.modules = self.selected_modules()
         self.m_src_build = self.setup.build_folder / "build" / self.m_name
-        if hasattr(self, "m_telltale"):
-            self.resolved_telltale = self._find_telltale(runez.flattened(self.m_telltale))
-
-        else:
-            self.resolved_telltale = runez.UNSET
+        self.resolved_telltale = self._find_telltale()
 
     def __repr__(self):
         return "%s:%s" % (self.m_name, self.version)
@@ -261,6 +250,9 @@ class ModuleBuilder:
     @classmethod
     def candidate_modules(cls) -> list:
         """All possible candidate external modules for this builder"""
+
+    def selected_modules(self):
+        return ModuleCollection(self, desired="all")
 
     def linker_outcome(self, is_selected):
         if self.resolved_telltale is runez.UNSET:
@@ -271,7 +263,7 @@ class ModuleBuilder:
             return outcome, None
 
         debian = self.m_debian
-        if self.target.is_linux and debian:
+        if PPG.target.is_linux and debian:
             if debian.startswith("!"):
                 return LinkerOutcome.failed, "%s, can't compile without %s" % (runez.red("broken"), debian[1:])
 
@@ -292,24 +284,19 @@ class ModuleBuilder:
 
         return "no %s" % getattr(self, "m_telltale")
 
-    def _find_telltale(self, telltales):
-        for tt in telltales:
-            for sys_include in runez.flattened(self.target.sys_include):
+    def _find_telltale(self):
+        telltales = getattr(self, "m_telltale", runez.UNSET)
+        if telltales is runez.UNSET:
+            return telltales
+
+        for tt in runez.flattened(telltales):
+            for sys_include in runez.flattened(PPG.target.sys_include):
                 path = tt.format(include=sys_include)
                 if os.path.exists(path):
                     return path
 
     def active_module(self, name):
         return self.modules.active_module(name)
-
-    @property
-    def config(self):
-        return self.setup.config
-
-    @property
-    def target(self):
-        """Shortcut to setup's target system"""
-        return self.config.target
 
     @property
     def url(self):
@@ -331,8 +318,9 @@ class ModuleBuilder:
     def deps_lib(self):
         return self.deps / "lib"
 
+    # noinspection PyMethodMayBeStatic
     def xenv_ARCHFLAGS(self):
-        yield "-arch ", self.target.arch
+        yield "-arch ", PPG.target.arch
 
     def xenv_CPATH(self):
         if self.modules.selected:
@@ -429,9 +417,9 @@ class ModuleBuilder:
                 LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
                 os.environ[var_name] = value
 
-            func = getattr(self, "_do_%s_compile" % self.target.platform, None)
+            func = getattr(self, "_do_%s_compile" % PPG.target.platform, None)
             if not func:
-                runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(self.target.platform))
+                runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(PPG.target.platform))
 
             with runez.log.timeit("Compiling %s" % self.m_name):
                 folder = self.m_src_build
@@ -469,7 +457,7 @@ class ModuleBuilder:
                     if value:
                         yield var_name, value
 
-        env = self.config.get_value("env")
+        env = PPG.config.get_value("env")
         if env:
             for k, v in env.items():
                 if v is not None:
@@ -490,6 +478,10 @@ class ModuleBuilder:
 
 
 class PythonBuilder(ModuleBuilder):
+
+    def selected_modules(self):
+        desired = self.setup.desired_modules or PPG.config.get_value("%s-modules" % self.m_name)
+        return ModuleCollection(self, desired=desired)
 
     @property
     def c_configure_prefix(self):

@@ -3,7 +3,7 @@ import os
 import runez
 from runez.pyenv import Version
 
-from portable_python import Cleanable, LOG, PythonBuilder
+from portable_python import Cleanable, LOG, PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, TkInter, Uuid, Xz, Zlib
 
 
@@ -21,11 +21,13 @@ class Cpython(PythonBuilder):
         """Url of source tarball"""
         return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
 
+    # noinspection PyMethodMayBeStatic
+    # noinspection PyPep8Naming
     def xenv_CFLAGS(self):
         yield "-Wno-unused-command-line-argument"
 
     def c_configure_args(self):
-        configured = self.config.get_value("cpython-configure")
+        configured = PPG.config.get_value("cpython-configure")
         if configured:
             yield from configured
 
@@ -70,7 +72,7 @@ class Cpython(PythonBuilder):
 
     def _finalize(self):
         bin_python = self.bin_folder / self.main_python
-        extras = self.config.get_value("pip-install")
+        extras = PPG.config.get_value("pip-install")
         if extras:
             extras = runez.flattened(extras, split=" ")
             for extra in extras:

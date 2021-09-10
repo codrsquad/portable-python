@@ -1,4 +1,4 @@
-import os
+import pathlib
 from io import StringIO
 
 import runez
@@ -11,10 +11,12 @@ ext: gz
 windows:
   ext: zip
 
+
 macos:
+  allowed-system-libs: .*
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.14
-  modules: xz openssl gdbm
+  cpython-modules: xz openssl gdbm
 
 cpython-configure:
   - --enable-optimizations
@@ -69,18 +71,49 @@ class ConfigSource:
 class Config:
     """Overall config, the 1st found (most specific) setting wins"""
 
-    def __init__(self, path=None):
-        self.path = runez.to_path(path or "portable-python.yml").absolute()
-        self.base_folder = runez.to_path(os.environ.get("PP_BASE") or os.getcwd(), no_spaces=True).absolute()
-        self.main_build_folder = self.base_folder / "build"
-        self.dist_folder = self.base_folder / "dist"
-        self.target = runez.system.PlatformId(os.environ.get("PP_TARGET"))
+    base_folder: pathlib.Path = None
+    dist_folder: pathlib.Path = None
+    main_build_folder: pathlib.Path = None
+    path: pathlib.Path = None
+
+    def __init__(self, path=None, base_folder=None, target=None, replaces=None):
+        """
+        Args:
+            path (str): Path to config file
+            base_folder (str | None): Base folder to use (for build/ and dist/ folders)
+            target (str | runez.system.PlatformId | None): Target platform (for testing, defaults to current platform)
+            replaces (Config): Internal: other config this config is replacing
+        """
+        if isinstance(replaces, Config):
+            path = path or replaces.path
+            base_folder = base_folder or replaces.base_folder
+
+        elif base_folder:
+            base_folder = runez.to_path(base_folder, no_spaces=True).absolute()
+
+        if path:
+            path = runez.to_path(path).absolute()
+
+        if not isinstance(target, runez.system.PlatformId):
+            target = runez.system.PlatformId(target)
+
+        self.path = path
+        self.target = target
         self.sources = []  # type: list[ConfigSource]
         self.by_path = {}
-        self.load(self.path)
-        default = yaml.safe_load(DEFAULT_CONFIG)
-        default = ConfigSource("default", default)
-        self.sources.append(default)
+        if path:
+            self.load(path)
+            default = yaml.safe_load(DEFAULT_CONFIG)
+            default = ConfigSource("default", default)
+            self.sources.append(default)
+
+        if base_folder:
+            base_folder = runez.to_path(base_folder, no_spaces=True).absolute()
+
+        if base_folder != self.base_folder:
+            self.base_folder = base_folder
+            self.main_build_folder = base_folder / "build"
+            self.dist_folder = base_folder / "dist"
 
     def __repr__(self):
         return "%s, %s [%s]" % (runez.short(self.path), runez.plural(self.sources, "config source"), self.target)
