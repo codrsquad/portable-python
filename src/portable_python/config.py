@@ -21,7 +21,6 @@ cpython-configure:
   - --with-lto
   - --with-pydebug
   - --with-ensurepip=upgrade
-  - --enable-shared=yes
 """
 
 

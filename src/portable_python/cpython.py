@@ -29,6 +29,7 @@ class Cpython(PythonBuilder):
         if configured:
             yield from configured
 
+        yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
         if self.active_module(LibFFI):
             yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
             yield "--with-system-ffi=no"
