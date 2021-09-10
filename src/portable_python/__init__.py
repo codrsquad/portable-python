@@ -71,7 +71,7 @@ class BuildSetup:
 
         self.python_spec = pspec
         self.config = Config(config)
-        self.desired_modules = modules
+        self.desired_modules = modules or self.config.get_value("modules")
         self.prefix = prefix
         self.build_folder = self.config.main_build_folder / self.python_spec.canonical.replace(":", "-")
         self.deps_folder = self.build_folder / "deps"
@@ -134,13 +134,13 @@ class ModuleCollection:
     candidates: List["ModuleBuilder"] = None
     desired: str = None
     selected: List["ModuleBuilder"] = None
-    reasons: Dict[str, str] = None
+    auto_detect_reasons: Dict[str, str] = None
 
     def __init__(self, parent_module: "ModuleBuilder", desired=None):
         self.selected = []
         self.candidates = []
         self.desired = desired
-        self.reasons = {}
+        self.auto_detect_reasons = {}
         module_by_name = {}
         candidates = parent_module.candidate_modules()
         if candidates:
@@ -149,27 +149,24 @@ class ModuleCollection:
                 self.candidates.append(module)
                 module_by_name[module.m_name] = module
                 should_use, reason = module.auto_use_with_reason()
-                self.reasons[module.m_name] = reason
+                self.auto_detect_reasons[module.m_name] = reason
                 if should_use:
                     self.selected.append(module)
 
         if not desired:
             return
 
-        explicitly_disabled = runez.orange("explicitly disabled")
-        explicitly_requested = runez.green("explicitly requested")
         if desired == "none":
             self.selected = []
-            self.reasons = {k: explicitly_disabled for k in self.reasons}
             return
 
         if desired == "all":
             self.selected = self.candidates
-            self.reasons = {k: explicitly_requested for k in self.reasons}
             return
 
+        desired = runez.flattened(desired, split=True)
         desired = runez.flattened(desired, split=",")
-        unknown = [x for x in desired if x.strip("+-") not in self.reasons]
+        unknown = [x for x in desired if x.strip("+-") not in module_by_name]
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
 
@@ -184,11 +181,9 @@ class ModuleCollection:
 
             if remove:
                 if name in selected:
-                    self.reasons[name] = explicitly_disabled
                     selected.remove(name)
 
             elif name not in selected:
-                self.reasons[name] = explicitly_requested
                 selected.append(name)
 
         self.selected = [module_by_name[x] for x in selected]
@@ -221,7 +216,7 @@ class ModuleCollection:
                 return module
 
     def report(self):
-        table = PrettyTable(2)
+        table = PrettyTable(2, missing="")
         # table.header[0].align = "right"
         rows = list(self.report_rows())
         table.add_rows(*rows)
@@ -230,7 +225,17 @@ class ModuleCollection:
     def report_rows(self, indent=0):
         indent_str = " +%s " % ("-" * indent) if indent else ""
         for module in self.candidates:
-            yield "%s%s" % (indent_str, module.m_name), module.version, self.reasons[module.m_name]
+            name = module.m_name
+            if indent:
+                s = ""
+
+            elif module in self.selected:
+                s = runez.green("selected")
+
+            else:
+                s = runez.red("-")
+
+            yield "%s%s" % (indent_str, name), module.version, s, self.auto_detect_reasons[name]
             yield from module.modules.report_rows(indent + 1)
 
 
