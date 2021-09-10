@@ -26,3 +26,5 @@ build/
 dist/
 root/
 venv*/
+
+portable-python.yml

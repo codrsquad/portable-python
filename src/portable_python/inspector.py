@@ -314,7 +314,7 @@ class PythonInspector:
 
             return p
 
-    def represented(self, verbose=0):
+    def represented(self, verbose=1):
         report = []
         if self.module_info:
             table = PrettyTable(2)

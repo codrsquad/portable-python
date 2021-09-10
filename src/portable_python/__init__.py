@@ -273,8 +273,10 @@ class ModuleBuilder:
         debian = self.m_debian
         if self.target.is_linux and debian:
             if debian.startswith("!"):
-                debian = debian[1:]
-                return LinkerOutcome.failed, "%s, can't compile without %s" % (runez.red("broken"), debian)
+                return LinkerOutcome.failed, "%s, can't compile without %s" % (runez.red("broken"), debian[1:])
+
+            if debian.startswith("+") and is_selected:
+                return LinkerOutcome.failed, "%s, can't compile without %s" % (runez.red("broken"), debian[1:])
 
             return LinkerOutcome.absent, None
 

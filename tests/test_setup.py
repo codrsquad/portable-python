@@ -20,7 +20,7 @@ def test_config(cli, monkeypatch):
     assert "--enable-optimizations" in cli.logged  # From default config
 
 
-def test_edge_cases(monkeypatch):
+def test_edge_cases(temp_folder, monkeypatch):
     monkeypatch.setenv("PP_TARGET", "linux-x86_64")
     assert str(PythonVersions.cpython)
 

@@ -192,7 +192,7 @@ class Readline(ModuleBuilder):
 
 class Sqlite(ModuleBuilder):
 
-    m_debian = "libsqlite3-dev"
+    m_debian = "+libsqlite3-dev"
     m_telltale = ["{include}/sqlite3.h"]
 
     def linker_outcome(self, is_selected):
@@ -314,7 +314,7 @@ class TkInter(ModuleBuilder):
 
 class Uuid(ModuleBuilder):
 
-    m_debian = "uuid-dev"
+    m_debian = "+uuid-dev"
     m_include = "uuid"
     m_telltale = ["{include}/uuid/uuid.h"]
 
