@@ -3,7 +3,6 @@ import re
 
 def test_invoker(cli):
     cli.run("inspect", "invoker", "-vv", "-mall")
-    assert cli.succeeded
 
     # Invoker may not be completely clean, but it has to have at least one OK .so usage
     m = re.search(r"^\.so files: .+(\d+) OK", cli.logged.stdout.contents(), re.MULTILINE)

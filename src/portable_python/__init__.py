@@ -75,10 +75,17 @@ class BuildSetup:
 
     def validate_module_selection(self, fatal=True):
         issues = []
-        for module in self.python_builder.modules.selected:
+        selected = self.python_builder.modules.selected
+        for module in selected:
             outcome, _ = module.linker_outcome(True)
             if outcome is LinkerOutcome.failed:
                 issues.append(module)
+
+        for module in self.python_builder.modules.candidates:
+            if module not in selected:
+                outcome, _ = module.linker_outcome(is_selected=False)
+                if outcome is LinkerOutcome.failed:
+                    issues.append(module)
 
         if issues:
             return runez.abort("Problematic modules: %s" % runez.joined(issues), fatal=fatal)
@@ -88,20 +95,17 @@ class BuildSetup:
         """Compile selected python family and version"""
         self.log_counter = 0
         with runez.Anchored(PPG.config.base_folder):
-            self.validate_module_selection(fatal=not runez.DRYRUN)
             modules = self.python_builder.modules
             LOG.info(runez.joined(modules, list(modules)))
             LOG.info("Platform: %s" % PPG.target)
             LOG.info("Build report:\n%s" % self.python_builder.modules.report())
-            if not runez.DRYRUN:
-                self.validate_module_selection()
-
+            self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
             if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
                 py_inspector = PythonInspector(self.python_builder.install_folder)
                 print(py_inspector.represented())
-                problem = py_inspector.full_so_report.problem
+                problem = py_inspector.full_so_report.get_problem(portable=not self.prefix)
                 if problem:
                     runez.abort("Build failed: %s" % problem, fatal=not runez.DRYRUN)
 

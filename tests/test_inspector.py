@@ -66,11 +66,11 @@ def test_find_python(temp_folder):
 
     # Verify using system libs on macos is considered OK
     PPG.grab_config(path="foo.yml", target="macos-arm64")
-    assert r.problem is None
+    assert r.get_problem(True) is None
 
     # Verify using system libs on linux is considered a fail
     PPG.grab_config(path="foo.yml", target="linux-x86_64")
-    assert str(r.problem).startswith("Uses system libs:")
+    assert str(r.get_problem(True)).startswith("Uses system libs:")
 
 
 def test_inspect_module(logged):

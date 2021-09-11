@@ -417,24 +417,17 @@ class FullSoReport:
     def __repr__(self):
         return runez.joined(".so files: %s" % runez.represented_bytesize(self.size), self.problematic, self.ok, delimiter=", ")
 
-    def _problematic(self, *lib_types):
-        for lib_type in lib_types:
-            libs = [x.relative_path for x in self.lib_tracker.category[lib_type].items]
-            if libs:
-                allowed = PPG.config.get_value("allowed-%s-libs" % lib_type.name)
+    def get_problem(self, portable) -> str:
+        if portable:
+            uses_system = [x.relative_path for x in self.lib_tracker.category[LibType.system].items]
+            if uses_system:
+                allowed = PPG.config.get_value("allowed-system-libs")
                 if allowed:
                     allowed = re.compile(allowed)
-                    libs = [x for x in libs if not allowed.match(x)]
+                    uses_system = [x for x in uses_system if not allowed.match(x)]
 
-                if libs:
-                    yield "Uses %s libs: %s" % (lib_type.name, runez.joined(libs))
-
-    @property
-    def problem(self) -> str:
-        problems = list(self._problematic(LibType.system))
-        problems = runez.joined(problems, delimiter="\n")
-        if problems:
-            return problems
+                if uses_system:
+                    return "Uses system libs: %s" % runez.joined(uses_system)
 
         if self.problematic:
             return runez.joined(self.problematic)

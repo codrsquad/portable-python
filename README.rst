@@ -118,7 +118,7 @@ Invoke an inspection from python code::
 
     inspector = PythonInspector("/usr/bin/python3")
     print(inspector.represented())
-    problem = inspector.full_so_report.problem
+    problem = inspector.full_so_report.get_problem(portable=True)
     if problem:
         print("oops, it is not portable!: %s" % problem)
 

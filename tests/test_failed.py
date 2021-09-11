@@ -11,9 +11,10 @@ def test_build_bogus_platform(cli):
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
 
 
-def test_failed_run(cli):
+def test_failed_run(cli, monkeypatch):
     dummy_tarball("zlib-1.2.11.tar.gz")
     build_path = runez.to_path("build/cpython-3.9.7")
+    monkeypatch.setenv("PP_X_DEBUG", "continue")
     cli.run("build", "3.9.7", "-mzlib")
     assert cli.failed
     assert "./configure is not an executable" in cli.logged

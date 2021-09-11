@@ -47,16 +47,14 @@ def build(modules, prefix, python_spec):
 
 @main.command()
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
-@click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
 @click.argument("python_spec", required=False)
-def build_report(modules, validate, python_spec):
+def build_report(modules, python_spec):
     """Show status of buildable modules, which will be auto-compiled"""
     setup = BuildSetup(python_spec, modules=modules)
     print(runez.bold(setup.python_spec))
     report = setup.python_builder.modules.report()
     print(report)
-    if validate:
-        setup.validate_module_selection()
+    setup.validate_module_selection()
 
 
 @main.command()
@@ -76,12 +74,12 @@ def diagnostics():
 @main.command()
 @click.option("--modules", "-m", help="Modules to inspect")
 @click.option("--verbose", "-v", is_flag=True, multiple=True, default=None, help="Show full so report")
-@click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
+@click.option("--prefix", "-p", is_flag=True, help="Build was done with --prefix (not portable)")
 @click.argument("pythons", nargs=-1)
-def inspect(modules, verbose, validate, pythons):
+def inspect(modules, verbose, prefix, pythons):
     """Inspect a python installation for non-portable dynamic lib usage"""
     verbose = len(verbose)
-    if not verbose and (validate or not modules or modules == "all"):
+    if not verbose and (not modules or modules == "all"):
         verbose = 1
 
     exit_code = 0
@@ -105,14 +103,12 @@ def inspect(modules, verbose, validate, pythons):
             print(runez.blue(inspector.python))
 
         print(inspector.represented(verbose=verbose))
-        problem = inspector.full_so_report.problem
+        problem = inspector.full_so_report.get_problem(portable=not prefix)
         if problem:
-            logger = LOG.error if validate else LOG.debug
-            logger(f"Build problem: {problem}")
+            LOG.error(f"Build problem: {problem}")
             exit_code = 1
 
-    if validate:
-        sys.exit(exit_code)
+    sys.exit(exit_code)
 
 
 @main.command(name="list")

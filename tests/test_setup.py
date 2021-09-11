@@ -22,8 +22,8 @@ def test_diagnostics(cli):
 
 def test_inspect(cli):
     cli.run("-n", "inspect", "foo", "bar", "-m+sys")
-    assert cli.succeeded
-
-    cli.run("-n", "inspect", "foo", "--validate")
-    assert cli.failed  # Fails with --validate
+    assert cli.failed
     assert "foo: not an executable" in cli.logged
+
+    cli.run("-n", "inspect", "foo")
+    assert cli.failed
