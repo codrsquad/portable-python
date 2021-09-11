@@ -122,27 +122,6 @@ class Config:
     def use_github(self):
         return self.get_value("use-github")
 
-    def load(self, path):
-        if path.exists():
-            with open(path) as fh:
-                data = yaml.safe_load(fh)
-                source = ConfigSource(path, data)
-                self.sources.append(source)
-                self.by_path[str(path)] = source
-                include = source.get_value("include")
-                if include:
-                    include = runez.resolved_path(include, base=path.parent)
-                    self.load(runez.to_path(include))
-
-    def represented(self):
-        """Textual (yaml) representation of all configs"""
-        result = []
-        for source in self.sources:
-            result.append("%s:" % runez.bold(source))
-            result.append(source.represented())
-
-        return runez.joined(result, delimiter="\n")
-
     def get_value(self, key):
         """
         Args:
@@ -157,6 +136,27 @@ class Config:
                 v = source.get_value(k)
                 if v is not None:
                     return v
+
+    def represented(self):
+        """Textual (yaml) representation of all configs"""
+        result = []
+        for source in self.sources:
+            result.append("%s:" % runez.bold(source))
+            result.append(source.represented())
+
+        return runez.joined(result, delimiter="\n")
+
+    def load(self, path):
+        if path.exists():
+            with open(path) as fh:
+                data = yaml.safe_load(fh)
+                source = ConfigSource(path, data)
+                self.sources.append(source)
+                self.by_path[str(path)] = source
+                include = source.get_value("include")
+                if include:
+                    include = runez.resolved_path(include, base=path.parent)
+                    self.load(runez.to_path(include))
 
     def _key_paths(self, key):
         return (self.target.platform, self.target.arch, key), (self.target.platform, key), key
