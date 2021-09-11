@@ -33,7 +33,7 @@ def main(debug, config, target):
 
 
 @main.command()
-@click.option("--clean", "-c", multiple=True, metavar="CSV", help="State what to cleanup, one of: %s" % CLEANABLE_CHOICES)
+@click.option("--clean", multiple=True, metavar="CSV", help="State what to cleanup, one of: %s" % CLEANABLE_CHOICES)
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Use given --prefix for python installation (not portable)")
 @click.argument("python_spec")

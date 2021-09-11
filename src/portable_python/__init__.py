@@ -117,6 +117,10 @@ class BuildSetup:
             modules = self.python_builder.modules
             LOG.info(runez.joined(modules, list(modules)))
             LOG.info("Platform: %s" % PPG.target)
+            LOG.info("Build report:\n%s" % self.python_builder.modules.report())
+            if not runez.DRYRUN:
+                self.validate_module_selection()
+
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
             if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
