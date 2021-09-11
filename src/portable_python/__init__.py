@@ -384,6 +384,10 @@ class ModuleBuilder:
         for submodule in self.modules.selected:
             submodule.compile()
 
+        if not self.url:
+            # Modules without a url just drive sub-modules compilation typically
+            return
+
         print(Header.aerated(str(self)))
         with self.captured_logs():
             if self.setup.x_debug:
@@ -392,15 +396,13 @@ class ModuleBuilder:
                     self._finalize()
                     return
 
-            if self.url:
-                # Modules without a url just drive sub-modules compilation typically
-                # Split on '#' for urls that include a checksum, such as #sha256=... fragment
-                basename = runez.basename(self.url, extension_marker="#")
-                path = self.setup.build_folder.parent / "downloads" / basename
-                if not path.exists():
-                    REST_CLIENT.download(self.url, path)
+            # Split on '#' for urls that include a checksum, such as #sha256=... fragment
+            basename = runez.basename(self.url, extension_marker="#")
+            path = self.setup.build_folder.parent / "downloads" / basename
+            if not path.exists():
+                REST_CLIENT.download(self.url, path)
 
-                runez.decompress(path, self.m_src_build, simplify=True)
+            runez.decompress(path, self.m_src_build, simplify=True)
 
             env_vars = self._get_env_vars()
             for var_name, value in env_vars.items():
