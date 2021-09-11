@@ -7,7 +7,7 @@ import runez
 from runez.pyenv import PythonDepot
 from runez.render import PrettyTable
 
-from portable_python import BuildSetup, CLEANABLE_CHOICES, LOG, PPG, PythonInspector
+from portable_python import BuildSetup, LOG, PPG, PythonInspector
 
 
 @runez.click.group()
@@ -33,14 +33,12 @@ def main(debug, config, target):
 
 
 @main.command()
-@click.option("--clean", multiple=True, metavar="CSV", help="State what to cleanup, one of: %s" % CLEANABLE_CHOICES)
 @click.option("--modules", "-m", metavar="CSV", help="External modules to include")
 @click.option("--prefix", "-p", metavar="PATH", help="Use given --prefix for python installation (not portable)")
 @click.argument("python_spec")
-def build(clean, modules, prefix, python_spec):
+def build(modules, prefix, python_spec):
     """Build a portable python binary"""
     setup = BuildSetup(python_spec, modules=modules, prefix=prefix)
-    setup.set_requested_clean(clean)
     setup.compile()
 
 

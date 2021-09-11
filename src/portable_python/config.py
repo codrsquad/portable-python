@@ -1,4 +1,7 @@
+import fnmatch
+import os
 import pathlib
+import re
 from io import StringIO
 
 import runez
@@ -7,22 +10,28 @@ import yaml
 
 DEFAULT_CONFIG = """
 ext: gz
-
-windows:
-  ext: zip
-
-
-macos:
-  allowed-system-libs: .*
-  env:
-    MACOSX_DEPLOYMENT_TARGET: 10.14
-  cpython-modules: xz openssl gdbm
+always-clean:
+  cpython:
+    - __phello__.foo.py
+    - __pycache__
+    - idle_test/
+    - test/
+    - tests/
 
 cpython-configure:
   - --enable-optimizations
   - --with-lto
   - --with-pydebug
   - --with-ensurepip=upgrade
+
+windows:
+  ext: zip
+
+macos:
+  allowed-system-libs: .*
+  env:
+    MACOSX_DEPLOYMENT_TARGET: 10.14
+  cpython-modules: xz openssl gdbm
 """
 
 
@@ -122,7 +131,7 @@ class Config:
     def use_github(self):
         return self.get_value("use-github")
 
-    def get_value(self, key):
+    def get_value(self, *key):
         """
         Args:
             key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
@@ -146,6 +155,42 @@ class Config:
 
         return runez.joined(result, delimiter="\n")
 
+    def cleanup_folder(self, module, logger):
+        folder = module.install_folder
+        module_name = module.m_name
+        version = module.version
+        fmt = dict(mm=f"{version.major}.{version.minor}", version=version)
+        always_cleaned = self.get_value("always-clean", module_name)
+        module_specific = self.get_value("%s-clean" % module_name)
+        cleanup_spec = runez.flattened(always_cleaned, module_specific, split=True)
+        cleanup_spec = [x.format(**fmt) for x in cleanup_spec]
+        if cleanup_spec:
+            matcher = FileMatcher(cleanup_spec)
+            logger("Applying clean-up spec: %s" % matcher)
+            cleaned = []
+            for dirpath, dirnames, filenames in os.walk(folder):
+                removed = []
+                dirpath = runez.to_path(dirpath)
+                for name in dirnames:
+                    full_path = dirpath / name
+                    if matcher.is_match(full_path):
+                        removed.append(name)
+                        cleaned.append(name)
+                        runez.delete(full_path, logger=None)
+
+                for name in removed:
+                    dirnames.remove(name)
+
+                for name in filenames:
+                    full_path = dirpath / name
+                    if matcher.is_match(full_path):
+                        cleaned.append(name)
+                        runez.delete(full_path, logger=None)
+
+            if cleaned:
+                names = runez.joined(sorted(set(cleaned)))
+                logger("Cleaned %s: %s" % (runez.plural(cleaned, "build artifact"), runez.short(names)))
+
     def load(self, path):
         if path.exists():
             with open(path) as fh:
@@ -159,4 +204,56 @@ class Config:
                     self.load(runez.to_path(include))
 
     def _key_paths(self, key):
-        return (self.target.platform, self.target.arch, key), (self.target.platform, key), key
+        return (self.target.platform, self.target.arch, *key), (self.target.platform, *key), key
+
+
+class FileMatcher:
+
+    def __init__(self, clean_spec):
+        self.matches = []
+        for spec in clean_spec:
+            self.matches.append(SingleFileMatch(spec))
+
+    def __repr__(self):
+        return runez.joined(self.matches)
+
+    def is_match(self, path: pathlib.Path):
+        for m in self.matches:
+            if m.is_match(path):
+                return path
+
+
+class SingleFileMatch:
+
+    _on_folder = False
+    _rx_basename = None
+    _rx_path = None
+
+    def __init__(self, spec: str):
+        self.spec = spec
+        if spec.endswith("/"):
+            spec = spec[:-1]
+            self._on_folder = True
+
+        if "/" in spec:
+            # lib/*/config-{python_mm}-\w+/
+            path = ".*/%s$" % os.path.dirname(spec).replace("*", ".*").strip("/")
+            spec = os.path.basename(spec)
+            self._rx_path = re.compile(path)
+
+        self._rx_basename = spec
+
+    def __repr__(self):
+        return self.spec
+
+    def is_match(self, path: pathlib.Path):
+        if self._on_folder == path.is_dir():
+            if self._rx_path:
+                m = self._rx_path.match(str(path.parent))
+                if not m:
+                    return False
+
+            return fnmatch.fnmatch(path.name, self._rx_basename)
+
+        else:
+            assert True

@@ -28,24 +28,11 @@ LOG = logging.getLogger(__name__)
 REST_CLIENT = RestClient()
 
 
-class Cleanable(enum.Enum):
-
-    bin = "clean bin/ folder, all files except bin/python and bin/pip"
-    pip = "clean bin/pip*"
-    libpython = "clean lib/*/libpython*"
-
-
-CLEANABLE_CHOICES = runez.joined([x.name for x in Cleanable], delimiter=", ")
-
-
 class BuildSetup:
     """
     This class drives the compilation, external modules first, then the target python itself.
     All modules are compiled in the same manner, follow the same conventional build layout.
     """
-
-    # Optional extra settings (not taken as part of constructor)
-    requested_clean = set()
 
     # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
     log_counter = 0
@@ -85,18 +72,6 @@ class BuildSetup:
 
     def __repr__(self):
         return runez.short(self.build_folder)
-
-    def set_requested_clean(self, text):
-        self.requested_clean = set()
-        for x in runez.flattened(text, split=","):
-            v = getattr(Cleanable, x, None)
-            if not v:
-                hlp = {x.name: x.value for x in Cleanable}
-                msg = ["  %s: %s" % (runez.green(k), v) for k, v in sorted(hlp.items())]
-                msg = runez.joined("Pick one of:", msg, delimiter="\n")
-                runez.abort("'%s' is not a valid value for --clean\n\n%s" % (runez.red(x), msg))
-
-            self.requested_clean.add(v)
 
     def validate_module_selection(self, fatal=True):
         issues = []

@@ -1,9 +1,7 @@
-import os
-
 import runez
 from runez.pyenv import Version
 
-from portable_python import Cleanable, LOG, PPG, PythonBuilder
+from portable_python import LOG, PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, TkInter, Uuid, Xz, Zlib
 
 
@@ -81,64 +79,16 @@ class Cpython(PythonBuilder):
             for extra in extras:
                 self.run(bin_python, "-mpip", "install", "-U", extra, fatal=False)
 
+        PPG.config.cleanup_folder(self, LOG.info)
         self.correct_symlinks()
-        self.cleanup_distribution()
         self.run(bin_python, "-mcompileall")
-
-    def cleanup_distribution(self):
-        cleanable_prefixes = set()
-        cleanable_basenames = {
-            "__phello__.foo.py",
-            "__pycache__",  # Clear it because lots of unneeded stuff is in there initially, -mcompileall regenerates it
-            "idle_test",
-            "test",
-            "tests",
-        }
-        if Cleanable.libpython in self.setup.requested_clean:
-            cleanable_prefixes.add(f"lib{self.python_mm}")
-            cleanable_prefixes.add("config-%s.%s-" % (self.version.major, self.version.minor))
-
-        cleaned = []
-        for dirpath, dirnames, filenames in os.walk(self.install_folder):
-            removed = []
-            for name in dirnames:
-                if name in cleanable_basenames or any(name.startswith(x) for x in cleanable_prefixes):
-                    # Remove unnecessary file, to save on space
-                    full_path = os.path.join(dirpath, name)
-                    removed.append(name)
-                    cleaned.append(name)
-                    runez.delete(full_path, logger=None)
-
-            for name in removed:
-                dirnames.remove(name)
-
-            for name in filenames:
-                if name in cleanable_basenames or any(name.startswith(x) for x in cleanable_prefixes):
-                    full_path = os.path.join(dirpath, name)
-                    cleaned.append(name)
-                    runez.delete(full_path, logger=None)
-
-        if cleaned:
-            names = runez.joined(sorted(set(cleaned)))
-            LOG.info("Cleaned %s: %s" % (runez.plural(cleaned, "build artifact"), runez.short(names)))
 
     def correct_symlinks(self):
         with runez.CurrentFolder(self.bin_folder):
             all_files = {}
             files = {}
             symlinks = {}
-            cleanable = set()
-            if Cleanable.bin in self.setup.requested_clean:
-                cleanable.update(["2to3", "easy_install", "idle3", "pydoc"])
-
-            if Cleanable.pip in self.setup.requested_clean:
-                cleanable.add("pip")
-
             for f in runez.ls_dir(self.bin_folder):
-                if any(f.name.startswith(x) for x in cleanable):
-                    runez.delete(f)  # Get rid of old junk from bin/ folder, can be pip installed if needed
-                    continue
-
                 all_files[f.name] = f
                 if f.is_symlink():
                     symlinks[f.name] = f

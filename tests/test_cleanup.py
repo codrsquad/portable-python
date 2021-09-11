@@ -16,16 +16,20 @@ def test_cleanup(cli):
     runez.touch(deps_dir / "lib/libssl.a", logger=None)
     os.chmod(deps_dir / "lib/libssl.a", 0o755)
     runez.touch(bf / f"{v}/bin/python", logger=None)
+    runez.touch(bf / f"{v}/bin/easy_install", logger=None)
+    runez.touch(bf / f"{v}/lib/idle_test/foo", logger=None)
     runez.touch(bf / f"{v}/lib/libpython{mm}.a", logger=None)
     runez.touch(bf / f"{v}/lib/python{mm}/config-{mm}-darwin/libpython{mm}.a", logger=None)
 
-    cli.run("-ntmacos-x86_64", "-c", cli.tests_path("sample-config-github.yml"), "build", "-mopenssl,tkinter", v)
+    cfg = cli.tests_path("sample-config1.yml")
+    cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,tkinter", v)
     assert cli.succeeded
+    assert f"Cleaned 3 build artifacts: config-{mm}-darwin idle_test libpython{mm}.a" in cli.logged
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
 
-    cli.run("-ntlinux-x86_64", "build", v, "-mall", "--clean", "pip,libpython")
+    cli.run("-ntlinux-x86_64", f"-c{cfg}", "build", v, "-mall")
     assert cli.succeeded
+    assert "Cleaned 2 build artifacts: easy_install idle_test" in cli.logged
     assert "selected: all" in cli.logged
-    assert f"Cleaned 2 build artifacts: config-{mm}-darwin libpython{mm}.a" in cli.logged
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-linux-x86_64.tar.gz" in cli.logged

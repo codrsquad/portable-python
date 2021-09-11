@@ -11,8 +11,7 @@ GH_CPYTHON_SAMPLE = """
 PYTHON_ORG_SAMPLE = """
 <a href="3.9.5/">3.9.5/</a>
 <a href="3.9.6/">3.9.6/</a>
-<a href="3.9.7/">3.9.7/</a>
-<a href="3.8.12/">3.9.12/</a>
+<a href="3.8.11/">3.9.11/</a>
 """
 
 
@@ -28,7 +27,7 @@ def test_list(cli, monkeypatch):
     assert str(PPG.config) == "None, 0 config sources [macos-arm64]"
 
     setup = BuildSetup()
-    assert str(setup) == "build/cpython-3.9.7"
+    assert str(setup) == "build/cpython-3.9.6"
     assert setup.python_spec.version == PPG.cpython.latest
 
     mb = ModuleBuilder(setup)
@@ -36,10 +35,11 @@ def test_list(cli, monkeypatch):
     assert not mb.version
 
     cp = CPythonFamily()
-    assert str(cp.latest) == "3.9.7"
+    assert str(cp.latest) == "3.9.6"
 
     cli.run("list")
     assert cli.succeeded
+    assert cli.logged.stdout.contents().strip() == "cpython:\n  3.9: 3.9.6\n  3.8: 3.8.11"
 
     cli.run("list", "--json")
     assert cli.succeeded
@@ -50,5 +50,6 @@ def test_list(cli, monkeypatch):
     assert "Python family 'conda' is not yet supported" in cli.logged
 
     monkeypatch.setattr(PPG.cpython, "_versions", None)
-    cli.run("-c", cli.tests_path("sample-config-github.yml"), "list")
+    cli.run("-c", cli.tests_path("sample-config1.yml"), "list")
     assert cli.succeeded
+    assert cli.logged.stdout.contents().strip() == "cpython:\n  3.9: 3.9.7\n  3.8: 3.8.12"
