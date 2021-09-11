@@ -16,7 +16,7 @@ class Bdb(ModuleBuilder):
 
     @property
     def version(self):
-        return "6.2.32"
+        return self.cfg_version("6.2.32")
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
@@ -42,7 +42,7 @@ class Bzip2(ModuleBuilder):
 
     @property
     def version(self):
-        return "1.0.8"
+        return self.cfg_version("1.0.8")
 
     def _do_linux_compile(self):
         self.run_make("install", f"PREFIX={self.deps}", "CFLAGS=-fPIC -O2 -g -D_FILE_OFFSET_BITS=64")
@@ -66,7 +66,7 @@ class Gdbm(ModuleBuilder):
 
     @property
     def version(self):
-        return "1.18.1"
+        return self.cfg_version("1.18.1")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -98,7 +98,7 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        return "3.3"
+        return self.cfg_version("3.3")
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
@@ -129,7 +129,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return "1.1.1k"
+        return self.cfg_version("1.1.1k")
 
     def c_configure_args(self):
         yield f"--openssldir={self.deps}"
@@ -158,14 +158,35 @@ class Ncurses(ModuleBuilder):
 
     @property
     def version(self):
-        return "6.2"
+        return self.cfg_version("6.2")
+
+    def c_configure_args(self):
+        yield "--enable-shared=no"
+        yield "--enable-static=yes"
+        yield "--enable-widec"
+        yield "--enable-pc-files"
+        yield f"--with-pkg-config-libdir={self.deps_lib}/pkgconfig"
+        if PPG.target.is_linux:
+            yield "--with-terminfo-dirs=/etc/terminfo:/lib/terminfo:/usr/share/terminfo"
+
+        yield "--enable-sigwinch"
+        yield "--enable-symlinks"
+        yield "--with-gpm=no",
+        yield "--without-ada"
+        yield "--without-cxx"
+        yield "--without-tests"
+        yield "--without-manpages"
+        # yield "--without-progs"
+        if PPG.target.is_macos:
+            yield "--disable-db-install"
+            yield "--datadir=/usr/share"
+            yield "--sysconfdir=/etc"
+            yield "--sharedstatedir=/usr/com"
+            yield "--with-terminfo-dirs=/usr/share/terminfo"
+            yield "--with-default-terminfo-dir=/usr/share/terminfo"
 
     def _do_linux_compile(self):
-        self.run_configure(
-            "./configure", "--enable-shared=no", "--enable-static=yes", "--enable-widec", "--enable-pc-files",
-            "--without-ada", "--without-cxx", "--without-tests", "--without-manpages", "--without-progs", "--without-tack",
-            "--disable-db-install", "--disable-stripping",
-        )
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
 
@@ -186,7 +207,7 @@ class Readline(ModuleBuilder):
 
     @property
     def version(self):
-        return "8.1"
+        return self.cfg_version("8.1")
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--enable-shared=no", "--enable-static=yes", "--disable-install-examples", "--with-curses")
@@ -211,7 +232,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return "3.36.0"
+        return self.cfg_version("3.36.0")
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
@@ -284,7 +305,7 @@ class Tix(ModuleBuilder):
 
     @property
     def version(self):
-        return "8.4.3.6"
+        return self.cfg_version("8.4.3.6")
 
     # noinspection PyPep8Naming
     def xenv_CFLAGS(self):
@@ -318,7 +339,7 @@ class TkInter(ModuleBuilder):
 
     @property
     def version(self):
-        return "8.6.10"
+        return self.cfg_version("8.6.10")
 
 
 class Uuid(ModuleBuilder):
@@ -333,7 +354,7 @@ class Uuid(ModuleBuilder):
 
     @property
     def version(self):
-        return "1.0.3"
+        return self.cfg_version("1.0.3")
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
@@ -356,7 +377,7 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        return "5.2.5"
+        return self.cfg_version("5.2.5")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -379,7 +400,7 @@ class Zlib(ModuleBuilder):
 
     @property
     def version(self):
-        return "1.2.11"
+        return self.cfg_version("1.2.11")
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic

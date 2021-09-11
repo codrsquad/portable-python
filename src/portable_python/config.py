@@ -25,7 +25,6 @@ always-clean:
 cpython-configure:
   - --enable-optimizations
   - --with-lto
-  - --with-pydebug
   - --with-ensurepip=upgrade
 
 cpython-symlink: bin/python bin/pip

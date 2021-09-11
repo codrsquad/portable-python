@@ -281,6 +281,9 @@ class ModuleBuilder:
     def active_module(self, name):
         return self.modules.active_module(name)
 
+    def cfg_version(self, default):
+        return PPG.config.get_value("version-%s" % self.m_name) or default
+
     @property
     def url(self):
         """Url of source tarball, if any"""
