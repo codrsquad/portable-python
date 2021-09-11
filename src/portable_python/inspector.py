@@ -11,6 +11,9 @@ from portable_python.tracking import Trackable, Tracker
 from portable_python.versions import PPG
 
 
+LOG = logging.getLogger(__name__)
+
+
 class LibType(enum.Enum):
     """Categorization for dynamic libs, value being the color we want to show them as"""
 
@@ -316,20 +319,8 @@ class PythonInspector:
 
     @staticmethod
     def represented_filesize(*paths):
-        try:
-            seen = set()
-            size = 0
-            for p in paths:
-                p = runez.to_path(p)
-                c = runez.checksum(p) if p.is_file() else None
-                if c is None or c not in seen:
-                    seen.add(c)
-                    size += runez.filesize(p)
-
-            return runez.bold(runez.represented_bytesize(size))
-
-        except Exception as e:
-            return "%s (%s)" % (runez.bold("-"), runez.short(e, 32))
+        size = PPG.config.get_filesize(*paths, logger=LOG.debug)
+        return runez.bold(runez.represented_bytesize(size) if size else "-")
 
     def libpython_report(self, items):
         if not items:

@@ -59,13 +59,7 @@ class Cpython(PythonBuilder):
         self.run_make("install", f"DESTDIR={self.build_root}")
 
     def _finalize(self):
-        bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version)
-        if runez.DRYRUN:
-            bin_python = self.bin_folder / "python"
-
-        if not bin_python:
-            runez.abort("Could not determine bin/python in %s" % runez.short(self.bin_folder))  # pragma: no cover
-
+        bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
         extras = PPG.config.get_value("pip-install")
         if extras:
             extras = runez.flattened(extras, split=" ")

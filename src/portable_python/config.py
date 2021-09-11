@@ -27,8 +27,6 @@ cpython-configure:
   - --with-lto
   - --with-ensurepip=upgrade
 
-cpython-symlink: bin/python bin/pip
-
 windows:
   ext: zip
 
@@ -160,20 +158,41 @@ class Config:
 
         return runez.joined(result, delimiter="\n")
 
-    def cleanup_folder(self, module):
-        folder = module.install_folder
-        module_name = module.m_name
-        version = module.version
-        fmt = dict(mm=f"{version.major}.{version.minor}", version=version)
-        always_cleaned = self.get_value("always-clean", module_name)
-        module_specific = self.get_value("%s-clean" % module_name)
-        cleanup_spec = runez.flattened(always_cleaned, module_specific, split=True)
-        cleanup_spec = [x.format(**fmt) for x in cleanup_spec]
-        if cleanup_spec:
-            matcher = FileMatcher(cleanup_spec)
+    @staticmethod
+    def get_filesize(*paths, logger=LOG.warning):
+        size = 0
+        seen = set()
+        for p in runez.flattened(paths, unique=True, transform=runez.to_path):
+            if p and p.exists():
+                c = runez.checksum(p) if p.is_file() else None
+                if c is None or c not in seen:
+                    seen.add(c)
+                    try:
+                        size += runez.filesize(p)
+
+                    except Exception as e:
+                        if logger:
+                            logger("Can't stat %s: %s" % (runez.short(p), runez.short(e, size=32)))
+
+        return size
+
+    @staticmethod
+    def delete(path):
+        size = Config.get_filesize(path)
+        runez.delete(path, logger=None)
+        LOG.info("Deleted %s (%s)" % (runez.short(path), runez.represented_bytesize(size)))
+        return size
+
+    def _cleanup_folder_with_spec(self, module, spec):
+        spec = runez.flattened(spec, split=True)
+        if spec:
+            version = module.version
+            spec = [x.format(mm=f"{version.major}.{version.minor}", version=version) for x in spec]
+            deleted_size = 0
+            matcher = FileMatcher(spec)
             LOG.info("Applying clean-up spec: %s" % matcher)
             cleaned = []
-            for dirpath, dirnames, filenames in os.walk(folder):
+            for dirpath, dirnames, filenames in os.walk(module.install_folder):
                 removed = []
                 dirpath = runez.to_path(dirpath)
                 for name in dirnames:
@@ -181,7 +200,7 @@ class Config:
                     if matcher.is_match(full_path):
                         removed.append(name)
                         cleaned.append(name)
-                        runez.delete(full_path, logger=None)
+                        deleted_size += self.delete(full_path)
 
                 for name in removed:
                     dirnames.remove(name)
@@ -190,11 +209,21 @@ class Config:
                     full_path = dirpath / name
                     if matcher.is_match(full_path):
                         cleaned.append(name)
-                        runez.delete(full_path, logger=None)
+                        deleted_size += self.delete(full_path)
 
             if cleaned:
                 names = runez.joined(sorted(set(cleaned)))
-                LOG.info("Cleaned %s: %s" % (runez.plural(cleaned, "build artifact"), runez.short(names)))
+                deleted_size = runez.represented_bytesize(deleted_size)
+                LOG.info("Cleaned %s (%s): %s" % (runez.plural(cleaned, "build artifact"), deleted_size, runez.short(names)))
+
+    def cleanup_folder(self, module):
+        self._cleanup_folder_with_spec(module, self.get_value("always-clean", module.m_name))
+        original_size = self.get_filesize(module.install_folder)
+        self._cleanup_folder_with_spec(module, self.get_value("%s-clean" % module.m_name))
+        cleaned_size = self.get_filesize(module.install_folder)
+        original_size = runez.represented_bytesize(original_size)
+        cleaned_size = runez.represented_bytesize(cleaned_size)
+        LOG.info("Original size: %s, cleaned size: %s" % (original_size, cleaned_size))
 
     @staticmethod
     def real_path(path: pathlib.Path):
@@ -205,7 +234,7 @@ class Config:
             return path
 
     @staticmethod
-    def find_main_file(desired: pathlib.Path, version):
+    def find_main_file(desired: pathlib.Path, version, fatal=None):
         p = Config.real_path(desired)
         if p:
             return p
@@ -216,6 +245,9 @@ class Config:
             fc = Config.real_path(desired.parent / c)
             if fc:
                 return fc
+
+        if fatal is not None:
+            return runez.abort("Could not determine real path for %s" % runez.short(desired), return_value=desired, fatal=fatal)
 
     def correct_symlinks(self, module):
         folder = module.install_folder
@@ -228,7 +260,6 @@ class Config:
                 main_file = self.find_main_file(desired, version)
                 if main_file and main_file != desired:
                     runez.symlink(main_file, desired, overwrite=False)
-                    return
 
     @staticmethod
     def auto_correct_shebang(path: pathlib.Path, main_python: pathlib.Path):

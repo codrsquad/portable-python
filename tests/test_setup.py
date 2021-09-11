@@ -1,3 +1,10 @@
+import pytest
+import runez
+
+from portable_python import BuildSetup, ModuleBuilder
+from portable_python.versions import PPG
+
+
 def test_config(cli):
     cli.run("-ntmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mnone")
     assert cli.succeeded
@@ -18,6 +25,32 @@ def test_diagnostics(cli):
     cli.run("-c", cli.tests_path("sample-config1.yml"), "diagnostics")
     assert cli.succeeded
     assert "tests/sample-config2.yml config:" in cli.logged
+
+
+def test_edge_cases(temp_folder, monkeypatch, logged):
+    monkeypatch.setattr(PPG, "config", None)
+    runez.write("pp.yml", "", logger=None)
+    PPG.grab_config(path="pp.yml", base_folder=temp_folder, target="linux-x86_64")
+    assert str(PPG.cpython) == "cpython"
+    assert str(PPG.config) == "pp.yml, 2 config sources [linux-x86_64]"
+
+    setup = BuildSetup("3.9.6")
+    assert str(setup) == "build/cpython-3.9.6"
+
+    mb = ModuleBuilder(setup)
+    assert not mb.url
+    assert not mb.version
+    mb.resolved_telltale = "foo.h"
+    mb.m_debian = "-foo"
+    outcome, reason = mb.linker_outcome(is_selected=True)
+    assert outcome.name == "failed"
+    assert reason == "broken, can't compile statically with foo present"
+
+    PPG.config.sources[0].data = dict(ext="foo")
+    assert not logged
+    with pytest.raises(BaseException):
+        _ = BuildSetup("3.9.6")
+    assert "Invalid extension 'foo'" in logged.pop()
 
 
 def test_inspect(cli):

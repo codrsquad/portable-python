@@ -13,7 +13,7 @@ runez.log.setup(debug=True, console_format="%(levelname)s %(message)s", location
 cli.default_main = main
 
 
-def dummy_tarball(basename):
-    runez.touch("sample/README", logger=None)
+def dummy_tarball(basename, content=None):
+    runez.write("sample/README", content, logger=None)
     runez.compress("sample", "build/downloads/%s" % basename, logger=None)
     runez.delete("sample", logger=None)

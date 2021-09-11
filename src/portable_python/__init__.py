@@ -63,7 +63,7 @@ class BuildSetup:
         configured_ext = PPG.config.get_value("ext")
         ext = runez.SYS_INFO.platform_id.canonical_compress_extension(configured_ext, short_form=True)
         if not ext:
-            runez.abort("Invalid extension '%s'" % runez.red(configured_ext))  # pragma: no cover
+            runez.abort("Invalid extension '%s'" % runez.red(configured_ext))
 
         dest = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
         self.tarball_path = PPG.config.dist_folder / dest
@@ -241,11 +241,14 @@ class ModuleBuilder:
         if self.resolved_telltale is runez.UNSET:
             return runez.UNSET, None
 
+        debian = self.m_debian
         if self.resolved_telltale:
+            if is_selected and PPG.target.is_linux and debian and debian.startswith("-"):
+                return LinkerOutcome.failed, "%s, can't compile statically with %s present" % (runez.red("broken"), debian[1:])
+
             outcome = LinkerOutcome.static if is_selected else LinkerOutcome.shared
             return outcome, None
 
-        debian = self.m_debian
         if PPG.target.is_linux and debian:
             if debian.startswith("!"):
                 return LinkerOutcome.failed, "%s, can't compile without %s" % (runez.red("broken"), debian[1:])
@@ -253,7 +256,8 @@ class ModuleBuilder:
             if debian.startswith("+") and is_selected:
                 return LinkerOutcome.failed, "%s, can't compile without %s" % (runez.red("broken"), debian[1:])
 
-            return LinkerOutcome.absent, None
+            if not debian.startswith("-"):
+                return LinkerOutcome.absent, None
 
         outcome = LinkerOutcome.static if is_selected else LinkerOutcome.absent
         return outcome, None

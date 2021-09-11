@@ -1,6 +1,4 @@
-import os
-
-from portable_python import BuildSetup, ModuleBuilder
+from portable_python import BuildSetup
 from portable_python.versions import CPythonFamily, PPG
 
 
@@ -22,17 +20,9 @@ PYTHON_ORG_SAMPLE = """
 def test_list(cli, monkeypatch):
     # Edge cases
     monkeypatch.setattr(PPG, "config", None)
-    PPG.grab_config(base_folder=os.getcwd(), target="macos-arm64")
-    assert str(PPG.cpython) == "cpython"
-    assert str(PPG.config) == "None, 0 config sources [macos-arm64]"
-
+    PPG.grab_config(base_folder=".", target="macos-arm64")
     setup = BuildSetup()
-    assert str(setup) == "build/cpython-3.9.6"
     assert setup.python_spec.version == PPG.cpython.latest
-
-    mb = ModuleBuilder(setup)
-    assert not mb.url
-    assert not mb.version
 
     cp = CPythonFamily()
     assert str(cp.latest) == "3.9.6"

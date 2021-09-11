@@ -19,4 +19,6 @@ macos:                                    # Applies to macos only
 cpython-clean:
   - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc*
 
+cpython-symlink: bin/python bin/pip
+
 use-github: true

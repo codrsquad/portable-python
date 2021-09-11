@@ -194,6 +194,7 @@ class Ncurses(ModuleBuilder):
 class Readline(ModuleBuilder):
     """See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb"""
 
+    m_debian = "-libreadline-dev"
     m_include = "readline"
     m_telltale = "{include}/readline/readline.h"
 
