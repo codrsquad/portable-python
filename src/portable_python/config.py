@@ -118,6 +118,10 @@ class Config:
     def __repr__(self):
         return "%s, %s [%s]" % (runez.short(self.path), runez.plural(self.sources, "config source"), self.target)
 
+    @property
+    def use_github(self):
+        return self.get_value("use-github")
+
     def load(self, path):
         if path.exists():
             with open(path) as fh:

@@ -37,13 +37,13 @@ class VersionFamily:
                     if mm not in self._versions:
                         self._versions[mm] = v
 
-    @runez.cached_property
+    @property
     def latest(self) -> Version:
         """Latest version for this family"""
         self._fetch_versions()
         return self._latest
 
-    @runez.cached_property
+    @property
     def available_versions(self):
         """Supplied by descendant: list of available versions"""
         self._fetch_versions()
@@ -62,23 +62,23 @@ class VersionFamily:
 class CPythonFamily(VersionFamily):
     """Implementation for cpython"""
 
-    client = RestClient("https://www.python.org/")
-
-    # client = RestClient("https://api.github.com")
-    # def get_available_versions(self):
-    #     """Available versions as per github release tags"""
-    #     r = self.client.get("repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
-    #     for item in r:
-    #         ref = item.get("ref")
-    #         if ref and ref.startswith("refs/tags/v"):
-    #             ref = ref[11:]
-    #             v = Version(ref)
-    #             if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and (v.major, v.minor) > (3, 5):
-    #                 yield v
+    client = RestClient()
 
     def get_available_versions(self):
         """Available versions as per python.org/ftp"""
-        r = self.client.get_response("ftp/python/", logger=logging.debug)
+        if PPG.config.use_github:
+            r = self.client.get("https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
+            for item in r:
+                ref = item.get("ref")
+                if ref and ref.startswith("refs/tags/v"):
+                    ref = ref[11:]
+                    v = Version(ref)
+                    if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and (v.major, v.minor) > (3, 5):
+                        yield v
+
+            return
+
+        r = self.client.get_response("https://www.python.org/ftp/python/", logger=logging.debug)
         regex = re.compile(r'"(\d+\.\d+\.\d+)/"')
         if r.text:
             for line in r.text.splitlines():

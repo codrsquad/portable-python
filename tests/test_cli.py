@@ -34,7 +34,7 @@ def test_build_cleanup(cli, monkeypatch):
     runez.touch(bf / f"{TV}/lib/libpython{mm}.a", logger=None)
     runez.touch(bf / f"{TV}/lib/python{mm}/config-{mm}-darwin/libpython{mm}.a", logger=None)
 
-    cli.run("-ntmacos-x86_64", "build", "-mopenssl,tkinter", TV)
+    cli.run("-ntmacos-x86_64", "-c", cli.tests_path("sample-config-github.yml"), "build", "-mopenssl,tkinter", TV)
     assert cli.succeeded
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
@@ -149,9 +149,10 @@ def test_invoker(cli):
     assert reported > 0
 
 
-# GH_CPYTHON_SAMPLE = """
-# [{"ref": "refs/tags/v3.9.7"},{"ref": "refs/tags/v3.8.12"}]
-# """
+GH_CPYTHON_SAMPLE = """
+[{"ref": "refs/tags/v3.9.7"},{"ref": "refs/tags/v3.8.12"}]
+"""
+
 PYTHON_ORG_SAMPLE = """
 <a href="3.9.5/">3.9.5/</a>
 <a href="3.9.6/">3.9.6/</a>
@@ -162,7 +163,7 @@ PYTHON_ORG_SAMPLE = """
 
 @CPythonFamily.client.mock({
     "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE,
-    # "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE,
+    "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE,
 })
 def test_list(cli, monkeypatch):
     # Edge cases
@@ -192,6 +193,10 @@ def test_list(cli, monkeypatch):
     cli.run("list", "conda")
     assert cli.failed
     assert "Python family 'conda' is not yet supported" in cli.logged
+
+    monkeypatch.setattr(PPG.cpython, "_versions", None)
+    cli.run("-c", cli.tests_path("sample-config-github.yml"), "list")
+    assert cli.succeeded
 
 
 def test_module_invocation(cli):

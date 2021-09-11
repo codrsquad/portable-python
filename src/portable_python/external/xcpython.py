@@ -18,6 +18,8 @@ class Bdb(ModuleBuilder):
     def version(self):
         return "6.2.32"
 
+    # noinspection PyPep8Naming
+    # noinspection PyMethodMayBeStatic
     def xenv_CFLAGS(self):
         yield "-fPIC"
 
@@ -98,6 +100,8 @@ class LibFFI(ModuleBuilder):
     def version(self):
         return "3.3"
 
+    # noinspection PyPep8Naming
+    # noinspection PyMethodMayBeStatic
     def xenv_CFLAGS(self):
         yield "-fPIC"
 
@@ -209,6 +213,8 @@ class Sqlite(ModuleBuilder):
     def version(self):
         return "3.36.0"
 
+    # noinspection PyPep8Naming
+    # noinspection PyMethodMayBeStatic
     def xenv_CFLAGS(self):
         yield "-fPIC"
 
@@ -249,6 +255,8 @@ class Tk(ModuleBuilder):
     def url(self):
         return f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz"
 
+    # noinspection PyPep8Naming
+    # noinspection PyMethodMayBeStatic
     def xenv_CFLAGS(self):
         yield f"-I{self.deps}/include"
 
@@ -278,6 +286,7 @@ class Tix(ModuleBuilder):
     def version(self):
         return "8.4.3.6"
 
+    # noinspection PyPep8Naming
     def xenv_CFLAGS(self):
         # Needed to avoid error: Getting no member named 'result' in 'struct Tcl_Interp'
         yield "-DUSE_INTERP_RESULT"
@@ -326,6 +335,8 @@ class Uuid(ModuleBuilder):
     def version(self):
         return "1.0.3"
 
+    # noinspection PyPep8Naming
+    # noinspection PyMethodMayBeStatic
     def xenv_CFLAGS(self):
         yield "-fPIC"
 
@@ -370,6 +381,8 @@ class Zlib(ModuleBuilder):
     def version(self):
         return "1.2.11"
 
+    # noinspection PyPep8Naming
+    # noinspection PyMethodMayBeStatic
     def xenv_CFLAGS(self):
         yield "-fPIC"
 

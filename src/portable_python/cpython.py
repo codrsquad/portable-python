@@ -19,6 +19,9 @@ class Cpython(PythonBuilder):
     @property
     def url(self):
         """Url of source tarball"""
+        if PPG.config.use_github:
+            return f"https://github.com/python/cpython/archive/refs/tags/v{self.version}.tar.gz"
+
         return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
 
     # noinspection PyMethodMayBeStatic
