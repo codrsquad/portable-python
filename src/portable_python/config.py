@@ -1,4 +1,5 @@
 import fnmatch
+import logging
 import os
 import pathlib
 import re
@@ -6,6 +7,9 @@ from io import StringIO
 
 import runez
 import yaml
+
+
+LOG = logging.getLogger(__name__)
 
 
 DEFAULT_CONFIG = """
@@ -23,6 +27,8 @@ cpython-configure:
   - --with-lto
   - --with-pydebug
   - --with-ensurepip=upgrade
+
+cpython-symlink: bin/python bin/pip
 
 windows:
   ext: zip
@@ -155,7 +161,7 @@ class Config:
 
         return runez.joined(result, delimiter="\n")
 
-    def cleanup_folder(self, module, logger):
+    def cleanup_folder(self, module):
         folder = module.install_folder
         module_name = module.m_name
         version = module.version
@@ -166,7 +172,7 @@ class Config:
         cleanup_spec = [x.format(**fmt) for x in cleanup_spec]
         if cleanup_spec:
             matcher = FileMatcher(cleanup_spec)
-            logger("Applying clean-up spec: %s" % matcher)
+            LOG.info("Applying clean-up spec: %s" % matcher)
             cleaned = []
             for dirpath, dirnames, filenames in os.walk(folder):
                 removed = []
@@ -189,7 +195,69 @@ class Config:
 
             if cleaned:
                 names = runez.joined(sorted(set(cleaned)))
-                logger("Cleaned %s: %s" % (runez.plural(cleaned, "build artifact"), runez.short(names)))
+                LOG.info("Cleaned %s: %s" % (runez.plural(cleaned, "build artifact"), runez.short(names)))
+
+    @staticmethod
+    def real_path(path: pathlib.Path):
+        if path and path.exists():
+            if path.is_symlink():
+                path = runez.to_path(os.path.realpath(path))
+
+            return path
+
+    @staticmethod
+    def find_main_file(desired: pathlib.Path, version):
+        p = Config.real_path(desired)
+        if p:
+            return p
+
+        rp = desired.name
+        candidates = (rp, "%s%s" % (rp, version.major), "%s%s.%s" % (rp, version.major, version.minor))
+        for c in candidates:
+            fc = Config.real_path(desired.parent / c)
+            if fc:
+                return fc
+
+    def correct_symlinks(self, module):
+        folder = module.install_folder
+        version = module.version
+        relative_paths = self.get_value("%s-symlink" % module.m_name)
+        relative_paths = runez.flattened(relative_paths, split=True)
+        if relative_paths:
+            for rp in relative_paths:
+                desired = folder / rp
+                main_file = self.find_main_file(desired, version)
+                if main_file and main_file != desired:
+                    runez.symlink(main_file, desired, overwrite=False)
+                    return
+
+    @staticmethod
+    def auto_correct_shebang(path: pathlib.Path, main_python: pathlib.Path):
+        if path == main_python or not path.is_file() or path.is_symlink():
+            return
+
+        lines = []
+        with open(path) as fh:
+            try:
+                for line in fh:
+                    if lines:
+                        lines.append(line)
+                        continue
+
+                    if not line.startswith("#!") or "bin/python" not in line:
+                        return
+
+                    lines.append("#!/bin/sh\n")
+                    lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % main_python.name)
+
+            except UnicodeError:
+                return
+
+        if lines:
+            LOG.info("Auto-corrected shebang for %s" % runez.short(path))
+            with open(path, "wt") as fh:
+                for line in lines:
+                    fh.write(line)
 
     def load(self, path):
         if path.exists():

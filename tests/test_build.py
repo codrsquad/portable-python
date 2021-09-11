@@ -28,7 +28,7 @@ def test_finalization(cli, monkeypatch):
         assert cli.failed
         assert "selected: bzip2 (1 module)" in cli.logged
         assert "INFO Cleaned 2 build artifacts: __phello__.foo.py idle_test" in cli.logged
-        assert "Symlink foo-python <- python" in cli.logged
+        assert f"Symlink build/cpython-{v}/{v}/bin/foo-python <- build/cpython-{v}/{v}/bin/python" in cli.logged
         assert f"Auto-corrected shebang for build/cpython-{v}/{v}/bin/some-exe" in cli.logged
         assert "Build failed" in cli.logged
 

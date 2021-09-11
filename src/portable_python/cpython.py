@@ -1,14 +1,12 @@
 import runez
 from runez.pyenv import Version
 
-from portable_python import LOG, PPG, PythonBuilder
+from portable_python import PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, TkInter, Uuid, Xz, Zlib
 
 
 class Cpython(PythonBuilder):
     """Build CPython binaries"""
-
-    _main_python = None
 
     @classmethod
     def candidate_modules(cls):
@@ -60,82 +58,23 @@ class Cpython(PythonBuilder):
         self.run_make()
         self.run_make("install", f"DESTDIR={self.build_root}")
 
-    @property
-    def python_mm(self):
-        return "python%s.%s" % (self.version.major, self.version.minor)
-
-    @property
-    def main_python(self):
-        if self._main_python is None:
-            self._main_python = self._find_main_basename("python")
-
-        return self._main_python or "python"
-
     def _finalize(self):
-        bin_python = self.bin_folder / self.main_python
+        bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version)
+        if runez.DRYRUN:
+            bin_python = self.bin_folder / "python"
+
+        if not bin_python:
+            runez.abort("Could not determine bin/python in %s" % runez.short(self.bin_folder))  # pragma: no cover
+
         extras = PPG.config.get_value("pip-install")
         if extras:
             extras = runez.flattened(extras, split=" ")
             for extra in extras:
                 self.run(bin_python, "-mpip", "install", "-U", extra, fatal=False)
 
-        PPG.config.cleanup_folder(self, LOG.info)
-        self.correct_symlinks()
-        self.run(bin_python, "-mcompileall")
-
-    def correct_symlinks(self):
-        with runez.CurrentFolder(self.bin_folder):
-            all_files = {}
-            files = {}
-            symlinks = {}
-            for f in runez.ls_dir(self.bin_folder):
-                all_files[f.name] = f
-                if f.is_symlink():
-                    symlinks[f.name] = f
-
-                else:
-                    files[f.name] = f
-
-            self.ensure_main_symlink(all_files, "python", "pip")
-            for f in files.values():
-                if f.name != self.main_python:
-                    self._auto_correct_shebang(f)
-
-    def ensure_main_symlink(self, all_files, *basenames):
-        for basename in basenames:
-            if basename not in all_files:
-                main_basename = self._find_main_basename(basename)
-                if main_basename:
-                    runez.symlink(main_basename, basename)
-
-    def _find_main_basename(self, basename):
-        candidates = [basename, "%s%s" % (basename, self.version.major)]
-        if basename == "python":
-            candidates.append(self.python_mm)
-
+        PPG.config.cleanup_folder(self)
         for f in runez.ls_dir(self.bin_folder):
-            if f.name in candidates:
-                return runez.basename(f, extension_marker=None, follow=True)
+            PPG.config.auto_correct_shebang(f, bin_python)
 
-    def _auto_correct_shebang(self, path):
-        lines = []
-        with open(path) as fh:
-            try:
-                for line in fh:
-                    if lines:
-                        lines.append(line)
-                        continue
-
-                    if not line.startswith("#!") or "bin/python" not in line:
-                        return
-
-                    lines.append("#!/bin/sh\n")
-                    lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % self.main_python)
-
-            except UnicodeError:
-                return
-
-        LOG.info("Auto-corrected shebang for %s" % runez.short(path))
-        with open(path, "wt") as fh:
-            for line in lines:
-                fh.write(line)
+        PPG.config.correct_symlinks(self)
+        self.run(bin_python, "-mcompileall")
