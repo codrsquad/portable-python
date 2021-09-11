@@ -45,6 +45,20 @@ def build(clean, modules, prefix, python_spec):
 
 
 @main.command()
+@click.option("--modules", "-m", metavar="CSV", help="External modules to include")
+@click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
+@click.argument("python_spec", required=False)
+def build_report(modules, validate, python_spec):
+    """Show status of buildable modules, which will be auto-compiled"""
+    setup = BuildSetup(python_spec, modules=modules)
+    print(runez.bold(setup.python_spec))
+    report = setup.python_builder.modules.report()
+    print(report)
+    if validate:
+        setup.validate_module_selection()
+
+
+@main.command()
 def diagnostics():
     """Show diagnostics info"""
     depot = PythonDepot(use_path=True)
@@ -116,20 +130,6 @@ def list_cmd(json, family):
     print("%s:" % runez.bold(family))
     for mm, v in fam.available_versions.items():
         print("  %s: %s" % (runez.bold(mm), v))
-
-
-@main.command()
-@click.option("--modules", "-m", metavar="CSV", help="External modules to include")
-@click.option("--validate", is_flag=True, help="Exit with code 1 if anything looks incomplete")
-@click.argument("python_spec", required=False)
-def scan(modules, validate, python_spec):
-    """Show status of buildable modules, which will be auto-compiled"""
-    setup = BuildSetup(python_spec, modules=modules)
-    print(runez.bold(setup.python_spec))
-    report = setup.python_builder.modules.report()
-    print(report)
-    if validate:
-        setup.validate_module_selection()
 
 
 def _find_recompress_source(dist, path):

@@ -25,7 +25,7 @@ LDD_SAMPLE = """
 """
 
 
-def test_inspect_lib(logged, monkeypatch):
+def test_inspect_lib(logged):
     inspector = PythonInspector("invoker")
     with patch("runez.which", return_value="yup"):
         not_there = SoInfo(inspector, "/dev/null/foo.platform.so")

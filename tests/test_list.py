@@ -1,0 +1,54 @@
+import os
+
+from portable_python import BuildSetup, ModuleBuilder
+from portable_python.versions import CPythonFamily, PPG
+
+
+GH_CPYTHON_SAMPLE = """
+[{"ref": "refs/tags/v3.9.7"},{"ref": "refs/tags/v3.8.12"}]
+"""
+
+PYTHON_ORG_SAMPLE = """
+<a href="3.9.5/">3.9.5/</a>
+<a href="3.9.6/">3.9.6/</a>
+<a href="3.9.7/">3.9.7/</a>
+<a href="3.8.12/">3.9.12/</a>
+"""
+
+
+@CPythonFamily.client.mock({
+    "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE,
+    "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE,
+})
+def test_list(cli, monkeypatch):
+    # Edge cases
+    monkeypatch.setattr(PPG, "config", None)
+    PPG.grab_config(base_folder=os.getcwd(), target="macos-arm64")
+    assert str(PPG.cpython) == "cpython"
+    assert str(PPG.config) == "None, 0 config sources [macos-arm64]"
+
+    setup = BuildSetup()
+    assert str(setup) == "build/cpython-3.9.7"
+    assert setup.python_spec.version == PPG.cpython.latest
+
+    mb = ModuleBuilder(setup)
+    assert not mb.url
+    assert not mb.version
+
+    cp = CPythonFamily()
+    assert str(cp.latest) == "3.9.7"
+
+    cli.run("list")
+    assert cli.succeeded
+
+    cli.run("list", "--json")
+    assert cli.succeeded
+    assert cli.logged.stdout.contents().startswith("{")
+
+    cli.run("list", "conda")
+    assert cli.failed
+    assert "Python family 'conda' is not yet supported" in cli.logged
+
+    monkeypatch.setattr(PPG.cpython, "_versions", None)
+    cli.run("-c", cli.tests_path("sample-config-github.yml"), "list")
+    assert cli.succeeded
