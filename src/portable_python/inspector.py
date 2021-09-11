@@ -314,6 +314,31 @@ class PythonInspector:
 
             return p
 
+    @staticmethod
+    def represented_filesize(*paths):
+        try:
+            seen = set()
+            size = 0
+            for p in paths:
+                p = runez.to_path(p)
+                c = runez.checksum(p) if p.is_file() else None
+                if c is None or c not in seen:
+                    seen.add(c)
+                    size += runez.filesize(p)
+
+            return runez.bold(runez.represented_bytesize(size))
+
+        except Exception as e:
+            return "%s (%s)" % (runez.bold("-"), runez.short(e, 32))
+
+    def libpython_report(self, items):
+        if not items:
+            return runez.green("-not used-")
+
+        rel_paths = [getattr(x, "relative_path", x) for x in items]
+        full_paths = [runez.to_path(self.install_folder) / x for x in rel_paths]
+        return runez.joined(self.represented_filesize(*full_paths), rel_paths)
+
     def represented(self, verbose=1):
         report = []
         if self.module_info:
@@ -328,11 +353,9 @@ class PythonInspector:
                 table.add_row("srcdir", runez.short(self.srcdir))
 
             if verbose:
-                lp = self.full_so_report.lib_static
-                table.add_row("libpython*.a", runez.joined(lp, delimiter=", ") or runez.green("-not used-"))
-
-                lp = self.full_so_report.libpython_so
-                table.add_row("libpython*.so", runez.joined((x.relative_path for x in lp), delimiter=", ") or runez.green("-not used-"))
+                table.add_row("libpython*.a", self.libpython_report(self.full_so_report.lib_static))
+                table.add_row("libpython*.so", self.libpython_report(self.full_so_report.libpython_so))
+                table.add_row("install size", self.represented_filesize(self.install_folder))
 
             report.append(table)
             if verbose:
