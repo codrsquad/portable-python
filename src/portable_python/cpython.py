@@ -1,8 +1,7 @@
 import runez
-from runez.pyenv import Version
 
 from portable_python import PPG, PythonBuilder
-from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, TkInter, Uuid, Xz, Zlib
+from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 
 
 class Cpython(PythonBuilder):
@@ -10,7 +9,7 @@ class Cpython(PythonBuilder):
 
     @classmethod
     def candidate_modules(cls):
-        return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, TkInter, Uuid]
+        return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid]
 
     @property
     def url(self):
@@ -45,13 +44,6 @@ class Cpython(PythonBuilder):
 
         if self.active_module(Openssl):
             yield f"--with-openssl={self.deps}"
-
-        tkinter = self.active_module(TkInter)
-        if tkinter:
-            mm = Version.from_text(tkinter.version)
-            mm = "%s.%s" % (mm.major, mm.minor)
-            yield f"--with-tcltk-includes=-I{self.deps}/include"
-            yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{mm} -ltk{mm}"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)

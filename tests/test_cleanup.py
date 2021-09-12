@@ -24,7 +24,7 @@ def test_cleanup(cli):
     runez.write(lib / f"python{mm}/config-{mm}-darwin/libpython{mm}.a", sample_content, logger=None)
 
     cfg = cli.tests_path("sample-config1.yml")
-    cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,tkinter,readline", v)
+    cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,readline", v)
     assert cli.succeeded
     assert "Cleaned 1 build artifact (0 B): idle_test" in cli.logged
     assert f"Cleaned 2 build artifacts (59 KB): config-{mm}-darwin libpython{mm}.a" in cli.logged

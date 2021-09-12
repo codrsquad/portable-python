@@ -296,8 +296,7 @@ class ModuleBuilder:
     @property
     def version(self):
         """Version to use"""
-        if self.parent_module:
-            return self.parent_module.version
+        return self.parent_module and self.parent_module.version
 
     @property
     def deps(self):
@@ -384,44 +383,42 @@ class ModuleBuilder:
         for submodule in self.modules.selected:
             submodule.compile()
 
-        if not self.url:
+        if self.url:
             # Modules without a url just drive sub-modules compilation typically
-            return
+            print(Header.aerated(str(self)))
+            with self.captured_logs():
+                if self.setup.x_debug:
+                    if "direct-finalize" in self.setup.x_debug:
+                        # For quicker iteration: debugging directly finalization
+                        self._finalize()
+                        return
 
-        print(Header.aerated(str(self)))
-        with self.captured_logs():
-            if self.setup.x_debug:
-                if "direct-finalize" in self.setup.x_debug:
-                    # For quicker iteration: debugging directly finalization
-                    self._finalize()
-                    return
+                # Split on '#' for urls that include a checksum, such as #sha256=... fragment
+                basename = runez.basename(self.url, extension_marker="#")
+                path = self.setup.build_folder.parent / "downloads" / basename
+                if not path.exists():
+                    REST_CLIENT.download(self.url, path)
 
-            # Split on '#' for urls that include a checksum, such as #sha256=... fragment
-            basename = runez.basename(self.url, extension_marker="#")
-            path = self.setup.build_folder.parent / "downloads" / basename
-            if not path.exists():
-                REST_CLIENT.download(self.url, path)
+                runez.decompress(path, self.m_src_build, simplify=True)
 
-            runez.decompress(path, self.m_src_build, simplify=True)
+                env_vars = self._get_env_vars()
+                for var_name, value in env_vars.items():
+                    LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
+                    os.environ[var_name] = value
 
-            env_vars = self._get_env_vars()
-            for var_name, value in env_vars.items():
-                LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
-                os.environ[var_name] = value
+                func = getattr(self, "_do_%s_compile" % PPG.target.platform, None)
+                if not func:
+                    runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(PPG.target.platform))
 
-            func = getattr(self, "_do_%s_compile" % PPG.target.platform, None)
-            if not func:
-                runez.abort("Compiling on platform '%s' is not yet supported" % runez.red(PPG.target.platform))
+                with runez.log.timeit("Compiling %s" % self.m_name):
+                    folder = self.m_src_build
+                    if self.m_build_cwd:
+                        folder = folder / self.m_build_cwd
 
-            with runez.log.timeit("Compiling %s" % self.m_name):
-                folder = self.m_src_build
-                if self.m_build_cwd:
-                    folder = folder / self.m_build_cwd
-
-                with runez.CurrentFolder(folder):
-                    self._prepare()
-                    func()
-                    self._finalize()
+                    with runez.CurrentFolder(folder):
+                        self._prepare()
+                        func()
+                        self._finalize()
 
     def _get_env_vars(self):
         """Yield all found env vars, first found wins"""

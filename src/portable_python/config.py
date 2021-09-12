@@ -204,11 +204,12 @@ class Config:
         self._cleanup_folder_with_spec(module, self.get_value("always-clean", module.m_name))
         original_size = runez.filesize(module.install_folder)
         self._cleanup_folder_with_spec(module, self.get_value("%s-clean" % module.m_name))
+        self.symlink_duplicates(module.install_folder)
+        # Log size before and after cleanup
         cleaned_size = runez.filesize(module.install_folder)
         original_size = runez.represented_bytesize(original_size)
         cleaned_size = runez.represented_bytesize(cleaned_size)
         LOG.info("Original size: %s, cleaned size: %s" % (original_size, cleaned_size))
-        self.symlink_duplicates(module.install_folder)
 
     def symlink_duplicates(self, folder):
         if self.target.is_linux or self.target.is_macos:
