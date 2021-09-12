@@ -1,12 +1,14 @@
-def test_build_prefix(cli):
-    v = "3.9.7"
-    cli.run("-ntlinux-x86_64", "build", v, "-mnone", "--prefix", "/apps/python")
+def test_prefix_linux(cli):
+    cli.run("-ntlinux-x86_64", "build", "3.9.7", "-mnone", "--prefix", "/apps/python")
     assert cli.succeeded
     assert "selected: none" in cli.logged
     assert " --prefix=/apps/python " in cli.logged
-    assert f" install DESTDIR=build/cpython-{v}/root\n" in cli.logged
-    assert f"Would tar build/cpython-{v}/root/apps/python -> dist/cpython-{v}-linux-x86_64.tar.gz" in cli.logged
+    assert " install DESTDIR=build/cpython-3.9.7/root\n" in cli.logged
+    assert "Would tar build/cpython-3.9.7/root/apps/python -> dist/apps-python-linux-x86_64.tar.gz" in cli.logged
 
-    cli.run("-n", "build", v, "-mnone", "--prefix", "/apps/foo{python_version}")
+
+def test_prefix_macos(cli):
+    cli.run("-ntmacos-arm64", "build", "3.10.1", "-mnone", "--prefix", "/opt/foo{python_version}")
     assert cli.succeeded
-    assert f" --prefix=/apps/foo{v} " in cli.logged
+    assert " --prefix=/opt/foo3.10.1 " in cli.logged
+    assert "Would tar build/cpython-3.10.1/root/opt/foo3.10.1 -> dist/opt-foo3.10.1-macos-arm64.tar.gz" in cli.logged

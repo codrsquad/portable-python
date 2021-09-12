@@ -5,7 +5,10 @@ from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl,
 
 
 class Cpython(PythonBuilder):
-    """Build CPython binaries"""
+    """
+    Build CPython binaries
+    See https://docs.python.org/3.11/using/configure.html
+    """
 
     @classmethod
     def candidate_modules(cls):
@@ -29,7 +32,12 @@ class Cpython(PythonBuilder):
         if configured:
             yield from configured
 
-        yield "--enable-shared=%s" % ("yes" if self.setup.prefix else "no")
+        if self.version >= "3.10":
+            yield "--disable-test-modules"
+
+        if self.setup.prefix:
+            yield "--enable-shared"
+
         if self.active_module(LibFFI):
             yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
             yield "--with-system-ffi=no"
@@ -43,7 +51,7 @@ class Cpython(PythonBuilder):
             yield f"--with-dbmliborder={db_order}"
 
         if self.active_module(Openssl):
-            yield f"--with-openssl={self.deps}"
+            yield f"--with-openssl={self.deps}"     # 3.7+?
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
@@ -59,8 +67,9 @@ class Cpython(PythonBuilder):
                 self.run(bin_python, "-mpip", "install", "-U", extra, fatal=False)
 
         PPG.config.cleanup_folder(self)
-        for f in runez.ls_dir(self.bin_folder):
-            PPG.config.auto_correct_shebang(f, bin_python)
-
         PPG.config.ensure_main_file_symlinks(self)
-        self.run(bin_python, "-mcompileall")
+        if not self.setup.prefix:
+            for f in runez.ls_dir(self.bin_folder):
+                PPG.config.auto_correct_shebang(f, bin_python)
+
+            self.run(bin_python, "-mcompileall")

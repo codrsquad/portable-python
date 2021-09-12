@@ -19,14 +19,15 @@ always-clean:
   cpython:
     - __phello__.foo.py
     - __pycache__
+    - _test*capi.*
     - idle_test/
     - test/
     - tests/
 
 cpython-configure:
-  - --enable-optimizations
-  - --with-lto
-  - --with-ensurepip=upgrade
+  - --enable-optimizations      # 3.6+
+  - --with-lto                  # 3.6+
+  - --with-ensurepip=upgrade    # 3.6+
 
 windows:
   ext: zip

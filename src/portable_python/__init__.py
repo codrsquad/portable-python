@@ -54,6 +54,9 @@ class BuildSetup:
         if python_spec.version.text not in python_spec.text or len(python_spec.version.given_components) < 3:
             runez.abort("Please provide full desired version: %s is not good enough" % runez.red(python_spec))
 
+        if prefix:
+            prefix = prefix.format(python_version=python_spec.version)
+
         self.python_spec = python_spec
         self.desired_modules = modules
         self.prefix = prefix
@@ -65,7 +68,13 @@ class BuildSetup:
         if not ext:
             runez.abort("Invalid extension '%s'" % runez.red(configured_ext))
 
-        dest = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
+        if prefix:
+            dest = prefix.strip("/").replace("/", "-")
+            dest = PPG.target.composed_basename(dest, extension=ext)
+
+        else:
+            dest = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
+
         self.tarball_path = PPG.config.dist_folder / dest
         builder = PPG.family(python_spec.family).get_builder()
         self.python_builder = builder(self)  # type: PythonBuilder
@@ -102,7 +111,7 @@ class BuildSetup:
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
-            if not runez.DRYRUN or self.python_builder.install_folder.is_dir():
+            if not self.prefix and (not runez.DRYRUN or self.python_builder.install_folder.is_dir()):
                 py_inspector = PythonInspector(self.python_builder.install_folder)
                 print(py_inspector.represented())
                 problem = py_inspector.full_so_report.get_problem(portable=not self.prefix)
@@ -474,10 +483,7 @@ class PythonBuilder(ModuleBuilder):
 
     @property
     def c_configure_prefix(self):
-        if self.setup.prefix:
-            return self.setup.prefix.format(python_version=self.version)
-
-        return f"/{self.version.text}"
+        return self.setup.prefix or f"/{self.version.text}"
 
     @property
     def bin_folder(self):
