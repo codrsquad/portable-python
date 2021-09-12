@@ -320,16 +320,16 @@ class ModuleBuilder:
     def xenv_ARCHFLAGS(self):
         yield "-arch ", PPG.target.arch
 
-    def xenv_CPATH(self):
+    def xenv_CFLAGS_NODIST(self):
         if self.modules.selected:
             # By default, set CPATH only for modules that have sub-modules (descendants can override this easily)
             folder = self.deps / "include"
-            yield folder
+            yield f"-I{folder}"
             for module in self.modules:
                 if module.m_include:
-                    yield folder / module.m_include
+                    yield f"-I{folder / module.m_include}"
 
-    def xenv_LDFLAGS(self):
+    def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"
 
     def xenv_PATH(self):

@@ -22,21 +22,25 @@ class Cpython(PythonBuilder):
 
         return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
 
-    # noinspection PyMethodMayBeStatic
-    # noinspection PyPep8Naming
-    def xenv_CFLAGS(self):
+    def xenv_CFLAGS_NODIST(self):
+        yield from super().xenv_CFLAGS_NODIST()
         yield "-Wno-unused-command-line-argument"
+
+    def xenv_LDFLAGS_NODIST(self):
+        yield from super().xenv_LDFLAGS_NODIST()
+        if PPG.target.is_linux and self.setup.prefix:
+            yield f"-Wl,-rpath,{self.setup.prefix}/lib"
 
     def c_configure_args(self):
         configured = PPG.config.get_value("cpython-configure")
         if configured:
             yield from configured
 
-        if self.version >= "3.10":
-            yield "--disable-test-modules"
-
         if self.setup.prefix:
             yield "--enable-shared"
+
+        if self.version >= "3.10":
+            yield "--disable-test-modules"
 
         if self.active_module(LibFFI):
             yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"

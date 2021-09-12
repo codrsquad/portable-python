@@ -12,6 +12,7 @@ from portable_python.versions import PPG
 
 
 LOG = logging.getLogger(__name__)
+RX_DYNLIB = re.compile(r"^.*\.(so(\.[0-9.]+)?|dylib)$")
 
 
 class LibType(enum.Enum):
@@ -234,7 +235,7 @@ class SoInfo(Trackable):
 
 
 def is_dyn_lib(path):
-    return path.name.endswith((".so", ".dylib"))
+    return RX_DYNLIB.match(path.name)
 
 
 def find_libs(folder):

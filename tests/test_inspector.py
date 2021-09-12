@@ -1,7 +1,9 @@
 import builtins
 from unittest.mock import patch
 
-from portable_python.inspector import LibType, PPG, PythonInspector, SoInfo
+import runez
+
+from portable_python.inspector import find_libs, LibType, PPG, PythonInspector, SoInfo
 
 
 OTOOL_SAMPLE = """
@@ -49,6 +51,19 @@ def test_inspect_lib(logged):
         info2.parse_ldd(LDD_SAMPLE)
         r = info2.represented()
         assert r == "_tkinter*!.so missing: tinfo:5 libpython3.6m.so.1.0 tcl8:8.6 bz2:1.0"
+
+
+def test_find_libs(temp_folder):
+    runez.touch("python3.9/config-3.9/libpython3.9.so", logger=None)
+    runez.touch("lib-foo.a", logger=None)
+    runez.touch("lp.so.1.0", logger=None)
+    runez.symlink("lp.so.1.0", "lp.so")
+    runez.touch("lp.dylib", logger=None)
+    runez.touch("foo/foo.so", logger=None)  # Folder not examined (looking only at known py subfolders)
+    runez.touch("README.so.txt", logger=None)  # Not a dynamic lib
+    runez.touch("lib-foo.a.1", logger=None)  # Not a lib
+    x = sorted(str(x) for x in find_libs("."))
+    assert x == ["lib-foo.a", "lp.dylib", "lp.so", "lp.so.1.0", "python3.9/config-3.9/libpython3.9.so"]
 
 
 def test_find_python(temp_folder):
