@@ -351,9 +351,6 @@ class SingleFileMatch:
 
             return fnmatch.fnmatch(path.name, self._rx_basename)
 
-        else:
-            assert True
-
 
 def _find_file_duplicates(seen, folder):
     for p in runez.ls_dir(folder):
