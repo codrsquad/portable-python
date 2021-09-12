@@ -4,7 +4,12 @@ from portable_python import LinkerOutcome, ModuleBuilder, PPG
 
 
 class Bdb(ModuleBuilder):
-    """See https://docs.python.org/3/library/dbm.html"""
+    """
+    See https://docs.python.org/3/library/dbm.html
+    Known issues:
+    - macos: fails to build statically, symbol not found: _gdbm_version_number
+    - linux: fails to get detected unless both Bdb and Gdbm are selected
+    """
 
     m_build_cwd = "build_unix"
     m_debian = "libgdbm-compat-dev"
@@ -49,16 +54,16 @@ class Bzip2(ModuleBuilder):
 
 
 class Gdbm(ModuleBuilder):
-    """See https://docs.python.org/2.7/library/gdbm.html"""
+    """
+    See https://docs.python.org/2.7/library/gdbm.html
+    Known issues:
+    - macos-x86_64: works if selected WITHOUT Bdb (in which case both bdb and gdbm get statically linked)
+    - macos-arch64: if selected, then `_dbm` fails to build
+    - linux: fails to build unless both Bdb and Gdbm are selected, undefined symbol: gdbm_version_number
+    """
 
     m_debian = "libgdbm-dev"
     m_telltale = ["{include}/gdbm.h"]
-
-    def linker_outcome(self, is_selected):
-        if PPG.target.is_macos and not is_selected:
-            return LinkerOutcome.failed, runez.red("Needed on macos to override brew-installed gdbm from /usr/local")
-
-        return super().linker_outcome(is_selected)
 
     @property
     def url(self):
@@ -84,10 +89,16 @@ class Gdbm(ModuleBuilder):
         )
         self.run_make()
         self.run_make("install")
-        runez.move(self.deps / "include/ndbm.h", self.deps / "include/gdbm-ndbm.h")
+        if PPG.target.is_linux:
+            runez.move(self.deps / "include/ndbm.h", self.deps / "include/gdbm-ndbm.h")
 
 
 class LibFFI(ModuleBuilder):
+    """
+    Known issues:
+    - linux: needs libffi-dev installed (even for a static build)
+    - macos-arch64: fails to build statically, symbol not found: _ffi_closure_trampoline_table_page
+    """
 
     m_debian = "!libffi-dev"
     m_telltale = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
@@ -192,7 +203,11 @@ class Ncurses(ModuleBuilder):
 
 
 class Readline(ModuleBuilder):
-    """See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb"""
+    """
+    See https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/readline.rb
+    Known issues:
+    - linux: libreadline-dev must NOT be installed in order for static build to succeed
+    """
 
     m_debian = "-libreadline-dev"
     m_include = "readline"
@@ -217,6 +232,10 @@ class Readline(ModuleBuilder):
 
 
 class Sqlite(ModuleBuilder):
+    """
+    Known issues:
+    - linux: libsqlite3-dev must be installed in order for static build to succeed
+    """
 
     m_debian = "+libsqlite3-dev"
     m_telltale = ["{include}/sqlite3.h"]
@@ -249,6 +268,10 @@ class Sqlite(ModuleBuilder):
 
 
 class Uuid(ModuleBuilder):
+    """
+    Known issues:
+    - linux: uuid-dev must be installed in order for static build to succeed
+    """
 
     m_debian = "+uuid-dev"
     m_include = "uuid"
@@ -296,6 +319,10 @@ class Xz(ModuleBuilder):
 
 
 class Zlib(ModuleBuilder):
+    """
+    Known issues:
+    - linux: needs zlib1g-dev installed (even for a static build)
+    """
 
     m_debian = "!zlib1g-dev"
     m_telltale = "{include}/zlib.h"
