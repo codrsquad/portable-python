@@ -286,7 +286,7 @@ class ModuleBuilder:
         return self.modules.active_module(name)
 
     def cfg_version(self, default):
-        return PPG.config.get_value("version-%s" % self.m_name) or default
+        return PPG.config.get_value("%s-version" % self.m_name) or default
 
     @property
     def url(self):

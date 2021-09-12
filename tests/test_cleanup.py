@@ -7,6 +7,7 @@ def test_cleanup(cli):
     v = "3.9.7"
     mm = v[:3]
     bf = runez.to_path(f"build/cpython-{v}")
+    lib = bf / f"{v}/lib"
 
     # Simulate presence of some key files to verify code that is detecting them is hit
     runez.touch(bf / "build/tcl/pkgs/sqlite", logger=None)
@@ -17,15 +18,16 @@ def test_cleanup(cli):
     os.chmod(deps_dir / "lib/libssl.a", 0o755)
     runez.touch(bf / f"{v}/bin/python", logger=None)
     runez.touch(bf / f"{v}/bin/easy_install", logger=None)
-    runez.touch(bf / f"{v}/lib/idle_test/foo", logger=None)
-    runez.touch(bf / f"{v}/lib/libpython{mm}.a", logger=None)
-    runez.touch(bf / f"{v}/lib/python{mm}/config-{mm}-darwin/libpython{mm}.a", logger=None)
+    runez.touch(lib / "idle_test/foo", logger=None)
+    sample_content = "dummy content for libpython.a\n" * 1000
+    runez.write(lib / f"libpython{mm}.a", sample_content, logger=None)
+    runez.write(lib / f"python{mm}/config-{mm}-darwin/libpython{mm}.a", sample_content, logger=None)
 
     cfg = cli.tests_path("sample-config1.yml")
     cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,tkinter,readline", v)
     assert cli.succeeded
     assert "Cleaned 1 build artifact (0 B): idle_test" in cli.logged
-    assert f"Cleaned 2 build artifacts (0 B): config-{mm}-darwin libpython{mm}.a" in cli.logged
+    assert f"Cleaned 2 build artifacts (59 KB): config-{mm}-darwin libpython{mm}.a" in cli.logged
     assert f"Corrected permissions for {deps_dir}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={bf}\n" in cli.logged
 
@@ -33,4 +35,5 @@ def test_cleanup(cli):
     assert cli.succeeded
     assert "Cleaned 1 build artifact (0 B): easy_install" in cli.logged
     assert "selected: all" in cli.logged
+    assert f"Would symlink {lib}/python{mm}/config-{mm}-darwin/libpython{mm}.a <- {lib}/libpython{mm}.a"
     assert f"Would tar build/cpython-{v}/{v} -> dist/cpython-{v}-linux-x86_64.tar.gz" in cli.logged

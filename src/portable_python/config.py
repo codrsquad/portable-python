@@ -1,3 +1,4 @@
+import collections
 import fnmatch
 import logging
 import os
@@ -130,10 +131,6 @@ class Config:
     def __repr__(self):
         return "%s, %s [%s]" % (runez.short(self.path), runez.plural(self.sources, "config source"), self.target)
 
-    @property
-    def use_github(self):
-        return self.get_value("use-github")
-
     def get_value(self, *key):
         """
         Args:
@@ -159,26 +156,13 @@ class Config:
         return runez.joined(result, delimiter="\n")
 
     @staticmethod
-    def get_filesize(*paths, logger=LOG.warning):
-        size = 0
-        seen = set()
-        for p in runez.flattened(paths, unique=True, transform=runez.to_path):
-            if p and p.exists():
-                c = runez.checksum(p) if p.is_file() else None
-                if c is None or c not in seen:
-                    seen.add(c)
-                    try:
-                        size += runez.filesize(p)
-
-                    except Exception as e:
-                        if logger:
-                            logger("Can't stat %s: %s" % (runez.short(p), runez.short(e, size=32)))
-
-        return size
+    def represented_filesize(*paths, base=1024):
+        size = runez.filesize(*paths, logger=LOG.debug)
+        return runez.bold(runez.represented_bytesize(size, base=base) if size else "-")
 
     @staticmethod
     def delete(path):
-        size = Config.get_filesize(path)
+        size = runez.filesize(path)
         runez.delete(path, logger=None)
         LOG.info("Deleted %s (%s)" % (runez.short(path), runez.represented_bytesize(size)))
         return size
@@ -218,12 +202,25 @@ class Config:
 
     def cleanup_folder(self, module):
         self._cleanup_folder_with_spec(module, self.get_value("always-clean", module.m_name))
-        original_size = self.get_filesize(module.install_folder)
+        original_size = runez.filesize(module.install_folder)
         self._cleanup_folder_with_spec(module, self.get_value("%s-clean" % module.m_name))
-        cleaned_size = self.get_filesize(module.install_folder)
+        cleaned_size = runez.filesize(module.install_folder)
         original_size = runez.represented_bytesize(original_size)
         cleaned_size = runez.represented_bytesize(cleaned_size)
         LOG.info("Original size: %s, cleaned size: %s" % (original_size, cleaned_size))
+        self.symlink_duplicates(module.install_folder)
+
+    def symlink_duplicates(self, folder):
+        if self.target.is_linux or self.target.is_macos:
+            seen = collections.defaultdict(list)
+            _find_file_duplicates(seen, folder)
+            duplicates = {k: v for k, v in seen.items() if len(v) > 1}
+            for dupes in duplicates.values():
+                dupes = sorted(dupes, key=lambda x: len(str(x)))
+                if len(dupes) == 2:
+                    shorter, longer = dupes
+                    if str(longer).startswith(str(shorter.parent)):
+                        runez.symlink(longer, shorter, logger=LOG.info)
 
     @staticmethod
     def real_path(path: pathlib.Path):
@@ -249,7 +246,7 @@ class Config:
         if fatal is not None:
             return runez.abort("Could not determine real path for %s" % runez.short(desired), return_value=desired, fatal=fatal)
 
-    def correct_symlinks(self, module):
+    def ensure_main_file_symlinks(self, module):
         folder = module.install_folder
         version = module.version
         relative_paths = self.get_value("%s-symlink" % module.m_name)
@@ -355,3 +352,14 @@ class SingleFileMatch:
 
         else:
             assert True
+
+
+def _find_file_duplicates(seen, folder):
+    for p in runez.ls_dir(folder):
+        if p.name not in ("__pycache__", "site-packages"):
+            if p.is_dir():
+                _find_file_duplicates(seen, p)
+
+            elif p.is_file() and runez.filesize(p) > 10000:
+                c = runez.checksum(p)
+                seen[c].append(p)

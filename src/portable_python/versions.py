@@ -66,7 +66,7 @@ class CPythonFamily(VersionFamily):
 
     def get_available_versions(self):
         """Available versions as per python.org/ftp"""
-        if PPG.config.use_github:
+        if PPG.config.get_value("cpython-use-github"):
             r = self.client.get("https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
             for item in r:
                 ref = item.get("ref")

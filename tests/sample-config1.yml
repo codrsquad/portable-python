@@ -7,7 +7,7 @@ macos:                                    # Applies to macos only
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.15       # Overridden on arm64 in sample-config2.yml
 
-  pip-install:
+  cpython-pip-install:
     - wheel                               # Exercise extra pip installs
 
   cpython-clean:                          # Not "merged" with overall "clean:" section, taken as-is
@@ -16,9 +16,6 @@ macos:                                    # Applies to macos only
   - libpython*.a
 
 # This would get picked up on all platforms
-cpython-clean:
-  - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc*
-
+cpython-clean: bin/2to3* bin/easy_install* bin/idle3* bin/pydoc*
 cpython-symlink: bin/python bin/pip
-
-use-github: true
+cpython-use-github: true

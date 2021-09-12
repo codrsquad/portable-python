@@ -15,7 +15,7 @@ class Cpython(PythonBuilder):
     @property
     def url(self):
         """Url of source tarball"""
-        if PPG.config.use_github:
+        if PPG.config.get_value("cpython-use-github"):
             return f"https://github.com/python/cpython/archive/refs/tags/v{self.version}.tar.gz"
 
         return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
@@ -60,7 +60,7 @@ class Cpython(PythonBuilder):
 
     def _finalize(self):
         bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
-        extras = PPG.config.get_value("pip-install")
+        extras = PPG.config.get_value("cpython-pip-install")
         if extras:
             extras = runez.flattened(extras, split=" ")
             for extra in extras:
@@ -70,5 +70,5 @@ class Cpython(PythonBuilder):
         for f in runez.ls_dir(self.bin_folder):
             PPG.config.auto_correct_shebang(f, bin_python)
 
-        PPG.config.correct_symlinks(self)
+        PPG.config.ensure_main_file_symlinks(self)
         self.run(bin_python, "-mcompileall")

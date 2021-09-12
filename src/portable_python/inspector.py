@@ -317,18 +317,13 @@ class PythonInspector:
 
             return p
 
-    @staticmethod
-    def represented_filesize(*paths):
-        size = PPG.config.get_filesize(*paths, logger=LOG.debug)
-        return runez.bold(runez.represented_bytesize(size) if size else "-")
-
     def libpython_report(self, items):
         if not items:
             return runez.green("-not used-")
 
         rel_paths = [getattr(x, "relative_path", x) for x in items]
         full_paths = [runez.to_path(self.install_folder) / x for x in rel_paths]
-        return runez.joined(self.represented_filesize(*full_paths), rel_paths)
+        return runez.joined(PPG.config.represented_filesize(*full_paths), rel_paths)
 
     def represented(self, verbose=1):
         report = []
@@ -346,7 +341,7 @@ class PythonInspector:
             if verbose:
                 table.add_row("libpython*.a", self.libpython_report(self.full_so_report.lib_static))
                 table.add_row("libpython*.so", self.libpython_report(self.full_so_report.libpython_so))
-                table.add_row("install size", self.represented_filesize(self.install_folder))
+                table.add_row("install size", PPG.config.represented_filesize(self.install_folder))
 
             report.append(table)
             if verbose:
