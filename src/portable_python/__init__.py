@@ -470,13 +470,11 @@ class PythonBuilder(ModuleBuilder):
     def __init__(self, parent_module):
         super().__init__(parent_module)
         self.build_root = self.setup.build_folder  # Base folder where we'll compile python
+        self.c_configure_prefix = self.setup.prefix or f"/pp-install-folder-marker/{self.version.text}"
         if self.setup.prefix:
             self.build_root = self.build_root / "root"
-            self.install_folder = self.build_root / self.setup.prefix.strip("/")
 
-        else:
-            self.install_folder = self.build_root / self.version.text
-
+        self.install_folder = self.build_root / self.c_configure_prefix.strip("/")
         self.bin_folder = self.install_folder / "bin"
 
     def selected_modules(self):

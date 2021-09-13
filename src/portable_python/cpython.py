@@ -57,8 +57,7 @@ class Cpython(PythonBuilder):
             yield f"--with-openssl={self.deps}"     # 3.7+?
 
     def _do_linux_compile(self):
-        prefix = self.setup.prefix or f"/pp-install-folder-marker/{self.version.text}"
-        self.run_configure("./configure", self.c_configure_args(), prefix=prefix)
+        self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
         self.run_make()
         self.run_make("install", f"DESTDIR={self.build_root}")
 
