@@ -122,7 +122,7 @@ class Config:
         self.by_path = {}
         if path:
             self.load(path)
-            default = yaml.safe_load(DEFAULT_CONFIG)
+            default = self.parsed_yaml(DEFAULT_CONFIG, "default config")
             default = ConfigSource("default", default)
             self.sources.append(default)
 
@@ -172,6 +172,14 @@ class Config:
         runez.delete(path, logger=None)
         LOG.info("Deleted %s (%s)" % (runez.short(path), runez.represented_bytesize(size)))
         return size
+
+    @staticmethod
+    def parsed_yaml(text, source):
+        try:
+            return yaml.safe_load(text)
+
+        except Exception as e:
+            runez.abort("Invalid yaml in %s: %s" % (runez.bold(runez.short(source)), e))
 
     def _cleanup_folder_with_spec(self, module, spec):
         spec = runez.flattened(spec, split=True)
@@ -296,7 +304,7 @@ class Config:
     def load(self, path):
         if path.exists():
             with open(path) as fh:
-                data = yaml.safe_load(fh)
+                data = self.parsed_yaml(fh, path)
                 source = ConfigSource(path, data)
                 self.sources.append(source)
                 self.by_path[str(path)] = source

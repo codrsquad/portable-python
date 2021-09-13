@@ -3,13 +3,18 @@ from portable_python.versions import CPythonFamily, PPG
 
 
 GH_CPYTHON_SAMPLE = """
-[{"ref": "refs/tags/v3.9.7"},{"ref": "refs/tags/v3.8.12"}]
+[
+{"ref": "refs/tags/v3.9.7"},
+{"ref": "refs/tags/v3.8.12"},
+{"ref": "refs/tags/v3.6.15"}
+]
 """
 
 PYTHON_ORG_SAMPLE = """
 <a href="3.9.5/">3.9.5/</a>
 <a href="3.9.6/">3.9.6/</a>
 <a href="3.8.11/">3.9.11/</a>
+<a href="3.6.15/">3.6.15/</a>
 """
 
 
@@ -27,6 +32,7 @@ def test_list(cli, monkeypatch):
     cp = CPythonFamily()
     assert str(cp.latest) == "3.9.6"
 
+    monkeypatch.setattr(PPG.cpython, "_versions", None)
     cli.run("list")
     assert cli.succeeded
     assert cli.logged.stdout.contents().strip() == "cpython:\n  3.9: 3.9.6\n  3.8: 3.8.11"

@@ -130,6 +130,9 @@ class LibFFI(ModuleBuilder):
 
 
 class Openssl(ModuleBuilder):
+    """
+    See https://wiki.openssl.org/index.php/Compilation_and_Installation
+    """
 
     m_include = "openssl"
     m_telltale = "{include}/openssl/ssl.h"

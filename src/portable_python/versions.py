@@ -63,6 +63,7 @@ class CPythonFamily(VersionFamily):
     """Implementation for cpython"""
 
     client = RestClient()
+    MIN_VERSION = Version("3.7")
 
     def get_available_versions(self):
         """Available versions as per python.org/ftp"""
@@ -73,7 +74,7 @@ class CPythonFamily(VersionFamily):
                 if ref and ref.startswith("refs/tags/v"):
                     ref = ref[11:]
                     v = Version(ref)
-                    if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and (v.major, v.minor) > (3, 5):
+                    if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and self.MIN_VERSION < v:
                         yield v
 
             return
@@ -87,7 +88,7 @@ class CPythonFamily(VersionFamily):
                     m = regex.search(line)
                     if m:
                         v = Version(m.group(1))
-                        if v.is_valid and v.is_final and "3.6" < v < "3.10":
+                        if v.is_valid and v.is_final and self.MIN_VERSION < v:
                             yield v
 
     def get_builder(self):
