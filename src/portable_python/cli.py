@@ -7,7 +7,8 @@ import runez
 from runez.pyenv import PythonDepot
 from runez.render import PrettyTable
 
-from portable_python import BuildSetup, PPG, PythonInspector
+from portable_python import BuildSetup, PPG
+from portable_python.inspector import PythonInspector
 
 
 LOG = logging.getLogger(__name__)

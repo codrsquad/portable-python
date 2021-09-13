@@ -27,4 +27,5 @@ dist/
 root/
 venv*/
 
-portable-python.yml
+portable-python*.yml
+pp*.yml

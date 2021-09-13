@@ -20,7 +20,6 @@ from runez.http import RestClient
 from runez.pyenv import PythonSpec
 from runez.render import Header, PrettyTable
 
-from portable_python.inspector import PythonInspector
 from portable_python.versions import PPG
 
 
@@ -111,13 +110,6 @@ class BuildSetup:
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
             runez.ensure_folder(self.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
-            if not self.prefix and (not runez.DRYRUN or self.python_builder.install_folder.is_dir()):
-                py_inspector = PythonInspector(self.python_builder.install_folder)
-                print(py_inspector.represented())
-                problem = py_inspector.full_so_report.get_problem(portable=not self.prefix)
-                if problem:
-                    runez.abort("Build failed: %s" % problem, fatal=not runez.DRYRUN)
-
             runez.compress(self.python_builder.install_folder, self.tarball_path)
 
 
@@ -475,32 +467,21 @@ class ModuleBuilder:
 
 class PythonBuilder(ModuleBuilder):
 
+    def __init__(self, parent_module):
+        super().__init__(parent_module)
+        self.build_root = self.setup.build_folder  # Base folder where we'll compile python
+        if self.setup.prefix:
+            self.build_root = self.build_root / "root"
+            self.install_folder = self.build_root / self.setup.prefix.strip("/")
+
+        else:
+            self.install_folder = self.build_root / self.version.text
+
+        self.bin_folder = self.install_folder / "bin"
+
     def selected_modules(self):
         desired = self.setup.desired_modules or PPG.config.get_value("%s-modules" % self.m_name)
         return ModuleCollection(self, desired=desired)
-
-    @property
-    def c_configure_prefix(self):
-        return self.setup.prefix or f"/{self.version.text}"
-
-    @property
-    def bin_folder(self):
-        """Folder where compiled python exe resides"""
-        return self.install_folder / "bin"
-
-    @property
-    def build_root(self):
-        """Base folder where we'll compile python, with optional prefixed-layout (for debian-like packaging)"""
-        folder = self.setup.build_folder
-        if self.setup.prefix:
-            folder = folder / "root"
-
-        return folder
-
-    @property
-    def install_folder(self):
-        """Folder where the python we compile gets installed"""
-        return self.build_root / self.c_configure_prefix.strip("/")
 
     @property
     def version(self):
