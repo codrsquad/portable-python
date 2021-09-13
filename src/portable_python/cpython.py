@@ -4,6 +4,7 @@ from portable_python import PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 
 
+# noinspection PyPep8Naming
 class Cpython(PythonBuilder):
     """
     Build CPython binaries
@@ -22,21 +23,21 @@ class Cpython(PythonBuilder):
 
         return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
 
+    # noinspection PyMethodMayBeStatic
     def xenv_CFLAGS_NODIST(self):
-        yield from super().xenv_CFLAGS_NODIST()
         yield "-Wno-unused-command-line-argument"
 
     def xenv_LDFLAGS_NODIST(self):
-        yield from super().xenv_LDFLAGS_NODIST()
-        if PPG.target.is_linux and self.setup.prefix:
-            yield f"-Wl,-rpath,{self.setup.prefix}/lib"
+        yield f"-L{self.deps_lib}"
+        if PPG.target.is_linux:
+            yield f"-Wl,-rpath,{self.install_folder}/lib"
 
     def c_configure_args(self):
         configured = PPG.config.get_value("cpython-configure")
         if configured:
             yield from configured
 
-        if self.setup.prefix:
+        if self.setup.prefix or PPG.target.is_linux:
             yield "--enable-shared"
 
         if self.version >= "3.10":

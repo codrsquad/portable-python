@@ -103,10 +103,11 @@ def inspect(modules, verbose, prefix, pythons):
             print(runez.blue(inspector.python))
 
         print(inspector.represented(verbose=verbose))
-        problem = inspector.full_so_report.get_problem(portable=not prefix)
-        if problem:
-            LOG.error(f"Build problem: {problem}")
-            exit_code = 1
+        if not modules or modules == "all":
+            problem = inspector.full_so_report.get_problem(portable=not prefix)
+            if problem:
+                LOG.error(f"Build problem: {problem}")
+                exit_code = 1
 
     sys.exit(exit_code)
 

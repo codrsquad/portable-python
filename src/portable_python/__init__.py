@@ -316,21 +316,18 @@ class ModuleBuilder:
     def deps_lib(self):
         return self.deps / "lib"
 
-    # noinspection PyMethodMayBeStatic
-    def xenv_ARCHFLAGS(self):
-        yield "-arch ", PPG.target.arch
-
-    def xenv_CFLAGS_NODIST(self):
+    def xenv_CPATH(self):
         if self.modules.selected:
             # By default, set CPATH only for modules that have sub-modules (descendants can override this easily)
             folder = self.deps / "include"
-            yield f"-I{folder}"
+            yield folder
             for module in self.modules:
                 if module.m_include:
-                    yield f"-I{folder / module.m_include}"
+                    yield folder / module.m_include
 
-    def xenv_LDFLAGS_NODIST(self):
-        yield f"-L{self.deps_lib}"
+    def xenv_LDFLAGS(self):
+        if self.modules.selected:
+            yield f"-L{self.deps_lib}"
 
     def xenv_PATH(self):
         yield f"{self.deps}/bin"
@@ -338,7 +335,8 @@ class ModuleBuilder:
         yield "/bin"
 
     def xenv_PKG_CONFIG_PATH(self):
-        yield f"{self.deps_lib}/pkgconfig"
+        if self.modules.selected:
+            yield f"{self.deps_lib}/pkgconfig"
 
     def run(self, program, *args, fatal=True):
         return runez.run(program, *args, passthrough=self._log_handler or True, fatal=fatal)
@@ -507,6 +505,9 @@ class PythonBuilder(ModuleBuilder):
     @property
     def version(self):
         return self.setup.python_spec.version
+
+    def xenv_LDFLAGS(self):
+        """Python builder does not reuse the common setting"""
 
     def _prepare(self):
         # Some libs get funky permissions for some reason
