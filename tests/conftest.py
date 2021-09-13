@@ -3,6 +3,7 @@ from runez.conftest import cli, logged, temp_folder  # noqa: fixtures
 from runez.http import GlobalHttpCalls
 
 from portable_python.cli import main
+from portable_python.versions import PPG
 
 
 GlobalHttpCalls.forbid()
@@ -17,3 +18,11 @@ def dummy_tarball(basename, content=None):
     runez.write("sample/README", content, logger=None)
     runez.compress("sample", "build/downloads/%s" % basename, logger=None)
     runez.delete("sample", logger=None)
+
+
+def typical_install_folder(version):
+    return typical_build_folder(version) / PPG.marked_prefix(version).strip("/")
+
+
+def typical_build_folder(version):
+    return runez.to_path(f"build/cpython-{version}")

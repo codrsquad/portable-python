@@ -107,6 +107,19 @@ class PPG:
 
     _depot = None
 
+    @staticmethod
+    def marked_prefix(version):
+        """Placeholder function that allows to easily turn on using a --prefix with a special marker
+
+        Args:
+            version (Version | str): Python version
+
+        Returns:
+            (str): Prefix to use for the portable case (ie: we're NOT giving a meaningful --prefix to Python's configure script)
+        """
+        # return f"/pp-install-folder-marker/{version}"  # Will use if --prefix is found to be important in at least one case
+        return f"/{version}"
+
     @classmethod
     def grab_config(cls, path=None, base_folder=None, target=None):
         cls.config = Config(path=path, base_folder=base_folder, target=target, replaces=cls.config)

@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import runez
 
-from .conftest import dummy_tarball
+from .conftest import dummy_tarball, typical_build_folder, typical_install_folder
 
 
 def test_finalization(cli, monkeypatch):
@@ -10,8 +10,8 @@ def test_finalization(cli, monkeypatch):
     mm = v[:3]
     dummy_tarball(f"Python-{v}.tar.xz")
     dummy_tarball("bzip2-1.0.8.tar.gz")
-    base = runez.to_path(f"build/cpython-{v}/pp-install-folder-marker")
-    bin = base / f"{v}/bin"
+    base = typical_build_folder(v)
+    bin = typical_install_folder(v) / "bin"
 
     runez.touch(base / "build/cpython/README", logger=None)
 
