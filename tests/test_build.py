@@ -10,7 +10,7 @@ def test_finalization(cli, monkeypatch):
     mm = v[:3]
     dummy_tarball(f"Python-{v}.tar.xz")
     dummy_tarball("bzip2-1.0.8.tar.gz")
-    base = runez.to_path(f"build/cpython-{v}")
+    base = runez.to_path(f"build/cpython-{v}/pp-install-folder-marker")
     bin = base / f"{v}/bin"
 
     runez.touch(base / "build/cpython/README", logger=None)
@@ -30,9 +30,9 @@ def test_finalization(cli, monkeypatch):
         assert cli.failed
         assert "selected: bzip2 (1 module)" in cli.logged
         assert "INFO Cleaned 2 build artifacts (0 B): __phello__.foo.py idle_test" in cli.logged
-        assert f"Symlink build/cpython-{v}/{v}/bin/foo-python <- build/cpython-{v}/{v}/bin/python" in cli.logged
-        assert f"Symlink build/cpython-{v}/{v}/bin/pip{mm} <- build/cpython-{v}/{v}/bin/pip" in cli.logged
-        assert f"Auto-corrected shebang for build/cpython-{v}/{v}/bin/some-exe" in cli.logged
+        assert f"Symlink {bin}/foo-python <- {bin}/python" in cli.logged
+        assert f"Symlink {bin}/pip{mm} <- {bin}/pip" in cli.logged
+        assert f"Auto-corrected shebang for {bin}/some-exe" in cli.logged
         assert "Build failed" in cli.logged
 
     assert list(runez.readlines(bin / "some-exe")) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
@@ -42,6 +42,6 @@ def test_finalization(cli, monkeypatch):
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("-tmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", v, "-mbzip2")
         assert cli.failed
-        assert f"Deleted build/cpython-{v}/{v}/bin/pip{mm}" in cli.logged
+        assert f"Deleted {bin}/pip{mm}" in cli.logged
         assert f"Cleaned 2 build artifacts (0 B): pip pip{mm}" in cli.logged
         assert cli
