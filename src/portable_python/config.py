@@ -15,14 +15,13 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = """
 ext: gz
-always-clean:
-  cpython:
-    - __phello__.foo.py
-    - __pycache__
-    - _test*capi.*
-    - idle_test/
-    - test/
-    - tests/
+cpython-always-clean-default:
+  - __phello__.foo.py
+  - __pycache__
+  - _test*capi.*
+  - idle_test/
+  - test/
+  - tests/
 
 cpython-configure:
   - --enable-optimizations      # 3.6+
@@ -182,7 +181,7 @@ class Config:
             runez.abort("Invalid yaml in %s: %s" % (runez.bold(runez.short(source)), e))
 
     def _cleanup_folder_with_spec(self, module, spec):
-        spec = runez.flattened(spec, split=True)
+        spec = runez.flattened(spec, split=True, unique=True)
         if spec:
             version = module.version
             spec = [x.format(mm=f"{version.major}.{version.minor}", version=version) for x in spec]
@@ -215,7 +214,13 @@ class Config:
                 LOG.info("Cleaned %s (%s): %s" % (runez.plural(cleaned, "build artifact"), deleted_size, runez.short(names)))
 
     def cleanup_folder(self, module):
-        self._cleanup_folder_with_spec(module, self.get_value("always-clean", module.m_name))
+        key = "%s-always-clean" % module.m_name
+        general_clean = (
+            self.get_value("%s-default" % key),
+            self.get_value(key),
+            self.get_value("%s-%s" % (key, self.target.platform)),
+        )
+        self._cleanup_folder_with_spec(module, general_clean)
         original_size = runez.filesize(module.install_folder)
         self._cleanup_folder_with_spec(module, self.get_value("%s-clean" % module.m_name))
         self.symlink_duplicates(module.install_folder)
