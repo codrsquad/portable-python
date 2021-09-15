@@ -1,3 +1,6 @@
+folders:
+  logs: "{build}/logs"
+
 macos:
   arm64:  # Verify that this setting is picked up on macos-arm64
     env:

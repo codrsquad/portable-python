@@ -15,13 +15,13 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = """
 folders:
-  build: "build/{family}-{version}"
+  build: build
   destdir: "{build}"
-  dist: "dist"
+  dist: dist
   components: "{build}/components"
-  downloads: "build/downloads"
-  logs: "{build}/logs"
-  prefix: "/{version}"
+  logs: ""
+  prefix: /{version}
+  sources: build/sources
 
 ext: gz
 cpython-always-clean-default:
@@ -31,6 +31,14 @@ cpython-always-clean-default:
   - idle_test/
   - test/
   - tests/
+
+# By default, clean old cruft (this can be overridden in user config)
+cpython-always-clean: bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
+cpython-always-clean-linux: wininst-*
+cpython-always-clean-macos: wininst-*
+
+cpython-pip-install: wheel
+cpython-symlink: bin/python
 
 cpython-configure:
   - --enable-optimizations      # 3.6+
@@ -52,47 +60,12 @@ macos:
     cpython-modules: xz openssl gdbm
 """
 
-
-class ConfigSource:
-    """Settings from one config file"""
-
-    def __init__(self, source, data):
-        self.source = source
-        self.data = data
-
-    def __repr__(self):
-        return runez.short(self.source)
-
-    def represented(self):
-        """Textual (yaml) representation of this config"""
-        buffer = StringIO()
-        yaml.dump(self.data, stream=buffer)
-        return buffer.getvalue()
-
-    def get_value(self, key):
-        """
-        Args:
-            key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
-
-        Returns:
-            Associated value, if any
-        """
-        return self._deep_get(self.data, key)
-
-    def _deep_get(self, data, key):
-        if not key or not isinstance(data, dict):
-            return None
-
-        if isinstance(key, tuple):
-            if len(key) > 1:
-                value = self._deep_get(data, key[0])
-                return self._deep_get(value, key[1:])
-
-            key = key[0]
-
-        value = data.get(key)
-        if value is not None:
-            return value
+# Config used only when running from a dev venv, of portable-python itself
+DEV_CONFIG = """
+folders:
+  build: "build/{family}-{version}"     # Allows to build multiple python versions, and keep outcomes of each
+  logs: "{build}/logs"                  # Allows to capture logs individually for each compiled component
+"""
 
 
 class Config:
@@ -113,6 +86,11 @@ class Config:
         self.by_path = {}
         for path in self.paths:
             self.load(path)
+
+        if runez.DEV.project_folder:
+            default = self.parsed_yaml(DEV_CONFIG, "dev config")
+            default = ConfigSource("dev config", default)
+            self.sources.append(default)
 
         default = self.parsed_yaml(DEFAULT_CONFIG, "default config")
         default = ConfigSource("default config", default)
@@ -313,6 +291,48 @@ class Config:
                 if include:
                     include = runez.resolved_path(include, base=path.parent)
                     self.load(runez.to_path(include))
+
+
+class ConfigSource:
+    """Settings from one config file"""
+
+    def __init__(self, source, data):
+        self.source = source
+        self.data = data
+
+    def __repr__(self):
+        return runez.short(self.source)
+
+    def represented(self):
+        """Textual (yaml) representation of this config"""
+        buffer = StringIO()
+        yaml.dump(self.data, stream=buffer)
+        return buffer.getvalue()
+
+    def get_value(self, key):
+        """
+        Args:
+            key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
+
+        Returns:
+            Associated value, if any
+        """
+        return self._deep_get(self.data, key)
+
+    def _deep_get(self, data, key):
+        if not key or not isinstance(data, dict):
+            return None
+
+        if isinstance(key, tuple):
+            if len(key) > 1:
+                value = self._deep_get(data, key[0])
+                return self._deep_get(value, key[1:])
+
+            key = key[0]
+
+        value = data.get(key)
+        if value is not None:
+            return value
 
 
 class FileMatcher:

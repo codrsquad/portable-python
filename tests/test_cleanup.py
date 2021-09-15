@@ -11,13 +11,13 @@ def test_cleanup(cli):
     lib = install_dir / "lib"
 
     # Simulate presence of some key files to verify code that is detecting them is hit
-    runez.touch(install_dir / "build/tcl/pkgs/sqlite", logger=None)
     runez.touch(f.deps / "bin/bzcat", logger=None)
     runez.touch(f.deps / "include/readline/readline.h", logger=None)
     runez.touch(f.deps / "lib/libssl.a", logger=None)
     os.chmod(f.deps / "lib/libssl.a", 0o755)
     runez.touch(install_dir / "bin/python", logger=None)
     runez.touch(install_dir / "bin/easy_install", logger=None)
+    runez.touch(install_dir / f"bin/pip{f.mm}", logger=None)
     runez.touch(lib / "idle_test/foo", logger=None)
     sample_content = "dummy content for libpython.a\n" * 1000
     runez.write(lib / f"libpython{f.mm}.a", sample_content, logger=None)
@@ -26,14 +26,15 @@ def test_cleanup(cli):
     cfg = cli.tests_path("sample-config1.yml")
     cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,readline", f.version)
     assert cli.succeeded
-    assert "Cleaned 1 build artifact (0 B): idle_test" in cli.logged
-    assert f"Cleaned 2 build artifacts (59 KB): config-{f.mm}-darwin libpython{f.mm}.a" in cli.logged
+    assert "MACOSX_DEPLOYMENT_TARGET=10.25" in cli.logged
+    assert f"Cleaned 3 build artifacts (59 KB): config-{f.mm}-darwin libpython{f.mm}.a pip{f.mm}" in cli.logged
     assert f"Corrected permissions for {f.deps}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={f.build_folder}\n" in cli.logged
 
     cli.run("-ntlinux-x86_64", f"-c{cfg}", "build", f.version, "-mall")
     assert cli.succeeded
-    assert "Cleaned 1 build artifact (0 B): easy_install" in cli.logged
+    assert "MACOSX_DEPLOYMENT_TARGET" not in cli.logged
     assert "selected: all" in cli.logged
+    assert f"Would symlink {install_dir}/bin/pip{f.mm} <- {install_dir}/bin/pip" in cli.logged
     assert f"Would symlink {lib}/python{f.mm}/config-{f.mm}-darwin/libpython{f.mm}.a <- {lib}/libpython{f.mm}.a"
     assert f"Would tar {install_dir} -> dist/cpython-{f.version}-linux-x86_64.tar.gz" in cli.logged

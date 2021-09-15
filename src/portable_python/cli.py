@@ -99,9 +99,7 @@ def inspect(modules, verbose, prefix, pythons):
             exit_code = 1
             continue
 
-        if verbose > 1 or len(pythons) > 1:
-            print(runez.blue(inspector.python))
-
+        print(runez.blue(inspector.python))
         print(inspector.represented(verbose=verbose))
         if not modules or modules == "all":
             problem = inspector.full_so_report.get_problem(portable=not prefix)

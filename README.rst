@@ -159,7 +159,7 @@ Note that you can use ``--dryrun`` mode to inspect what would be done without do
 
     Would create build/cpython-3.9.7
     ...
-    Would untar build/downloads/readline-8.1.tar.gz -> build/cpython-3.9.7/build/readline
+    Would untar build/sources/readline-8.1.tar.gz -> build/cpython-3.9.7/build/readline
     ...
     Would run: ./configure --prefix=/deps
     Would run: /usr/bin/make
@@ -173,16 +173,25 @@ Build folder structure
 ``portable-python`` uses this file structure (build/ and dist/ folders configurable)::
 
     build/
-        cpython-3.9.7/      # Build artifacts for corresponding version are here
-            3.9.7/          # Full installation (after build completes)
-            build/          # Source code of various needed/selected modules are here
-            deps/           # --prefix=.../deps passed to all ./configure scripts
-            logs/           # Logs for each module build are here, in order of build
-        downloads/
+        3.9.7/                              # Full installation (after build completes)
+        components/                         # Source code of various needed/selected modules are here
+        deps/                               # --prefix=.../deps passed to all ./configure scripts
+        sources/
             openssl-1.1.1k.tar.gz           # Downloaded artifacts (downloaded only once)
     dist/
         cpython-3.9.7-macos-arm64.tar.gz    # Ready-to-go portable binary tarball
 
+
+Build folder structure when iterating on portable-python itself
+---------------------------------------------------------------
+
+A "dev config" allows to have a setup where you can build several versions and not lose their outcome, and track logs::
+
+    build/
+        cpython-3.9.7/      # Build artifacts are per family-version subfolder
+            3.9.7/
+            ...
+            logs/           # Logs for each module build are here, in order of build
 
 
 .. _pyenv: https://github.com/pyenv/pyenv

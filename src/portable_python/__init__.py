@@ -392,7 +392,7 @@ class ModuleBuilder:
 
                 # Split on '#' for urls that include a checksum, such as #sha256=... fragment
                 basename = runez.basename(self.url, extension_marker="#")
-                path = self.setup.folders.downloads / basename
+                path = self.setup.folders.sources / basename
                 if not path.exists():
                     REST_CLIENT.download(self.url, path)
 

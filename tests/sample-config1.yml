@@ -5,10 +5,7 @@ include: sample-config2.yml               # Allow including other configs, for c
 macos:                                    # Applies to macos only
   ext: .tar.xz                            # Verify this gets picked up on macos (arm64 and/or x86_64)
   env:
-    MACOSX_DEPLOYMENT_TARGET: 10.15       # Overridden on arm64 in sample-config2.yml
-
-  cpython-pip-install:
-    - wheel                               # Exercise extra pip installs
+    MACOSX_DEPLOYMENT_TARGET: 10.25       # Overridden on arm64 in sample-config2.yml
 
   cpython-clean:                          # Not "merged" with overall "clean:" section, taken as-is
   - bin/pip*                              # Example: remove all bin/pip* commands after build (don't package them)
@@ -16,6 +13,5 @@ macos:                                    # Applies to macos only
   - libpython*.a
 
 # This would get picked up on all platforms
-cpython-clean: bin/2to3* bin/easy_install* bin/idle3* bin/pydoc*
 cpython-symlink: bin/python bin/pip
 cpython-use-github: true

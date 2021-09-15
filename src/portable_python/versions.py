@@ -111,9 +111,9 @@ class Folders:
         self.deps = self.build_folder / "deps"
         self.destdir = self._get_path("destdir")
         self.dist = self._get_path("dist", required=False)
-        self.downloads = self._get_path("downloads")
         self.logs = self._get_path("logs", required=False)
         self.prefix = self._get_value("prefix")
+        self.sources = self._get_path("sources")
 
     def __repr__(self):
         return runez.short(self.build_folder)
@@ -136,10 +136,11 @@ class Folders:
 
     def _get_path(self, key, required=True):
         path = self._get_value(key, required=required)
-        if self.base_folder:
+        if path and self.base_folder:
             path = runez.resolved_path(path, base=self.base_folder)
 
-        return runez.to_path(path, no_spaces=True)
+        if path:
+            return runez.to_path(path, no_spaces=True)
 
 
 class PPG:

@@ -1,4 +1,4 @@
-import os
+import runez
 
 from portable_python.versions import PPG
 
@@ -15,10 +15,10 @@ def test_failed_run(cli, monkeypatch):
     folders = PPG.get_folders(version="3.9.7")
     dummy_tarball(folders, "zlib-1.2.11.tar.gz")
     monkeypatch.setenv("PP_X_DEBUG", "continue")
-    cli.run("build", folders.version, "-mzlib")
+    cli.run("-c", runez.DEV.tests_path("sample-config2.yml"), "build", folders.version, "-mzlib")
     assert cli.failed
     assert "./configure is not an executable" in cli.logged
-    assert os.path.exists(folders.build_folder / "logs/01-zlib.log")
+    assert (folders.build_folder / "logs/01-zlib.log").exists()
 
 
 def test_invalid(cli):

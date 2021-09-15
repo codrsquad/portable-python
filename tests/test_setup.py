@@ -20,8 +20,6 @@ def test_config(cli):
     assert cli.succeeded
     assert "env MACOSX_DEPLOYMENT_TARGET" not in cli.logged
     assert " -> dist/cpython-3.9.7-linux-x86_64.tar.gz" in cli.logged  # Default .tar.gz
-    assert "pip install -U wheel" not in cli.logged  # No pip-install section for linux
-    assert "--enable-optimizations" in cli.logged  # From default config
 
 
 def test_diagnostics(cli):
@@ -40,7 +38,7 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     runez.write("pp.yml", "", logger=None)
     PPG.grab_config("pp.yml", target="linux-x86_64")
     assert str(PPG.cpython) == "cpython"
-    assert str(PPG.config) == "2 config sources [linux-x86_64]"
+    assert str(PPG.config) == "3 config sources [linux-x86_64]"
 
     setup = BuildSetup("3.9.6")
     assert str(setup) == "build/cpython-3.9.6"
