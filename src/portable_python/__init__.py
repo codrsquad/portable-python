@@ -33,7 +33,7 @@ class BuildSetup:
     All modules are compiled in the same manner, follow the same conventional build layout.
     """
 
-    # Internal, used to ensure files under build/.../logs/ sort alphabetically in the same order they were compiled
+    # Internal, used to ensure files under {logs}/ folder sort alphabetically in the same order they were compiled
     log_counter = 0
 
     def __init__(self, python_spec=None, modules=None, prefix=None):
@@ -53,14 +53,11 @@ class BuildSetup:
         if python_spec.version.text not in python_spec.text or len(python_spec.version.given_components) < 3:
             runez.abort("Please provide full desired version: %s is not good enough" % runez.red(python_spec))
 
-        if prefix:
-            prefix = prefix.format(python_version=python_spec.version)
-
         self.python_spec = python_spec
+        self.folders = PPG.get_folders(base=os.getcwd(), family=python_spec.family, version=python_spec.version)
         self.desired_modules = modules
+        prefix = self.folders.formatted(prefix)
         self.prefix = prefix
-        self.build_folder = PPG.config.main_build_folder / python_spec.canonical.replace(":", "-")
-        self.deps_folder = self.build_folder / "deps"
         self.x_debug = os.environ.get("PP_X_DEBUG")
         configured_ext = PPG.config.get_value("ext")
         ext = runez.SYS_INFO.platform_id.canonical_compress_extension(configured_ext, short_form=True)
@@ -69,17 +66,16 @@ class BuildSetup:
 
         if prefix:
             dest = prefix.strip("/").replace("/", "-")
-            dest = PPG.target.composed_basename(dest, extension=ext)
+            self.tarball_name = PPG.target.composed_basename(dest, extension=ext)
 
         else:
-            dest = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
+            self.tarball_name = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
 
-        self.tarball_path = PPG.config.dist_folder / dest
         builder = PPG.family(python_spec.family).get_builder()
         self.python_builder = builder(self)  # type: PythonBuilder
 
     def __repr__(self):
-        return runez.short(self.build_folder)
+        return str(self.folders)
 
     def validate_module_selection(self, fatal=True):
         issues = []
@@ -102,15 +98,16 @@ class BuildSetup:
     def compile(self):
         """Compile selected python family and version"""
         self.log_counter = 0
-        with runez.Anchored(PPG.config.base_folder):
+        with runez.Anchored(self.folders.base_folder):
             modules = self.python_builder.modules
             LOG.info(runez.joined(modules, list(modules)))
             LOG.info("Platform: %s" % PPG.target)
             LOG.info("Build report:\n%s" % self.python_builder.modules.report())
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
-            runez.ensure_folder(self.build_folder, clean=not self.x_debug)
+            runez.ensure_folder(self.folders.build_folder, clean=not self.x_debug)
             self.python_builder.compile()
-            runez.compress(self.python_builder.install_folder, self.tarball_path)
+            if self.folders.dist:
+                runez.compress(self.python_builder.install_folder, self.folders.dist / self.tarball_name)
 
 
 class ModuleCollection:
@@ -225,7 +222,7 @@ class ModuleBuilder:
             self.parent_module = parent_module
 
         self.modules = self.selected_modules()
-        self.m_src_build = self.setup.build_folder / "build" / self.m_name
+        self.m_src_build = self.setup.folders.components / self.m_name
         self.resolved_telltale = self._find_telltale()
 
     def __repr__(self):
@@ -302,7 +299,7 @@ class ModuleBuilder:
     @property
     def deps(self):
         """Folder <build>/.../deps/, where all externals modules get installed"""
-        return self.setup.deps_folder
+        return self.setup.folders.deps
 
     @property
     def deps_lib(self):
@@ -331,7 +328,7 @@ class ModuleBuilder:
             yield f"{self.deps_lib}/pkgconfig"
 
     def run(self, program, *args, fatal=True):
-        return runez.run(program, *args, passthrough=self._log_handler or True, fatal=fatal)
+        return runez.run(program, *args, passthrough=self._log_handler, stdout=None, stderr=None, fatal=fatal)
 
     def run_configure(self, program, *args, prefix=None):
         """
@@ -361,14 +358,15 @@ class ModuleBuilder:
     @contextlib.contextmanager
     def captured_logs(self):
         try:
-            self.setup.log_counter += 1
-            logs_path = self.setup.build_folder / "logs" / f"{self.setup.log_counter:02}-{self.m_name}.log"
-            if not runez.DRYRUN:
-                runez.touch(logs_path, logger=None)
-                self._log_handler = logging.FileHandler(logs_path)
-                self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-                self._log_handler.setLevel(logging.DEBUG)
-                logging.root.addHandler(self._log_handler)
+            if self.setup.folders.logs:
+                self.setup.log_counter += 1
+                logs_path = self.setup.folders.logs / f"{self.setup.log_counter:02}-{self.m_name}.log"
+                if not runez.DRYRUN:
+                    runez.touch(logs_path, logger=None)
+                    self._log_handler = logging.FileHandler(logs_path)
+                    self._log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+                    self._log_handler.setLevel(logging.DEBUG)
+                    logging.root.addHandler(self._log_handler)
 
             yield
 
@@ -394,7 +392,7 @@ class ModuleBuilder:
 
                 # Split on '#' for urls that include a checksum, such as #sha256=... fragment
                 basename = runez.basename(self.url, extension_marker="#")
-                path = self.setup.build_folder.parent / "downloads" / basename
+                path = self.setup.folders.downloads / basename
                 if not path.exists():
                     REST_CLIENT.download(self.url, path)
 
@@ -469,12 +467,9 @@ class PythonBuilder(ModuleBuilder):
 
     def __init__(self, parent_module):
         super().__init__(parent_module)
-        self.build_root = self.setup.build_folder  # Base folder where we'll compile python
-        self.c_configure_prefix = self.setup.prefix or PPG.marked_prefix(self.version)
-        if self.setup.prefix:
-            self.build_root = self.build_root / "root"
-
-        self.install_folder = self.build_root / self.c_configure_prefix.strip("/")
+        self.destdir = self.setup.folders.destdir  # Folder passed to 'make install DESTDIR='
+        self.c_configure_prefix = self.setup.prefix or self.setup.folders.prefix
+        self.install_folder = self.destdir / self.c_configure_prefix.strip("/")
         self.bin_folder = self.install_folder / "bin"
 
     def selected_modules(self):

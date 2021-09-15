@@ -14,6 +14,15 @@ LOG = logging.getLogger(__name__)
 
 
 DEFAULT_CONFIG = """
+folders:
+  build: "build/{family}-{version}"
+  destdir: "{build}"
+  dist: "dist"
+  components: "{build}/components"
+  downloads: "build/downloads"
+  logs: "{build}/logs"
+  prefix: "/{version}"
+
 ext: gz
 cpython-always-clean-default:
   - __phello__.foo.py
@@ -52,7 +61,7 @@ class ConfigSource:
         self.data = data
 
     def __repr__(self):
-        return "%s config" % runez.short(self.source)
+        return runez.short(self.source)
 
     def represented(self):
         """Textual (yaml) representation of this config"""
@@ -89,63 +98,45 @@ class ConfigSource:
 class Config:
     """Overall config, the 1st found (most specific) setting wins"""
 
-    base_folder: pathlib.Path = None
-    dist_folder: pathlib.Path = None
-    main_build_folder: pathlib.Path = None
-    path: pathlib.Path = None
-
-    def __init__(self, path=None, base_folder=None, target=None, replaces=None):
+    def __init__(self, paths=None, target=None):
         """
         Args:
-            path (str): Path to config file
-            base_folder (str | None): Base folder to use (for build/ and dist/ folders)
+            paths (str | list | None): Path(s) to config file(s)
             target (str | runez.system.PlatformId | None): Target platform (for testing, defaults to current platform)
-            replaces (Config): Internal: other config this config is replacing
         """
-        if isinstance(replaces, Config):
-            path = path or replaces.path
-            base_folder = base_folder or replaces.base_folder
-
-        elif base_folder:
-            base_folder = runez.to_path(base_folder, no_spaces=True).absolute()
-
-        if path:
-            path = runez.to_path(path).absolute()
-
+        self.paths = runez.flattened(paths, split=",")
         if not isinstance(target, runez.system.PlatformId):
             target = runez.system.PlatformId(target)
 
-        self.path = path
         self.target = target
         self.sources = []  # type: list[ConfigSource]
         self.by_path = {}
-        if path:
+        for path in self.paths:
             self.load(path)
-            default = self.parsed_yaml(DEFAULT_CONFIG, "default config")
-            default = ConfigSource("default", default)
-            self.sources.append(default)
 
-        if base_folder:
-            base_folder = runez.to_path(base_folder, no_spaces=True).absolute()
-
-        if base_folder != self.base_folder:
-            self.base_folder = base_folder
-            self.main_build_folder = base_folder / "build"
-            self.dist_folder = base_folder / "dist"
+        default = self.parsed_yaml(DEFAULT_CONFIG, "default config")
+        default = ConfigSource("default config", default)
+        self.sources.append(default)
 
     def __repr__(self):
-        return "%s, %s [%s]" % (runez.short(self.path), runez.plural(self.sources, "config source"), self.target)
+        return "%s [%s]" % (runez.plural(self.sources, "config source"), self.target)
 
-    def get_value(self, *key):
+    def get_value(self, *key, by_platform=True):
         """
         Args:
             key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
+            by_platform (bool): If True, value can be configured by platform
 
         Returns:
             Associated value, if any
         """
-        paths = self._key_paths(key)
-        for k in paths:
+        if by_platform:
+            keys = (self.target.platform, self.target.arch, *key), (self.target.platform, *key), key
+
+        else:
+            keys = (key, )
+
+        for k in keys:
             for source in self.sources:
                 v = source.get_value(k)
                 if v is not None:
@@ -183,8 +174,7 @@ class Config:
     def _cleanup_folder_with_spec(self, module, spec):
         spec = runez.flattened(spec, split=True, unique=True)
         if spec:
-            version = module.version
-            spec = [x.format(mm=f"{version.major}.{version.minor}", version=version) for x in spec]
+            spec = [module.setup.folders.formatted(x) for x in spec]
             deleted_size = 0
             matcher = FileMatcher(spec)
             LOG.info("Applying clean-up spec: %s" % matcher)
@@ -214,6 +204,11 @@ class Config:
                 LOG.info("Cleaned %s (%s): %s" % (runez.plural(cleaned, "build artifact"), deleted_size, runez.short(names)))
 
     def cleanup_folder(self, module):
+        """
+
+        Args:
+            module (portable_python.PythonBuilder): Associated python builder module
+        """
         key = "%s-always-clean" % module.m_name
         general_clean = (
             self.get_value("%s-default" % key),
@@ -307,7 +302,8 @@ class Config:
                     fh.write(line)
 
     def load(self, path):
-        if path.exists():
+        path = runez.to_path(path)
+        if path and path.exists():
             with open(path) as fh:
                 data = self.parsed_yaml(fh, path)
                 source = ConfigSource(path, data)
@@ -317,9 +313,6 @@ class Config:
                 if include:
                     include = runez.resolved_path(include, base=path.parent)
                     self.load(runez.to_path(include))
-
-    def _key_paths(self, key):
-        return (self.target.platform, self.target.arch, *key), (self.target.platform, *key), key
 
 
 class FileMatcher:

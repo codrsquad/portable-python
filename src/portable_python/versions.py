@@ -33,9 +33,8 @@ class VersionFamily:
             if versions:
                 self._latest = versions[0]
                 for v in versions:
-                    mm = Version("%s.%s" % (v.major, v.minor))
-                    if mm not in self._versions:
-                        self._versions[mm] = v
+                    if v.mm not in self._versions:
+                        self._versions[v.mm] = v
 
     @property
     def latest(self) -> Version:
@@ -97,33 +96,71 @@ class CPythonFamily(VersionFamily):
         return Cpython
 
 
+class Folders:
+
+    def __init__(self, config: Config, base=None, family=None, version=None):
+        self.config = config
+        self.base_folder = runez.resolved_path(base)
+        self.family = family
+        self.version = Version.from_text(version, strict=True)
+        self.mm = self.version and self.version.mm
+        self.completions = dict(family=family, version=version, mm=self.mm)
+        self.build_folder = self._get_path("build")
+        self.completions["build"] = self.build_folder
+        self.components = self._get_path("components")
+        self.deps = self.build_folder / "deps"
+        self.destdir = self._get_path("destdir")
+        self.dist = self._get_path("dist", required=False)
+        self.downloads = self._get_path("downloads")
+        self.logs = self._get_path("logs", required=False)
+        self.prefix = self._get_value("prefix")
+
+    def __repr__(self):
+        return runez.short(self.build_folder)
+
+    def formatted(self, text):
+        if text:
+            text = text.format(**self.completions)
+
+        return text
+
+    def _get_value(self, key, required=True):
+        value = self.config.get_value("folders", key, by_platform=False)
+        if required and not value:
+            runez.abort("Folder '%s' must be configured" % key)
+
+        if value:
+            value = self.formatted(value)
+
+        return value
+
+    def _get_path(self, key, required=True):
+        path = self._get_value(key, required=required)
+        if self.base_folder:
+            path = runez.resolved_path(path, base=self.base_folder)
+
+        return runez.to_path(path, no_spaces=True)
+
+
 class PPG:
     """Globals"""
 
     cpython = CPythonFamily()
     families = dict(cpython=cpython)
-    config = Config()
-    target = config.target
+    config: Config = None
+    target: runez.system.PlatformId = None
 
     _depot = None
 
-    @staticmethod
-    def marked_prefix(version):
-        """Placeholder function that allows to easily turn on using a --prefix with a special marker
-
-        Args:
-            version (Version | str): Python version
-
-        Returns:
-            (str): Prefix to use for the portable case (ie: we're NOT giving a meaningful --prefix to Python's configure script)
-        """
-        # return f"/pp-install-folder-marker/{version}"  # Will use if --prefix is found to be important in at least one case
-        return f"/{version}"
+    @classmethod
+    def grab_config(cls, paths, target=None):
+        cls.config = Config(paths, target=target)
+        cls.target = cls.config.target
 
     @classmethod
-    def grab_config(cls, path=None, base_folder=None, target=None):
-        cls.config = Config(path=path, base_folder=base_folder, target=target, replaces=cls.config)
-        cls.target = cls.config.target
+    def get_folders(cls, base=None, family="cpython", version=None):
+        config = cls.config or Config()
+        return Folders(config, base=base, family=family, version=version)
 
     @classmethod
     def family(cls, family_name, fatal=True) -> VersionFamily:

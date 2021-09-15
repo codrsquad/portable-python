@@ -59,7 +59,7 @@ class Cpython(PythonBuilder):
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
         self.run_make()
-        self.run_make("install", f"DESTDIR={self.build_root}")
+        self.run_make("install", f"DESTDIR={self.destdir}")
 
     def _finalize(self):
         should_be_runnable_from_install_folder = not PPG.target.is_macos or not self.setup.prefix

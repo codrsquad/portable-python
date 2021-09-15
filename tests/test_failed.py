@@ -1,6 +1,6 @@
 import os
 
-import runez
+from portable_python.versions import PPG
 
 from .conftest import dummy_tarball
 
@@ -12,13 +12,13 @@ def test_build_bogus_platform(cli):
 
 
 def test_failed_run(cli, monkeypatch):
-    dummy_tarball("zlib-1.2.11.tar.gz")
-    build_path = runez.to_path("build/cpython-3.9.7")
+    folders = PPG.get_folders(version="3.9.7")
+    dummy_tarball(folders, "zlib-1.2.11.tar.gz")
     monkeypatch.setenv("PP_X_DEBUG", "continue")
-    cli.run("build", "3.9.7", "-mzlib")
+    cli.run("build", folders.version, "-mzlib")
     assert cli.failed
     assert "./configure is not an executable" in cli.logged
-    assert os.path.exists(build_path / "logs/01-zlib.log")
+    assert os.path.exists(folders.build_folder / "logs/01-zlib.log")
 
 
 def test_invalid(cli):

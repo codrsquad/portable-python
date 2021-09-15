@@ -27,15 +27,20 @@ def test_config(cli):
 def test_diagnostics(cli):
     cli.run("-c", cli.tests_path("sample-config1.yml"), "diagnostics")
     assert cli.succeeded
-    assert "tests/sample-config2.yml config:" in cli.logged
+    assert "tests/sample-config2.yml:" in cli.logged
 
 
 def test_edge_cases(temp_folder, monkeypatch, logged):
     monkeypatch.setattr(PPG, "config", None)
+    with pytest.raises(BaseException):
+        PPG.grab_config(runez.DEV.tests_path("sample-incomplete.yml"))
+        PPG.get_folders()
+    assert "Folder 'destdir' must be configured" in logged.pop()
+
     runez.write("pp.yml", "", logger=None)
-    PPG.grab_config(path="pp.yml", base_folder=temp_folder, target="linux-x86_64")
+    PPG.grab_config("pp.yml", target="linux-x86_64")
     assert str(PPG.cpython) == "cpython"
-    assert str(PPG.config) == "pp.yml, 2 config sources [linux-x86_64]"
+    assert str(PPG.config) == "2 config sources [linux-x86_64]"
 
     setup = BuildSetup("3.9.6")
     assert str(setup) == "build/cpython-3.9.6"

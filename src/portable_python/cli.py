@@ -1,10 +1,9 @@
 import logging
-import os
 import sys
 
 import click
 import runez
-from runez.pyenv import PythonDepot
+from runez.pyenv import PythonDepot, PythonSpec
 from runez.render import PrettyTable
 
 from portable_python import BuildSetup, PPG
@@ -33,7 +32,7 @@ def main(debug, config, target):
         default_logger=LOG.info,
         locations=None,
     )
-    PPG.grab_config(path=config, base_folder=os.environ.get("PP_BASE") or os.getcwd(), target=target)
+    PPG.grab_config(config, target=target)
 
 
 @main.command()
@@ -131,39 +130,39 @@ def list_cmd(json, family):
         print("  %s: %s" % (runez.bold(mm), v))
 
 
-def _find_recompress_source(dist, path):
-    path = runez.to_path(path)
-    if path.exists() or path.is_absolute():
-        return path.absolute() if path.exists() else None
+def _find_recompress_source(folders, path):
+    candidate = runez.to_path(path)
+    if candidate.exists() or candidate.is_absolute():
+        return candidate.absolute() if candidate.exists() else None
 
-    candidates = ["{path}", "build/{path}", "build/cpython-{path}/{path}"]
+    candidates = [folders.base_folder, folders.build_folder, folders.dist, folders.destdir]
     for candidate in candidates:
-        cp = candidate.format(path=path)
-        for p in (dist / cp, dist.parent / cp):
-            if p.exists():
-                return p.absolute()
+        if candidate:
+            candidate = runez.to_path(candidate) / path
+            if candidate.exists():
+                return candidate.absolute()
 
 
 @runez.log.timeit
-def recompress_folder(dist, path, extension):
+def recompress_folder(folders, path, extension):
     """Recompress folder"""
     dest = runez.SYS_INFO.platform_id.composed_basename("cpython", path.name, extension=extension)
-    dest = dist / dest
+    dest = folders.dist / dest
     runez.compress(path, dest, logger=print)
     return dest
 
 
 @runez.log.timeit
-def recompress_archive(dist, path, extension):
+def recompress_archive(folders, path, extension):
     stem = path.name.rpartition(".")[0]
     if stem.endswith(".tar"):
         stem = stem.rpartition(".")[0]
 
     dest = "%s.%s" % (stem, extension)
-    dest = dist / dest
+    dest = folders.dist / dest
     if dest == path:
         dest = "%s.%s" % (stem + "-recompressed", extension)
-        dest = dist / dest
+        dest = folders.dist / dest
 
     with runez.TempFolder() as _:
         tmp_folder = runez.to_path("tmp")
@@ -185,17 +184,18 @@ def recompress(path, ext):
     Mildly useful for comparing sizes from different compressions
     """
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
-    dist = PPG.config.dist_folder
-    with runez.Anchored(dist.parent):
-        actual_path = _find_recompress_source(dist, path)
+    pspec = PythonSpec.to_spec(path)
+    folders = PPG.get_folders(base=".", family=pspec and pspec.family, version=pspec and pspec.version)
+    with runez.Anchored(folders.base_folder):
+        actual_path = _find_recompress_source(folders, path)
         if not actual_path:
             runez.abort("'%s' does not exist" % runez.red(runez.short(path)))
 
         if actual_path.is_dir():
-            dest = recompress_folder(dist, actual_path, extension)
+            dest = recompress_folder(folders, actual_path, extension)
 
         else:
-            dest = recompress_archive(dist, actual_path, extension)
+            dest = recompress_archive(folders, actual_path, extension)
 
         print("Size of %s: %s" % (runez.short(actual_path), runez.bold(runez.represented_bytesize(actual_path))))
         print("Size of %s: %s" % (runez.short(dest), runez.bold(runez.represented_bytesize(dest))))
