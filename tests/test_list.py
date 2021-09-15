@@ -6,7 +6,7 @@ GH_CPYTHON_SAMPLE = """
 [
 {"ref": "refs/tags/v3.9.7"},
 {"ref": "refs/tags/v3.8.12"},
-{"ref": "refs/tags/v3.6.15"}
+{"ref": "refs/tags/v3.5.10"}
 ]
 """
 
@@ -14,7 +14,7 @@ PYTHON_ORG_SAMPLE = """
 <a href="3.9.5/">3.9.5/</a>
 <a href="3.9.6/">3.9.6/</a>
 <a href="3.8.11/">3.9.11/</a>
-<a href="3.6.15/">3.6.15/</a>
+<a href="3.5.10/">3.5.10/</a>
 """
 
 

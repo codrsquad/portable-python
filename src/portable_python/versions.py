@@ -4,6 +4,7 @@ Not trying to do historical stuff here, older (or EOL-ed) versions will be remov
 """
 
 import logging
+import os
 import re
 
 import runez
@@ -62,7 +63,7 @@ class CPythonFamily(VersionFamily):
     """Implementation for cpython"""
 
     client = RestClient()
-    MIN_VERSION = Version("3.7")
+    MIN_VERSION = Version("3.6")
 
     def get_available_versions(self):
         """Available versions as per python.org/ftp"""
@@ -130,6 +131,7 @@ class Folders:
             runez.abort("Folder '%s' must be configured" % key)
 
         if value:
+            value = os.path.expandvars(value)
             value = self.formatted(value)
 
         return value

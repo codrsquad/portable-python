@@ -62,8 +62,8 @@ class Cpython(PythonBuilder):
         if db_order:
             yield f"--with-dbmliborder={db_order}"
 
-        if self.active_module(Openssl):
-            yield f"--with-openssl={self.deps}"     # 3.7+?
+        if self.version >= "3.7" and self.active_module(Openssl):
+            yield f"--with-openssl={self.deps}"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
