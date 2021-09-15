@@ -60,15 +60,16 @@ def build_report(modules, python_spec):
 @main.command()
 def diagnostics():
     """Show diagnostics info"""
-    depot = PythonDepot(use_path=True)
-    depot.scan_path_env_var()
+    with runez.Anchored("."):
+        depot = PythonDepot(use_path=True)
+        depot.scan_path_env_var()
 
-    def _diagnostics():
-        yield "invoker python", depot.invoker
-        yield from runez.SYS_INFO.diagnostics()
+        def _diagnostics():
+            yield "invoker python", depot.invoker
+            yield from runez.SYS_INFO.diagnostics()
 
-    config = PPG.config.represented()
-    print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation(), config))
+        config = PPG.config.represented()
+        print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation(), config))
 
 
 @main.command()

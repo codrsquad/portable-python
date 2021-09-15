@@ -65,14 +65,14 @@ class Cpython(PythonBuilder):
         if self.active_module(Openssl):
             yield f"--with-openssl={self.deps}"     # 3.7+?
 
-        if self.version < "3.8":
-            # Speeds up tests 4x
-            pgo_tests = runez.joined(runez.flattened(PGO_TESTS, split=True))
-            yield f"PROFILE_TASK={pgo_tests}"
-
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
-        self.run_make()
+        make_args = []
+        if self.version < "3.8":
+            pgo_tests = runez.joined(runez.flattened(PGO_TESTS, split=True))
+            make_args.append(f"PROFILE_TASK={pgo_tests}")
+
+        self.run_make(*make_args)
         self.run_make("install", f"DESTDIR={self.destdir}")
 
     def _finalize(self):

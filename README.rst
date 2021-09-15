@@ -64,7 +64,7 @@ Guiding principles
 
 For this repo itself:
 
-- Code is 100% properly packaged python, it is a CLI with one entry-point called ``portable-python``
+- Code is pure python, it is a CLI with one entry-point called ``portable-python``
 
   - Can be ran in a debugger
 
@@ -157,14 +157,29 @@ Note that you can use ``--dryrun`` mode to inspect what would be done without do
 
     $ portable-python --dryrun build 3.9.7
 
-    Would create build/cpython-3.9.7
+    INFO selected: xz openssl gdbm (3 modules) xz:5.2.5 openssl:1.1.1k gdbm:1.18.1
+    INFO Platform: macos-x86_64
     ...
-    Would untar build/sources/readline-8.1.tar.gz -> build/cpython-3.9.7/build/readline
+    --------------
+    -- xz:5.2.5 --
+    --------------
+    Would download https://tukaani.org/xz/xz-5.2.5.tar.gz
+    Would untar build/sources/xz-5.2.5.tar.gz -> build/components/xz
+    INFO env PATH=build/deps/bin:/usr/bin:/bin
+    INFO env MACOSX_DEPLOYMENT_TARGET=10.14
+    Would run: ./configure --prefix=build/deps --enable-shared=no --enable-static=yes ...
     ...
-    Would run: ./configure --prefix=/deps
+    -------------------
+    -- cpython:3.9.7 --
+    -------------------
+    Would download https://www.python.org/ftp/python/3.9.7/Python-3.9.7.tar.xz
+    Would untar build/sources/Python-3.9.7.tar.xz -> build/components/cpython
+    ...
+    Would run: ./configure --prefix=/3.9.7 --enable-optimizations ...
     Would run: /usr/bin/make
-    Would run: /usr/bin/make install DESTDIR=build/cpython-3.9.7
+    Would run: /usr/bin/make install DESTDIR=build
     ...
+    Would tar build/3.9.7 -> dist/cpython-3.9.7-macos-x86_64.tar.gz
 
 
 Build folder structure
@@ -174,24 +189,12 @@ Build folder structure
 
     build/
         3.9.7/                              # Full installation (after build completes)
-        components/                         # Source code of various needed/selected modules are here
-        deps/                               # --prefix=.../deps passed to all ./configure scripts
+        components/                         # Builds of statically compiled extension modules are here
+        deps/                               # --prefix=.../deps passed to all component ./configure scripts
         sources/
             openssl-1.1.1k.tar.gz           # Downloaded artifacts (downloaded only once)
     dist/
         cpython-3.9.7-macos-arm64.tar.gz    # Ready-to-go portable binary tarball
-
-
-Build folder structure when iterating on portable-python itself
----------------------------------------------------------------
-
-A "dev config" allows to have a setup where you can build several versions and not lose their outcome, and track logs::
-
-    build/
-        cpython-3.9.7/      # Build artifacts are per family-version subfolder
-            3.9.7/
-            ...
-            logs/           # Logs for each module build are here, in order of build
 
 
 .. _pyenv: https://github.com/pyenv/pyenv

@@ -1,0 +1,10 @@
+# This will be picked up by default for runs from this folder
+# Handy config for when iterating on portable-python itself
+
+# Allows to have other handy, non-checked in customizations, '+' sign makes this config be used in front of this one (when available)
+include: +pp-dev.yml
+
+folders:
+  build: "build/{family}-{version}"   # Allows keeping builds for various versions, and inspect them later
+  sources: dist/sources               # Allows keeping source downloads even after rm -rf build
+  logs: "{build}/logs"                # Uncomment (or use in pp-dev.yml) to capture logs for each component build

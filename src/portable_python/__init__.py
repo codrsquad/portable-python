@@ -55,6 +55,8 @@ class BuildSetup:
 
         self.python_spec = python_spec
         self.folders = PPG.get_folders(base=os.getcwd(), family=python_spec.family, version=python_spec.version)
+        specific_config = self.folders.formatted("+portable-python-{mm}.yml")
+        PPG.config.load(specific_config)
         self.desired_modules = modules
         prefix = self.folders.formatted(prefix)
         self.prefix = prefix

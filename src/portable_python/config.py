@@ -33,7 +33,8 @@ cpython-always-clean-default:
   - tests/
 
 # By default, clean old cruft (this can be overridden in user config)
-cpython-always-clean: bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
+cpython-always-clean:
+  - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
 cpython-always-clean-linux: wininst-*
 cpython-always-clean-macos: wininst-*
 
@@ -52,19 +53,10 @@ macos:
   allowed-system-libs: .*
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.14
+  cpython-modules: xz openssl
   arm64:
-    cpython-modules: xz openssl
     env:
       MACOSX_DEPLOYMENT_TARGET: 11
-  x86_64:
-    cpython-modules: xz openssl gdbm
-"""
-
-# Config used only when running from a dev venv, of portable-python itself
-DEV_CONFIG = """
-folders:
-  build: "build/{family}-{version}"     # Allows to build multiple python versions, and keep outcomes of each
-  logs: "{build}/logs"                  # Allows to capture logs individually for each compiled component
 """
 
 
@@ -86,11 +78,6 @@ class Config:
         self.by_path = {}
         for path in self.paths:
             self.load(path)
-
-        if runez.DEV.project_folder:
-            default = self.parsed_yaml(DEV_CONFIG, "dev config")
-            default = ConfigSource("dev config", default)
-            self.sources.append(default)
 
         default = self.parsed_yaml(DEFAULT_CONFIG, "default config")
         default = ConfigSource("default config", default)
@@ -279,18 +266,28 @@ class Config:
                 for line in lines:
                     fh.write(line)
 
-    def load(self, path):
-        path = runez.to_path(path)
-        if path and path.exists():
-            with open(path) as fh:
-                data = self.parsed_yaml(fh, path)
-                source = ConfigSource(path, data)
-                self.sources.append(source)
-                self.by_path[str(path)] = source
-                include = source.get_value("include")
-                if include:
-                    include = runez.resolved_path(include, base=path.parent)
-                    self.load(runez.to_path(include))
+    def load(self, path, base=None):
+        if path:
+            front = False
+            if path.startswith("+"):
+                front = True
+                path = path[1:]
+
+            path = runez.resolved_path(path, base=base)
+            path = runez.to_path(path)
+            if path.exists():
+                with open(path) as fh:
+                    data = self.parsed_yaml(fh, path)
+                    source = ConfigSource(path, data)
+                    if front:
+                        self.sources.insert(0, source)
+
+                    else:
+                        self.sources.append(source)
+
+                    self.by_path[str(path)] = source
+                    for include in runez.flattened(source.get_value("include"), split=True):
+                        self.load(include, base=path.parent)
 
 
 class ConfigSource:

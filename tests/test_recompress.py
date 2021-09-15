@@ -6,10 +6,10 @@ def test_recompress(cli):
     assert cli.failed
     assert "'foo' does not exist" in cli.logged
 
-    runez.touch("build/cpython-3.9.7/3.9.7/bin/python", logger=None)
+    runez.touch("build/3.9.7/bin/python", logger=None)
     cli.run("recompress", "3.9.7", "gz")
     assert cli.succeeded
-    assert "Tar build/cpython-3.9.7/3.9.7 -> dist/cpython-3.9.7-" in cli.logged
+    assert "Tar build/3.9.7 -> dist/cpython-3.9.7-" in cli.logged
     files = list(runez.ls_dir("dist"))
     assert len(files) == 1  # Actual name depends on current platform
 
