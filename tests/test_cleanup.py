@@ -6,7 +6,7 @@ from portable_python.versions import PPG
 
 
 def test_cleanup(cli):
-    f = PPG.get_folders(version="3.9.7")
+    f = PPG.get_folders(version="3.7.12")
     install_dir = f.destdir / f.version.text
     lib = install_dir / "lib"
 

@@ -5,6 +5,15 @@ from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl,
 from portable_python.inspector import PythonInspector
 
 
+# https://github.com/docker-library/python/issues/160
+PGO_TESTS = """
+-m test.regrtest --pgo test_array test_base64 test_binascii test_binhex test_binop test_bytes test_c_locale_coercion
+test_class test_cmath test_codecs test_compile test_complex test_csv test_decimal test_dict test_float test_fstring
+test_hashlib test_io test_iter test_json test_long test_math test_memoryview test_pickle test_re test_set test_slice
+test_struct test_threading test_time test_traceback test_unicode
+"""
+
+
 # noinspection PyPep8Naming
 class Cpython(PythonBuilder):
     """
@@ -55,6 +64,11 @@ class Cpython(PythonBuilder):
 
         if self.active_module(Openssl):
             yield f"--with-openssl={self.deps}"     # 3.7+?
+
+        if self.version < "3.8":
+            # Speeds up tests 4x
+            pgo_tests = runez.joined(runez.flattened(PGO_TESTS, split=True))
+            yield f"PROFILE_TASK={pgo_tests}"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
