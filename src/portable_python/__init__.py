@@ -96,6 +96,10 @@ class BuildSetup:
         if issues:
             return runez.abort("Problematic modules: %s" % runez.joined(issues), fatal=fatal)
 
+    def ensure_clean_folder(self, path):
+        if path:
+            runez.ensure_folder(path, clean=not self.x_debug)
+
     @runez.log.timeit("Overall compilation")
     def compile(self):
         """Compile selected python family and version"""
@@ -105,8 +109,11 @@ class BuildSetup:
             LOG.info(runez.joined(modules, list(modules)))
             LOG.info("Platform: %s" % PPG.target)
             LOG.info("Build report:\n%s" % self.python_builder.modules.report())
+            LOG.info("Current folder: %s" % os.getcwd())
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
-            runez.ensure_folder(self.folders.build_folder, clean=not self.x_debug)
+            self.ensure_clean_folder(self.folders.components)
+            self.ensure_clean_folder(self.folders.deps)
+            self.ensure_clean_folder(self.folders.logs)
             self.python_builder.compile()
             if self.folders.dist:
                 runez.compress(self.python_builder.install_folder, self.folders.dist / self.tarball_name)
@@ -487,6 +494,7 @@ class PythonBuilder(ModuleBuilder):
 
     def _prepare(self):
         # Some libs get funky permissions for some reason
+        self.setup.ensure_clean_folder(self.install_folder)
         for path in runez.ls_dir(self.deps_lib):
             if not path.name.endswith(".la"):
                 expected = 0o755 if path.is_dir() else 0o644

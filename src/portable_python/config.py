@@ -18,7 +18,6 @@ folders:
   build: build
   destdir: "{build}"
   dist: dist
-  components: "{build}/components"
   logs: ""
   prefix: /{version}
   sources: build/sources

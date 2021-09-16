@@ -108,7 +108,7 @@ class Folders:
         self.completions = dict(family=family, version=version, mm=self.mm)
         self.build_folder = self._get_path("build")
         self.completions["build"] = self.build_folder
-        self.components = self._get_path("components")
+        self.components = self.build_folder / "components"
         self.deps = self.build_folder / "deps"
         self.destdir = self._get_path("destdir")
         self.dist = self._get_path("dist", required=False)
