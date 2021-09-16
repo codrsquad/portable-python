@@ -106,10 +106,10 @@ class BuildSetup:
         self.log_counter = 0
         with runez.Anchored(self.folders.base_folder):
             modules = self.python_builder.modules
+            LOG.info("portable-python v%s, current folder: %s" % (runez.get_version(__name__), os.getcwd()))
             LOG.info(runez.joined(modules, list(modules)))
             LOG.info("Platform: %s" % PPG.target)
             LOG.info("Build report:\n%s" % self.python_builder.modules.report())
-            LOG.info("Current folder: %s" % os.getcwd())
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
             self.ensure_clean_folder(self.folders.components)
             self.ensure_clean_folder(self.folders.deps)
