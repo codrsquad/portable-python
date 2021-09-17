@@ -1,3 +1,5 @@
+import os
+
 import runez
 
 from portable_python import PPG, PythonBuilder
@@ -79,6 +81,10 @@ class Cpython(PythonBuilder):
         should_be_runnable_from_install_folder = not PPG.target.is_macos or not self.setup.prefix
         bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
         if should_be_runnable_from_install_folder:
+            if self.setup.prefix and PPG.target.is_linux:
+                prev = os.environ.get("LD_LIBRARY_PATH")
+                os.environ["LD_LIBRARY_PATH"] = runez.joined(f"{self.install_folder}/lib", prev, delimiter=os.pathsep)
+
             extras = PPG.config.get_value("cpython-pip-install")
             if extras:
                 extras = runez.flattened(extras, split=" ")
