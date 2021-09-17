@@ -6,7 +6,7 @@ setup(
     setup_requires="setupmeta",
     versioning="dev",
     author="Zoran Simic zoran@simicweb.com",
-    keywords="newt, python, app-type",
+    keywords="python, portable, binary",
     url="https://github.com/codrsquad/portable-python",
     python_requires='>=3.6',
     entry_points={
