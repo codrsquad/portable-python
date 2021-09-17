@@ -39,8 +39,8 @@ class Cpython(PythonBuilder):
 
     def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"
-        if not self.setup.prefix and PPG.target.is_linux:
-            yield f"-Wl,-rpath,{self.install_folder}/lib"
+        if PPG.target.is_linux:
+            yield f"-Wl,-rpath {self.install_folder}/lib"
 
     def c_configure_args(self):
         configured = PPG.config.get_value("cpython-configure")
