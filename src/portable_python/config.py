@@ -210,14 +210,16 @@ class Config:
             return path
 
     @staticmethod
+    def candidate_exes(basename: str, version):
+        return basename, "%s%s" % (basename, version.major), "%s%s" % (basename, version.mm)
+
+    @staticmethod
     def find_main_file(desired: pathlib.Path, version, fatal=None):
         p = Config.real_path(desired)
         if p:
             return p
 
-        rp = desired.name
-        candidates = (rp, "%s%s" % (rp, version.major), "%s%s.%s" % (rp, version.major, version.minor))
-        for c in candidates:
+        for c in Config.candidate_exes(desired.name, version):
             fc = Config.real_path(desired.parent / c)
             if fc:
                 return fc

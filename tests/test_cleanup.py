@@ -22,6 +22,7 @@ def test_cleanup(cli):
     sample_content = "dummy content for libpython.a\n" * 1000
     runez.write(lib / f"libpython{f.mm}.a", sample_content, logger=None)
     runez.write(lib / f"python{f.mm}/config-{f.mm}-darwin/libpython{f.mm}.a", sample_content, logger=None)
+    runez.touch(lib / f"python{f.mm}/site-packages/setuptools", logger=None)
 
     cfg = cli.tests_path("sample-config1.yml")
     cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,readline", f.version)

@@ -15,3 +15,7 @@ macos:                                    # Applies to macos only
 # This would get picked up on all platforms
 cpython-symlink: bin/python bin/pip
 cpython-use-github: true
+
+cpython-configure:
+  - --enable-shared
+  - --with-ensurepip=upgrade

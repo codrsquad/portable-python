@@ -1,9 +1,10 @@
 import builtins
+import os
 from unittest.mock import patch
 
 import runez
 
-from portable_python.inspector import find_libs, LibType, PPG, PythonInspector, SoInfo
+from portable_python.inspector import auto_correct_shared_libs, find_libs, LibType, PPG, PythonInspector, SoInfo
 
 
 OTOOL_SAMPLE = """
@@ -25,6 +26,52 @@ LDD_SAMPLE = """
     librt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (...)
     /lib64/ld-linux-x86-64.so.2 (...)
 """
+
+MAC_SHARED_LIB = """
+foo/bin/python:
+  /3.9.6/lib/libpython3.9.dylib (compatibility version 3.9.0, current version 3.9.0)
+  /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1281.0.0)
+"""
+
+
+class MockSharedExeRun:
+    def __init__(self, platform, output):
+        PPG.grab_config("", target=f"{platform}-x86_64")
+        self.program = "otool" if platform == "macos" else "ldd"
+        self.output = output
+        self.called = []
+
+    def __call__(self, program, *args, **kwargs):
+        if program == self.program:
+            return runez.program.RunResult(code=0, output=self.output)
+
+        with runez.Anchored(os.getcwd()):
+            self.called.append([program, *(runez.short(x) for x in args)])
+            return runez.program.RunResult(code=0)
+
+    def __enter__(self):
+        self.mock = patch("runez.run", side_effect=self)
+        self.mock.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.mock.stop()
+
+
+def test_exe_correction(temp_folder):
+    runez.touch("foo/bin/python", logger=None)
+    runez.make_executable("foo/bin/python", logger=None)
+    runez.touch("foo/lib/libpython3.9.dylib", logger=None)
+    runez.touch("foo/lib/bar/baz.dylib", logger=None)
+    with MockSharedExeRun("macos", MAC_SHARED_LIB) as m:
+        auto_correct_shared_libs("/3.9.6", runez.to_path("foo").absolute())
+        expected = [
+            ["install_name_tool", "-add_rpath", "@executable_path/../lib", "foo/bin/python"],
+            ["install_name_tool", "-change", "/3.9.6/lib/libpython3.9.dylib", "@rpath/libpython3.9.dylib", "foo/bin/python"],
+            ["install_name_tool", "-add_rpath", "@loader_path/..", "foo/lib/bar/baz.dylib"],
+            ["install_name_tool", "-change", "/3.9.6/lib/libpython3.9.dylib", "@rpath/libpython3.9.dylib", "foo/lib/bar/baz.dylib"],
+        ]
+        assert m.called == expected
 
 
 def test_inspect_lib(logged):

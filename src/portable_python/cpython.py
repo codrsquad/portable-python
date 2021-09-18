@@ -4,7 +4,7 @@ import runez
 
 from portable_python import PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
-from portable_python.inspector import PythonInspector
+from portable_python.inspector import auto_correct_shared_libs, PythonInspector
 
 
 # https://github.com/docker-library/python/issues/160
@@ -41,8 +41,16 @@ class Cpython(PythonBuilder):
 
     def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"
-        if self.setup.prefix and PPG.target.is_linux:
-            yield f"-Wl,-rpath={self.setup.prefix}/lib"
+        if self.has_configure_opt("--enable-shared", "yes"):
+            if PPG.target.is_linux:
+                yield f"-Wl,-rpath={self.setup.prefix}/lib"
+                # os.environ["ORIGIN"] = "$ORIGIN"
+                # yield f"-Wl,-rpath=$ORIGIN/../lib"  # -Wl,-z,origin ?
+
+    def has_configure_opt(self, name, *variants):
+        specs = [name]
+        specs.extend("%s=%s" % (name, x) for x in variants)
+        return any(x in specs for x in self.c_configure_args())
 
     def c_configure_args(self):
         configured = PPG.config.get_value("cpython-configure")
@@ -81,31 +89,35 @@ class Cpython(PythonBuilder):
         self.run_make("install", f"DESTDIR={self.destdir}")
 
     def _finalize(self):
-        should_be_runnable_from_install_folder = not PPG.target.is_macos or not self.setup.prefix
+        auto_correct_shared_libs(self.c_configure_prefix, self.install_folder)
         bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
-        if should_be_runnable_from_install_folder:
-            if self.setup.prefix and PPG.target.is_linux:
-                prev = os.environ.get("LD_LIBRARY_PATH")
-                os.environ["LD_LIBRARY_PATH"] = runez.joined(f"{self.install_folder}/lib", prev, delimiter=os.pathsep)
+        if self.setup.prefix and PPG.target.is_linux:
+            # TODO: simplify when auto_correct_shared_libs() can fix linux too
+            prev = os.environ.get("LD_LIBRARY_PATH")
+            os.environ["LD_LIBRARY_PATH"] = runez.joined(f"{self.install_folder}/lib", prev, delimiter=os.pathsep)
 
-            extras = PPG.config.get_value("cpython-pip-install")
-            if extras:
-                extras = runez.flattened(extras, split=" ")
-                for extra in extras:
-                    self.run(bin_python, "-mpip", "install", "-U", extra, fatal=False)
+        if self.has_configure_opt("--with-ensurepip", "upgrade"):
+            self.run(bin_python, "-mpip", "install", "-U", "pip", fatal=False)
+            setuptools = self.install_folder / f"lib/python{self.version.mm}/site-packages/setuptools"
+            if setuptools.exists():
+                self.run(bin_python, "-mpip", "install", "-U", "setuptools", fatal=False)
+
+        extras = PPG.config.get_value("cpython-pip-install")
+        if extras:
+            extras = runez.flattened(extras, split=" ")
+            for extra in extras:
+                self.run(bin_python, "-mpip", "install", "-U", extra, fatal=False)
 
         PPG.config.cleanup_folder(self)
         PPG.config.ensure_main_file_symlinks(self)
-        if should_be_runnable_from_install_folder:
-            self.run(bin_python, "-mcompileall")
+        self.run(bin_python, "-mcompileall")
 
         if not self.setup.prefix:
             for f in runez.ls_dir(self.bin_folder):
                 PPG.config.auto_correct_shebang(f, bin_python)
 
-        if should_be_runnable_from_install_folder:
-            py_inspector = PythonInspector(self.install_folder)
-            print(py_inspector.represented())
-            problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
-            if problem:
-                runez.abort("Build failed: %s" % problem, fatal=not runez.DRYRUN)
+        py_inspector = PythonInspector(self.install_folder)
+        print(py_inspector.represented())
+        problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
+        if problem:
+            runez.abort("Build failed: %s" % problem, fatal=not runez.DRYRUN)

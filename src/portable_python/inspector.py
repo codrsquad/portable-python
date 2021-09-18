@@ -1,3 +1,4 @@
+import collections
 import enum
 import json
 import logging
@@ -24,6 +25,55 @@ class LibType(enum.Enum):
     missing = "red"
     other = "brown"
     system = "blue"
+
+
+def auto_correct_shared_libs(prefix, folder, install_folder=None):
+    if PPG.target.is_macos:  # TODO: macos only for now
+        if install_folder is None:
+            install_folder = folder
+
+        for path in runez.ls_dir(folder):
+            if path.is_dir():
+                auto_correct_shared_libs(prefix, path, install_folder=install_folder)
+
+            elif not path.is_symlink() and (is_dyn_lib(path) or runez.is_executable(path)):
+                _auto_correct_shared_file(prefix, path, install_folder)
+
+
+def _shared_ref_top_level(relative_path):
+    parts = runez.to_path(relative_path).parts
+    if len(parts) > 1:
+        parts = parts[:-1]  # Remove basename
+        for part in parts:
+            yield part
+            if part != "..":
+                return
+
+
+def _auto_correct_shared_file(prefix, scanned_path, install_folder):
+    prefixed_folder = scanned_path.relative_to(install_folder)
+    prefixed_folder = runez.to_path(f"{prefix}/{prefixed_folder}").parent
+    # patchelf --replace-needed libpython3.9.so.1 $ORIGIN/../lib/libpython3.9.so.1 prefix/bin/python3.9
+    if PPG.target.is_macos:
+        abs_paths = collections.defaultdict(list)
+        r = runez.run("otool", "-L", scanned_path)
+        for line in r.output.splitlines():
+            line = line.strip()
+            if line.startswith(prefix):
+                ref_path = line.split()[0]
+                relative_path = os.path.relpath(ref_path, prefixed_folder)
+                top_level = runez.joined(_shared_ref_top_level(relative_path), delimiter=os.sep)
+                if top_level:
+                    abs_paths[top_level].append(ref_path)
+
+        if abs_paths:
+            for top_level, ref_paths in abs_paths.items():
+                rpath = "@loader_path" if is_dyn_lib(scanned_path) else "@executable_path"
+                runez.run("install_name_tool", "-add_rpath", f"{rpath}/{top_level}", scanned_path)
+                for ref_path in ref_paths:
+                    relative_to_scanned = os.path.join(prefixed_folder, top_level)
+                    relative_path = os.path.relpath(ref_path, relative_to_scanned)
+                    runez.run("install_name_tool", "-change", ref_path, f"@rpath/{relative_path}", scanned_path)
 
 
 class ModuleInfo:
@@ -180,10 +230,21 @@ class SoInfo(Trackable):
         return self.path.stat().st_size if self.path.exists() else 0
 
     def parse_otool(self, output):
+        first_line = None
         for line in output.splitlines():
-            m = re.match(r"^(\S+).+current version ([0-9.]+).*$", line.strip())
-            if m:
-                self.add_ref(m.group(1), version=m.group(2))
+            line = line.strip()
+            if line:
+                if first_line is None:
+                    first_line = line.strip(":")
+
+                else:
+                    m = re.match(r"^(\S+).+current version ([0-9.]+).*$", line.strip())
+                    if m:
+                        path = m.group(1)
+                        # See https://stackoverflow.com/questions/9690362/osx-dll-has-a-reference-to-itself
+                        if not first_line.endswith(path):
+                            version = m.group(2)
+                            self.add_ref(path, version=version)
 
     def parse_ldd(self, output):
         for line in output.splitlines():

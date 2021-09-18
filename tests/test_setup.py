@@ -14,7 +14,8 @@ def test_config(cli):
     assert "env MACOSX_DEPLOYMENT_TARGET=12" in cli.logged  # Comes from more specific macos-arm64.yml
     assert " -> dist/cpython-3.9.7-macos-arm64.tar.xz" in cli.logged  # Comes from macos.yml (not defined in macos-arm64.yml)
     cli.match("Would run: build/cpython-.../bin/python -mpip install -U wheel")
-    assert "--enable-optimizations" in cli.logged  # From default config
+    assert "--enable-shared" in cli.logged  # From custom config
+    assert "--with-system-ffi" in cli.logged  # Because libffi was not compiled
 
     cli.run("-ntlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mnone")
     assert cli.succeeded
