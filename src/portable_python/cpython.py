@@ -49,6 +49,9 @@ class Cpython(PythonBuilder):
         if configured:
             yield from configured
 
+        if not self.active_module(LibFFI):
+            yield "--with-system-ffi"
+
         if self.version >= "3.10":
             yield "--disable-test-modules"
 
