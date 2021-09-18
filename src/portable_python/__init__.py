@@ -17,7 +17,7 @@ from typing import List
 
 import runez
 from runez.http import RestClient
-from runez.pyenv import PythonSpec
+from runez.pyenv import PythonSpec, Version
 from runez.render import Header, PrettyTable
 
 from portable_python.versions import PPG
@@ -43,6 +43,14 @@ class BuildSetup:
             modules (str | None): Modules to build (default: from config)
             prefix (str | None): --prefix to use
         """
+        if isinstance(python_spec, str):
+            v = Version.from_text(python_spec)
+            if v and not v.is_final:
+                # Accept release candidates
+                family = python_spec.rpartition(":")[0] or "cpython"
+                python_spec = PythonSpec.to_spec(f"{family}:{v.main}")
+                python_spec.version = v
+
         if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PPG.cpython.latest
 
@@ -50,7 +58,7 @@ class BuildSetup:
         if not python_spec.version or not python_spec.version.is_valid:
             runez.abort("Invalid python spec: %s" % runez.red(python_spec))
 
-        if python_spec.version.text not in python_spec.text or len(python_spec.version.given_components) < 3:
+        if len(python_spec.version.given_components) < 3:
             runez.abort("Please provide full desired version: %s is not good enough" % runez.red(python_spec))
 
         self.python_spec = python_spec

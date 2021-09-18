@@ -7,6 +7,12 @@ from portable_python.versions import PPG
 from .conftest import dummy_tarball
 
 
+def test_build_rc(cli):
+    cli.run("-n", "build", "3.10.0rc2", "-mnone")
+    assert cli.succeeded
+    assert "Would tar build/3.10.0rc2 -> dist/cpython-3.10.0rc2-" in cli.logged
+
+
 def test_finalization(cli, monkeypatch):
     f = PPG.get_folders(version="3.9.7")
     dummy_tarball(f, f"Python-{f.version}.tar.xz")
