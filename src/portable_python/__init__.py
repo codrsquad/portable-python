@@ -416,8 +416,10 @@ class ModuleBuilder:
                 runez.decompress(path, self.m_src_build, simplify=True)
 
                 env_vars = self._get_env_vars()
+                prev_env_vars = {}
                 for var_name, value in env_vars.items():
                     LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
+                    prev_env_vars[var_name] = os.environ.get(var_name)
                     os.environ[var_name] = value
 
                 func = getattr(self, "_do_%s_compile" % PPG.target.platform, None)
@@ -433,6 +435,15 @@ class ModuleBuilder:
                         self._prepare()
                         func()
                         self._finalize()
+
+                # Restore env vars as they were (to avoid any side effect)
+                for k, v in prev_env_vars.items():
+                    if v is None:
+                        if k in os.environ:
+                            del os.environ[k]
+
+                    else:
+                        os.environ[k] = v
 
     def _get_env_vars(self):
         """Yield all found env vars, first found wins"""

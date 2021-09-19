@@ -82,7 +82,6 @@ class Gdbm(ModuleBuilder):
             "--enable-libgdbm-compat",
             "--disable-dependency-tracking",
             "--disable-silent-rules",
-            "--disable-rpath",
             "--without-libiconv-prefix",
             "--without-libintl-prefix",
             "--without-readline",
