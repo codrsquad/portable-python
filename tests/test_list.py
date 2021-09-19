@@ -25,7 +25,7 @@ PYTHON_ORG_SAMPLE = """
 def test_list(cli, monkeypatch):
     # Edge cases
     monkeypatch.setattr(PPG, "config", None)
-    PPG.grab_config("", target="macos-arm64")
+    PPG.grab_config(target="macos-arm64")
     setup = BuildSetup()
     assert setup.python_spec.version == PPG.cpython.latest
 

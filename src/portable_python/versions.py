@@ -150,13 +150,13 @@ class PPG:
 
     cpython = CPythonFamily()
     families = dict(cpython=cpython)
-    config: Config = None
-    target: runez.system.PlatformId = None
+    config = Config()
+    target = config.target
 
     _depot = None
 
     @classmethod
-    def grab_config(cls, paths, target=None):
+    def grab_config(cls, paths=None, target=None):
         cls.config = Config(paths, target=target)
         cls.target = cls.config.target
 

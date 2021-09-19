@@ -36,7 +36,7 @@ foo/bin/python:
 
 class MockSharedExeRun:
     def __init__(self, platform, output):
-        PPG.grab_config("", target=f"{platform}-x86_64")
+        PPG.grab_config(target=f"{platform}-x86_64")
         self.program = "otool" if platform == "macos" else "ldd"
         self.output = output
         self.called = []
@@ -85,14 +85,14 @@ def test_inspect_lib(logged):
         assert "otool exited with code" in logged.pop()
 
     with patch("runez.which", return_value=None):
-        PPG.grab_config("", target="macos-x86_64")
+        PPG.grab_config(target="macos-x86_64")
         info1 = SoInfo(inspector, "_dbm...so")
         assert str(info1) == "_dbm*!.so"
         info1.parse_otool(OTOOL_SAMPLE)
         r = info1.represented()
         assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
 
-        PPG.grab_config("", target="linux-x86_64")
+        PPG.grab_config(target="linux-x86_64")
         inspector.install_folder = "/BASE"
         info2 = SoInfo(inspector, "_tkinter...so")
         info2.parse_ldd(LDD_SAMPLE)
@@ -128,11 +128,11 @@ def test_find_python(temp_folder):
     assert c.items  # At least one system lib must be used by invoker
 
     # Verify using system libs on macos is considered OK
-    PPG.grab_config("", target="macos-arm64")
+    PPG.grab_config(target="macos-arm64")
     assert r.get_problem(True) is None
 
     # Verify using system libs on linux is considered a fail
-    PPG.grab_config("", target="linux-x86_64")
+    PPG.grab_config(target="linux-x86_64")
     assert str(r.get_problem(True)).startswith("Uses system libs:")
 
 
