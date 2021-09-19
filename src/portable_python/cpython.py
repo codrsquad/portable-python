@@ -41,11 +41,9 @@ class Cpython(PythonBuilder):
 
     def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"
-        if self.has_configure_opt("--enable-shared", "yes"):
-            if PPG.target.is_linux:
-                yield f"-Wl,-rpath={self.setup.prefix}/lib"
-                # os.environ["ORIGIN"] = "$ORIGIN"
-                # yield f"-Wl,-rpath=$ORIGIN/../lib"  # -Wl,-z,origin ?
+        if PPG.target.is_linux:
+            yield "-Wl,-z,origin"
+            yield "-Wl,-rpath=\\$$ORIGIN/../lib"
 
     def has_configure_opt(self, name, *variants):
         specs = [name]
@@ -91,11 +89,6 @@ class Cpython(PythonBuilder):
     def _finalize(self):
         auto_correct_shared_libs(self.c_configure_prefix, self.install_folder)
         bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
-        if self.setup.prefix and PPG.target.is_linux:
-            # TODO: simplify when auto_correct_shared_libs() can fix linux too
-            prev = os.environ.get("LD_LIBRARY_PATH")
-            os.environ["LD_LIBRARY_PATH"] = runez.joined(f"{self.install_folder}/lib", prev, delimiter=os.pathsep)
-
         if self.has_configure_opt("--with-ensurepip", "upgrade"):
             self.run(bin_python, "-mpip", "install", "-U", "pip", fatal=False)
             setuptools = self.install_folder / f"lib/python{self.version.mm}/site-packages/setuptools"

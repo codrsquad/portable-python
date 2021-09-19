@@ -27,14 +27,25 @@ class LibType(enum.Enum):
     system = "blue"
 
 
-def auto_correct_shared_libs(prefix, folder, install_folder=None):
-    if PPG.target.is_macos:  # TODO: macos only for now
-        if install_folder is None:
-            install_folder = folder
+def auto_correct_shared_libs(prefix, install_folder, _folder=None):
+    """Automatically correct all absolute paths in exes/dynamic libs
+    Needed on macos only for now
 
-        for path in runez.ls_dir(folder):
+    Args:
+        prefix (str): Prefix used in ./configure
+        install_folder (pathlib.Path): Installation folder to scan (all paths will be relative to this)
+        _folder (pathlib.Path): Internal: current folder scanned
+
+    Returns:
+
+    """
+    if PPG.target.is_macos:
+        if _folder is None:
+            _folder = install_folder
+
+        for path in sorted(runez.ls_dir(_folder)):
             if path.is_dir():
-                auto_correct_shared_libs(prefix, path, install_folder=install_folder)
+                auto_correct_shared_libs(prefix, install_folder, _folder=path)
 
             elif not path.is_symlink() and (is_dyn_lib(path) or runez.is_executable(path)):
                 _auto_correct_shared_file(prefix, path, install_folder)
