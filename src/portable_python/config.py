@@ -52,7 +52,7 @@ macos:
   allowed-system-libs: .*
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.14
-  cpython-modules: xz openssl gdbm
+  cpython-modules: xz openssl bdb gdbm
   arm64:
     env:
       MACOSX_DEPLOYMENT_TARGET: 11
