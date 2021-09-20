@@ -110,7 +110,7 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.3")
+        return self.cfg_version("3.4.2")
 
     # noinspection PyPep8Naming
     # noinspection PyMethodMayBeStatic
