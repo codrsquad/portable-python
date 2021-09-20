@@ -2,7 +2,7 @@ import re
 
 import runez
 
-from portable_python import patch_folder, PPG, PythonBuilder
+from portable_python import patch_file, patch_folder, PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 from portable_python.inspector import auto_correct_shared_libs, PythonInspector
 
@@ -25,6 +25,8 @@ class Cpython(PythonBuilder):
     See https://docs.python.org/3.11/using/configure.html
     """
 
+    xenv_CPATH = None  # Not needed thanks to the /usr/local patching
+
     @classmethod
     def candidate_modules(cls):
         return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid]
@@ -42,7 +44,6 @@ class Cpython(PythonBuilder):
         yield "-Wno-unused-command-line-argument"
 
     def xenv_LDFLAGS_NODIST(self):
-        yield f"-L{self.deps_lib}"
         if PPG.target.is_linux:
             yield "-Wl,-z,origin"
             yield "-Wl,-rpath=\\$$ORIGIN/../lib"
@@ -80,7 +81,14 @@ class Cpython(PythonBuilder):
 
     def _prepare(self):
         super()._prepare()
+        # Replace all /usr/local mentions with our own build folder
         patch_folder(self.m_src_build, r"/(usr|opt)/local\b", self.deps.as_posix(), ignore=RX_IGNORE)
+
+        # Special edge case in macosx_sdk_specified() where /usr/local is fine...
+        x = "startswith({q}/usr/{q}) and not path.startswith({q}{p}{q})"
+        special_case = x.replace("(", r"\(").replace(")", r"\)").format(q="['\"]", p=self.deps)
+        restored = x.format(q="'", p='/usr/local')
+        patch_file(self.m_src_build / "setup.py", special_case, restored)
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)

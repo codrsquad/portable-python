@@ -34,6 +34,7 @@ def test_cleanup(cli):
     assert f"Corrected permissions for {f.deps}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={f.build_folder}\n" in cli.logged
     assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
+    assert "Can't patch 'build/components/cpython/setup.py'" in cli.logged
     assert "Lib/trace.py" not in cli.logged
 
     cli.run("-ntlinux-x86_64", f"-c{cfg}", "build", f.version, "-mall")

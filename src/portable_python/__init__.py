@@ -51,19 +51,23 @@ def patch_folder(folder, regex, replacement, ignore=None):
                 patch_folder(path, regex, replacement, ignore=ignore)
 
             elif is_text_file(path):
-                try:
-                    with open(path, "rt") as fh:
-                        text = fh.read()
+                patch_file(path, regex, replacement)
 
-                    new_text = re.sub(regex, replacement, text, flags=re.MULTILINE)
-                    if text != new_text:
-                        with open(path, "wt") as fh:
-                            fh.write(new_text)
 
-                        LOG.info("Patched '%s' in %s" % (regex, runez.short(path)))
+def patch_file(path, regex, replacement):
+    try:
+        with open(path, "rt") as fh:
+            text = fh.read()
 
-                except Exception as e:  # pragma: no cover
-                    LOG.warning("Can't patch '%s': %s" % (runez.short(path), e))
+        new_text = re.sub(regex, replacement, text, flags=re.MULTILINE)
+        if text != new_text:
+            with open(path, "wt") as fh:
+                fh.write(new_text)
+
+            LOG.info("Patched '%s' in %s" % (regex, runez.short(path)))
+
+    except Exception as e:
+        LOG.warning("Can't patch '%s': %s" % (runez.short(path), e))
 
 
 class BuildSetup:
