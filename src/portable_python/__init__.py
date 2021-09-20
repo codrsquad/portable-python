@@ -11,7 +11,6 @@ Can be used programmatically too, example usage:
 import contextlib
 import enum
 import logging
-import mimetypes
 import multiprocessing
 import os
 import re
@@ -27,13 +26,11 @@ from portable_python.versions import PPG
 
 LOG = logging.getLogger(__name__)
 REST_CLIENT = RestClient()
-RX_BINARY = re.compile(r"^.*\.(dylib|icns|ico|nib|prof.*)$")
+RX_BINARY = re.compile(r"^.*\.(dylib|gmo|icns|ico|nib|prof.*|tar)$")
 
 
-def is_text_file(path):
-    if not RX_BINARY.match(path.name):
-        file_type, _ = mimetypes.guess_type(path.as_posix(), strict=False)
-        return not file_type or file_type.startswith("text")
+def is_binary_file(path):
+    return RX_BINARY.match(path.name)
 
 
 def patch_folder(folder, regex, replacement, ignore=None):
@@ -46,11 +43,11 @@ def patch_folder(folder, regex, replacement, ignore=None):
         ignore: Regex stating what to ignore
     """
     for path in runez.ls_dir(folder):
-        if not path.is_symlink() and not ignore or not ignore.match(path.name):
+        if not path.is_symlink() and (not ignore or not ignore.match(path.name)):
             if path.is_dir():
                 patch_folder(path, regex, replacement, ignore=ignore)
 
-            elif is_text_file(path):
+            elif not is_binary_file(path):
                 patch_file(path, regex, replacement)
 
 
@@ -67,7 +64,10 @@ def patch_file(path, regex, replacement):
             LOG.info("Patched '%s' in %s" % (regex, runez.short(path)))
 
     except Exception as e:
-        LOG.warning("Can't patch '%s': %s" % (runez.short(path), e))
+        with open(path, "rt", errors="ignore") as fh:
+            text = fh.read()
+            if re.search(regex, text):
+                LOG.warning("Can't patch '%s': %s" % (runez.short(path), e))
 
 
 class BuildSetup:
@@ -124,8 +124,15 @@ class BuildSetup:
         else:
             self.tarball_name = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
 
+        self.toolchain = self._get_toolchain()
         builder = PPG.family(python_spec.family).get_builder()
         self.python_builder = builder(self)  # type: PythonBuilder
+
+    def _get_toolchain(self):
+        if PPG.target.is_macos:
+            from portable_python.external import Toolchain
+
+            return Toolchain(self)
 
     def __repr__(self):
         return str(self.folders)
@@ -165,6 +172,9 @@ class BuildSetup:
             self.ensure_clean_folder(self.folders.components)
             self.ensure_clean_folder(self.folders.deps)
             self.ensure_clean_folder(self.folders.logs)
+            if self.toolchain:
+                self.toolchain.compile()
+
             self.python_builder.compile()
             if self.folders.dist:
                 runez.compress(self.python_builder.install_folder, self.folders.dist / self.tarball_name)
@@ -366,13 +376,14 @@ class ModuleBuilder:
         return self.deps / "lib"
 
     def xenv_CPATH(self):
-        if self.modules.selected:
-            # By default, set CPATH only for modules that have sub-modules (descendants can override this easily)
-            folder = self.deps / "include"
+        folder = self.deps / "include"
+        if folder.exists():
             yield folder
-            for module in self.modules:
-                if module.m_include:
-                    yield folder / module.m_include
+            if self.modules.selected:
+                # By default, set CPATH only for modules that have sub-modules (descendants can override this easily)
+                for module in self.modules:
+                    if module.m_include:
+                        yield folder / module.m_include
 
     def xenv_LDFLAGS(self):
         if self.modules.selected:
@@ -556,6 +567,7 @@ class PythonBuilder(ModuleBuilder):
 
     def _prepare(self):
         # Some libs get funky permissions for some reason
+        super()._prepare()
         self.setup.ensure_clean_folder(self.install_folder)
         for path in runez.ls_dir(self.deps_lib):
             if not path.name.endswith(".la"):

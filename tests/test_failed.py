@@ -1,24 +1,7 @@
-import runez
-
-from portable_python.versions import PPG
-
-from .conftest import dummy_tarball
-
-
 def test_build_bogus_platform(cli):
     cli.run("-ntfoo-bar", "build", "2.7.1")
     assert cli.failed
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
-
-
-def test_failed_run(cli, monkeypatch):
-    folders = PPG.get_folders(version="3.9.7")
-    dummy_tarball(folders, "zlib-1.2.11.tar.gz")
-    monkeypatch.setenv("PP_X_DEBUG", "continue")
-    cli.run("-c", runez.DEV.tests_path("sample-config2.yml"), "build", folders.version, "-mzlib")
-    assert cli.failed
-    assert "./configure is not an executable" in cli.logged
-    assert (folders.build_folder / "logs/01-zlib.log").exists()
 
 
 def test_invalid(cli):

@@ -91,6 +91,8 @@ def test_inspect_lib(logged):
         info1.parse_otool(OTOOL_SAMPLE)
         r = info1.represented()
         assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
+        rv = info1.represented(verbose=True)
+        assert "[base] @rpath/libssl.45.dylib 46.1.0" in rv
 
         PPG.grab_config(target="linux-x86_64")
         inspector.install_folder = "/BASE"

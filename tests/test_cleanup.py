@@ -13,6 +13,8 @@ def test_cleanup(cli):
     # Simulate presence of some key files to verify code that is detecting them is hit
     runez.write(f.components / "cpython/Mac/Makefile.in", "hmm\nmentions /usr/local", logger=None)
     runez.write(f.components / "cpython/Lib/trace.py", "hmm\nmentions /usr/local", logger=None)  # ignored because in Lib/ folder
+    runez.write(f.components / "cpython/setup.py", "path.startswith('/usr/') and not path.startswith('/usr/local')", logger=None)
+    runez.write(f.components / "cpython/foo", b"hello\xe4 /usr/local", logger=None)
     runez.touch(f.deps / "bin/bzcat", logger=None)
     runez.touch(f.deps / "include/readline/readline.h", logger=None)
     runez.touch(f.deps / "lib/libssl.a", logger=None)
@@ -34,7 +36,9 @@ def test_cleanup(cli):
     assert f"Corrected permissions for {f.deps}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={f.build_folder}\n" in cli.logged
     assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
-    assert "Can't patch 'build/components/cpython/setup.py'" in cli.logged
+    assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/setup.py" in cli.logged
+    cli.match("Patched 'startswith(...)' in build/components/cpython/setup.py")
+    assert "Can't patch 'build/components/cpython/foo'" in cli.logged
     assert "Lib/trace.py" not in cli.logged
 
     cli.run("-ntlinux-x86_64", f"-c{cfg}", "build", f.version, "-mall")

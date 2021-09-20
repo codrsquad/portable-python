@@ -15,8 +15,6 @@ test_hashlib test_io test_iter test_json test_long test_math test_memoryview tes
 test_struct test_threading test_time test_traceback test_unicode
 """
 
-RX_IGNORE = re.compile(r"^(Doc|Grammar|Lib|Misc|Modules|PC|Programs|Tools|msi|.*\.(md|html|man|pro|rst))$")
-
 
 # noinspection PyPep8Naming
 class Cpython(PythonBuilder):
@@ -24,8 +22,6 @@ class Cpython(PythonBuilder):
     Build CPython binaries
     See https://docs.python.org/3.11/using/configure.html
     """
-
-    xenv_CPATH = None  # Not needed thanks to the /usr/local patching
 
     @classmethod
     def candidate_modules(cls):
@@ -44,7 +40,9 @@ class Cpython(PythonBuilder):
         yield "-Wno-unused-command-line-argument"
 
     def xenv_LDFLAGS_NODIST(self):
-        if PPG.target.is_linux:
+        yield f"-L{self.deps_lib}"
+        if PPG.target.is_linux and self.has_configure_opt("--enable-shared", "yes"):
+            # On linux, we ensure relative paths are used here
             yield "-Wl,-z,origin"
             yield "-Wl,-rpath=\\$$ORIGIN/../lib"
 
@@ -81,14 +79,22 @@ class Cpython(PythonBuilder):
 
     def _prepare(self):
         super()._prepare()
-        # Replace all /usr/local mentions with our own build folder
-        patch_folder(self.m_src_build, r"/(usr|opt)/local\b", self.deps.as_posix(), ignore=RX_IGNORE)
+        if PPG.target.is_macos:
+            # Forbid pesky usage of /usr/local on macos
+            rx = re.compile(r"^(Doc|Grammar|Lib|Misc|Modules|PC|Tools|msi|.*\.(md|html|man|pro|rst))$")
+            patch_folder(self.m_src_build, r"/(usr|opt)/local\b", self.deps.as_posix(), ignore=rx)
+            setup_py = self.m_src_build / "setup.py"
+            if setup_py.exists():
+                # Special edge case in macosx_sdk_specified() where /usr/local is fine...
+                x = "startswith({q}/usr/{q}) and not path.startswith({q}{p}{q})"
+                special_case = x.replace("(", r"\(").replace(")", r"\)").format(q="['\"]", p=self.deps)
+                restored = x.format(q="'", p='/usr/local')
+                patch_file(setup_py, special_case, restored)
 
-        # Special edge case in macosx_sdk_specified() where /usr/local is fine...
-        x = "startswith({q}/usr/{q}) and not path.startswith({q}{p}{q})"
-        special_case = x.replace("(", r"\(").replace(")", r"\)").format(q="['\"]", p=self.deps)
-        restored = x.format(q="'", p='/usr/local')
-        patch_file(self.m_src_build / "setup.py", special_case, restored)
+            # Only doable on macos: patch -install_name so produced exes/libs use a relative path
+            install_name = "@executable_path/.."
+            install_name = "-Wl,-install_name,%s" % install_name
+            patch_folder(self.m_src_build, r"-Wl,-install_name,\$\(prefix\)", install_name)
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)

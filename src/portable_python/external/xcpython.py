@@ -81,6 +81,8 @@ class Gdbm(ModuleBuilder):
             "--with-pic=yes",
             "--enable-libgdbm-compat",
             "--disable-dependency-tracking",
+            "--disable-nls",
+            "--disable-rpath",
             "--disable-silent-rules",
             "--without-libiconv-prefix",
             "--without-libintl-prefix",
@@ -313,8 +315,8 @@ class Xz(ModuleBuilder):
     def _do_linux_compile(self):
         self.run_configure(
             "./configure",
-            "--enable-shared=no", "--enable-static=yes", "--with-pic=yes",
-            "--disable-dependency-tracking", "--disable-doc",
+            "--enable-shared=no", "--enable-static=yes", "--with-pic=yes", "--disable-rpath",
+            "--disable-dependency-tracking", "--disable-doc", "--disable-nls", "--without-libintl-prefix",
         )
         self.run_make()
         self.run_make("install")
