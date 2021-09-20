@@ -11,8 +11,10 @@ Can be used programmatically too, example usage:
 import contextlib
 import enum
 import logging
+import mimetypes
 import multiprocessing
 import os
+import re
 from typing import List
 
 import runez
@@ -25,6 +27,43 @@ from portable_python.versions import PPG
 
 LOG = logging.getLogger(__name__)
 REST_CLIENT = RestClient()
+RX_BINARY = re.compile(r"^.*\.(dylib|icns|ico|nib|prof.*)$")
+
+
+def is_text_file(path):
+    if not RX_BINARY.match(path.name):
+        file_type, _ = mimetypes.guess_type(path.as_posix(), strict=False)
+        return not file_type or file_type.startswith("text")
+
+
+def patch_folder(folder, regex, replacement, ignore=None):
+    """Replace all occurrences of 'old_text' by 'new_text' in all files in 'folder'
+
+    Args:
+        folder (pathlib.Path): Folder to scan
+        regex: Regex to replace
+        replacement (str): Replacement text
+        ignore: Regex stating what to ignore
+    """
+    for path in runez.ls_dir(folder):
+        if not path.is_symlink() and not ignore or not ignore.match(path.name):
+            if path.is_dir():
+                patch_folder(path, regex, replacement, ignore=ignore)
+
+            elif is_text_file(path):
+                try:
+                    with open(path, "rt") as fh:
+                        text = fh.read()
+
+                    new_text = re.sub(regex, replacement, text, flags=re.MULTILINE)
+                    if text != new_text:
+                        with open(path, "wt") as fh:
+                            fh.write(new_text)
+
+                        LOG.info("Patched '%s' in %s" % (regex, runez.short(path)))
+
+                except Exception as e:  # pragma: no cover
+                    LOG.warning("Can't patch '%s': %s" % (runez.short(path), e))
 
 
 class BuildSetup:

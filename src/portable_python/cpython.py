@@ -1,7 +1,8 @@
+import re
 
 import runez
 
-from portable_python import PPG, PythonBuilder
+from portable_python import patch_folder, PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 from portable_python.inspector import auto_correct_shared_libs, PythonInspector
 
@@ -13,6 +14,8 @@ test_class test_cmath test_codecs test_compile test_complex test_csv test_decima
 test_hashlib test_io test_iter test_json test_long test_math test_memoryview test_pickle test_re test_set test_slice
 test_struct test_threading test_time test_traceback test_unicode
 """
+
+RX_IGNORE = re.compile(r"^(Doc|Grammar|Lib|Misc|Modules|PC|Programs|Tools|msi|.*\.(md|html|man|pro|rst))$")
 
 
 # noinspection PyPep8Naming
@@ -74,6 +77,10 @@ class Cpython(PythonBuilder):
 
         if self.version >= "3.7" and self.active_module(Openssl):
             yield f"--with-openssl={self.deps}"
+
+    def _prepare(self):
+        super()._prepare()
+        patch_folder(self.m_src_build, r"/(usr|opt)/local\b", self.deps.as_posix(), ignore=RX_IGNORE)
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args(), prefix=self.c_configure_prefix)
