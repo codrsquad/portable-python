@@ -66,10 +66,13 @@ class Cpython(PythonBuilder):
             yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
             yield "--with-system-ffi=no"
 
-        db_order = [
-            self.active_module(Gdbm) and "gdbm",
-            self.active_module(Bdb) and "bdb",
-        ]
+        db_order = [self.is_usable_module(Gdbm) and "gdbm"]
+        if self.active_module(Bdb):
+            db_order.append("bdb")
+
+        elif self.is_usable_module(Bdb):
+            db_order.append("ndbm")
+
         db_order = runez.joined(db_order, delimiter=":")
         if db_order:
             yield f"--with-dbmliborder={db_order}"

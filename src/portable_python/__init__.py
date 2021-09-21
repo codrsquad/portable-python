@@ -191,13 +191,13 @@ class ModuleCollection:
         self.selected = []
         self.candidates = []
         self.desired = desired
-        module_by_name = {}
+        self.module_by_name = {}  # type: dict[str, ModuleBuilder]
         candidates = parent_module.candidate_modules()
         if candidates:
             for module in candidates:
                 module = module(parent_module)
                 self.candidates.append(module)
-                module_by_name[module.m_name] = module
+                self.module_by_name[module.m_name] = module
 
         if not desired or desired == "none":
             return
@@ -208,11 +208,11 @@ class ModuleCollection:
 
         desired = runez.flattened(desired, split=True)
         desired = runez.flattened(desired, split=",")
-        unknown = [x for x in desired if x not in module_by_name]
+        unknown = [x for x in desired if x not in self.module_by_name]
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
 
-        self.selected = [module_by_name[x] for x in desired]
+        self.selected = [self.module_by_name[x] for x in desired]
 
     def __repr__(self):
         return "selected: %s (%s)" % (self.desired, runez.plural(self.selected, "module"))
@@ -231,9 +231,14 @@ class ModuleCollection:
 
     def active_module(self, name):
         name = self.get_module_name(name)
-        for module in self.selected:
-            if name == module.m_name:
-                return module
+        m = self.module_by_name[name]
+        return m in self.selected
+
+    def is_usable_module(self, name):
+        """Is module with name either selected, or should be usable via its telltale"""
+        name = self.get_module_name(name)
+        m = self.module_by_name[name]
+        return m in self.selected or m.resolved_telltale
 
     def report(self):
         table = PrettyTable(4, missing="")
@@ -352,6 +357,10 @@ class ModuleBuilder:
 
     def active_module(self, name):
         return self.modules.active_module(name)
+
+    def is_usable_module(self, name):
+        """Is module with name either selected or usable as a shared lib, as determined via its telltale"""
+        return self.modules.is_usable_module(name)
 
     def cfg_version(self, default):
         return PPG.config.get_value("%s-version" % self.m_name) or default

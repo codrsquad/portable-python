@@ -90,8 +90,7 @@ class Gdbm(ModuleBuilder):
         )
         self.run_make()
         self.run_make("install")
-        if PPG.target.is_linux:
-            runez.move(self.deps / "include/ndbm.h", self.deps / "include/gdbm-ndbm.h")
+        runez.move(self.deps / "include/ndbm.h", self.deps / "include/gdbm-ndbm.h")
 
 
 class LibFFI(ModuleBuilder):
