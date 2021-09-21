@@ -13,7 +13,7 @@ class Bdb(ModuleBuilder):
 
     m_build_cwd = "build_unix"
     m_debian = "libgdbm-compat-dev"
-    m_telltale = "{include}/ndbm.h"
+    m_telltale = "{include}/dbm.h"
 
     @property
     def url(self):

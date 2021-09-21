@@ -179,3 +179,11 @@ class PPG:
             cls._depot = PythonDepot(use_path=False)
 
         return cls._depot.find_python(spec)
+
+    @classmethod
+    def find_telltale(cls, *telltales):
+        for tt in runez.flattened(telltales):
+            for sys_include in runez.flattened(cls.target.sys_include):
+                path = tt.format(include=sys_include)
+                if os.path.exists(path):
+                    return path

@@ -47,38 +47,49 @@ class Cpython(PythonBuilder):
             yield "-Wl,-rpath=\\$$ORIGIN/../lib"
 
     def has_configure_opt(self, name, *variants):
-        specs = [name]
-        specs.extend("%s=%s" % (name, x) for x in variants)
-        return any(x in specs for x in self.c_configure_args())
+        opts = self.c_configure_args_from_config
+        if opts:
+            variants = runez.flattened(variants)
+            if not variants:
+                return any(x.startswith(name) for x in opts)
+
+            specs = [name]
+            specs.extend("%s=%s" % (name, x) for x in variants)
+            return any(x in specs for x in opts)
+
+    @runez.cached_property
+    def c_configure_args_from_config(self):
+        return runez.flattened(PPG.config.get_value("cpython-configure"))
 
     def c_configure_args(self):
-        configured = PPG.config.get_value("cpython-configure")
+        configured = self.c_configure_args_from_config
         if configured:
             yield from configured
 
-        if not self.active_module(LibFFI):
-            yield "--with-system-ffi"
+        if not self.has_configure_opt("--with-openssl"):
+            if self.version >= "3.7" and self.active_module(Openssl):
+                yield f"--with-openssl={self.deps}"
 
-        if self.version >= "3.10":
+        if not self.has_configure_opt("--with-system-ffi"):
+            if self.active_module(LibFFI):
+                yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
+                yield "--with-system-ffi=no"
+
+            else:
+                yield "--with-system-ffi"
+
+        if self.version >= "3.10" and not self.has_configure_opt("--disable-test-modules"):
             yield "--disable-test-modules"
 
-        if self.active_module(LibFFI):
-            yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
-            yield "--with-system-ffi=no"
-
-        db_order = [self.is_usable_module(Gdbm) and "gdbm"]
-        if self.active_module(Bdb):
-            db_order.append("bdb")
-
-        elif self.is_usable_module(Bdb):
-            db_order.append("ndbm")
-
-        db_order = runez.joined(db_order, delimiter=":")
-        if db_order:
-            yield f"--with-dbmliborder={db_order}"
-
-        if self.version >= "3.7" and self.active_module(Openssl):
-            yield f"--with-openssl={self.deps}"
+        if not self.has_configure_opt("--with-dbmliborder"):
+            db_order = [
+                self.is_usable_module(Gdbm) and "gdbm",
+                self.is_usable_module(Bdb) and "bdb",
+                PPG.find_telltale("{include}/ndbm.h") and "ndbm",
+            ]
+            db_order = runez.joined(db_order, delimiter=":")
+            if db_order:
+                yield f"--with-dbmliborder={db_order}"
 
     def _prepare(self):
         super()._prepare()

@@ -349,11 +349,7 @@ class ModuleBuilder:
         if telltales is runez.UNSET:
             return telltales
 
-        for tt in runez.flattened(telltales):
-            for sys_include in runez.flattened(PPG.target.sys_include):
-                path = tt.format(include=sys_include)
-                if os.path.exists(path):
-                    return path
+        return PPG.find_telltale(telltales)
 
     def active_module(self, name):
         return self.modules.active_module(name)
