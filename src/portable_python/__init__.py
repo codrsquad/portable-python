@@ -129,7 +129,7 @@ class BuildSetup:
         self.python_builder = builder(self)  # type: PythonBuilder
 
     def _get_toolchain(self):
-        if PPG.target.is_macos:
+        if PPG.target.is_macos and os.path.exists("/usr/local/include/libintl.h"):
             from portable_python.external import Toolchain
 
             return Toolchain(self)
