@@ -23,6 +23,8 @@ class Cpython(PythonBuilder):
     See https://docs.python.org/3.11/using/configure.html
     """
 
+    xenv_CFLAGS_NODIST = "-Wno-unused-command-line-argument"
+
     @classmethod
     def candidate_modules(cls):
         return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid]
@@ -34,10 +36,6 @@ class Cpython(PythonBuilder):
             return f"https://github.com/python/cpython/archive/refs/tags/v{self.version}.tar.gz"
 
         return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
-
-    # noinspection PyMethodMayBeStatic
-    def xenv_CFLAGS_NODIST(self):
-        yield "-Wno-unused-command-line-argument"
 
     def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"

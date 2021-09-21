@@ -15,6 +15,8 @@ class Bdb(ModuleBuilder):
     m_debian = "libgdbm-compat-dev"
     m_telltale = "{include}/dbm.h"
 
+    xenv_CFLAGS = "-fPIC"
+
     @property
     def url(self):
         return f"https://ftp.osuosl.org/pub/blfs/conglomeration/db/db-{self.version}.tar.gz"
@@ -22,11 +24,6 @@ class Bdb(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("6.2.32")
-
-    # noinspection PyPep8Naming
-    # noinspection PyMethodMayBeStatic
-    def xenv_CFLAGS(self):
-        yield "-fPIC"
 
     def _do_linux_compile(self):
         self.run_configure("../dist/configure", "--enable-shared=no", "--enable-static=yes", "--enable-dbm", "--with-pic=yes")
@@ -103,6 +100,8 @@ class LibFFI(ModuleBuilder):
     m_debian = "!libffi-dev"
     m_telltale = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
 
+    xenv_CFLAGS = "-fPIC"
+
     @property
     def url(self):
         return f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
@@ -110,11 +109,6 @@ class LibFFI(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("3.4.2")
-
-    # noinspection PyPep8Naming
-    # noinspection PyMethodMayBeStatic
-    def xenv_CFLAGS(self):
-        yield "-fPIC"
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -243,6 +237,8 @@ class Sqlite(ModuleBuilder):
     m_debian = "+libsqlite3-dev"
     m_telltale = ["{include}/sqlite3.h"]
 
+    xenv_CFLAGS = "-fPIC"
+
     def linker_outcome(self, is_selected):
         if is_selected and not runez.which("tclsh"):
             return LinkerOutcome.failed, "%s (apt install tcl)" % runez.red("needs tclsh")
@@ -256,11 +252,6 @@ class Sqlite(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("3.36.0")
-
-    # noinspection PyPep8Naming
-    # noinspection PyMethodMayBeStatic
-    def xenv_CFLAGS(self):
-        yield "-fPIC"
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -280,6 +271,8 @@ class Uuid(ModuleBuilder):
     m_include = "uuid"
     m_telltale = ["{include}/uuid/uuid.h"]
 
+    xenv_CFLAGS = "-fPIC"
+
     @property
     def url(self):
         return f"https://sourceforge.net/projects/libuuid/files/libuuid-{self.version}.tar.gz"
@@ -287,11 +280,6 @@ class Uuid(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("1.0.3")
-
-    # noinspection PyPep8Naming
-    # noinspection PyMethodMayBeStatic
-    def xenv_CFLAGS(self):
-        yield "-fPIC"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--enable-shared=no", "--enable-static=yes", "--with-pic=yes")
@@ -330,6 +318,8 @@ class Zlib(ModuleBuilder):
     m_debian = "!zlib1g-dev"
     m_telltale = "{include}/zlib.h"
 
+    xenv_CFLAGS = "-fPIC"
+
     @property
     def url(self):
         return f"https://zlib.net/zlib-{self.version}.tar.gz"
@@ -337,11 +327,6 @@ class Zlib(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("1.2.11")
-
-    # noinspection PyPep8Naming
-    # noinspection PyMethodMayBeStatic
-    def xenv_CFLAGS(self):
-        yield "-fPIC"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--64", "--static")

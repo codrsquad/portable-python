@@ -16,7 +16,6 @@ class Cpython(PythonBuilder):
             yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{version.mm} -ltk{version.mm}"
 
 
-
 class Tcl(ModuleBuilder):
     """
     macos: Symbol not found: _CGAffineTransformIdentity
