@@ -160,6 +160,8 @@ class Ncurses(ModuleBuilder):
 
     m_include = "ncursesw"
 
+    xenv_CFLAGS = "-fPIC"
+
     @property
     def url(self):
         return f"https://ftp.gnu.org/pub/gnu/ncurses/ncurses-{self.version}.tar.gz"
@@ -169,29 +171,28 @@ class Ncurses(ModuleBuilder):
         return self.cfg_version("6.2")
 
     def c_configure_args(self):
-        yield "--enable-shared=no"
-        yield "--enable-static=yes"
-        yield "--enable-widec"
-        yield "--enable-pc-files"
+        yield "--disable-shared"
+        yield "--enable-static"
+        yield "--without-ada"
+        yield "--without-cxx"
+        yield "--without-cxx-binding"
+        yield "--disable-db-install"
+        yield "--without-manpages"
+        yield "--without-progs"
+        yield "--without-tests"
         yield f"--with-pkg-config-libdir={self.deps_lib}/pkgconfig"
+        yield "--enable-pc-files"
+        yield "--with-debug=no"
+        yield "--with-gpm=no"
+        yield "--enable-widec"
+        yield "--enable-symlinks"
+        yield "--enable-sigwinch"
+        yield "--without-develop"
         if PPG.target.is_linux:
             yield "--with-terminfo-dirs=/etc/terminfo:/lib/terminfo:/usr/share/terminfo"
 
-        yield "--enable-sigwinch"
-        yield "--enable-symlinks"
-        yield "--with-gpm=no",
-        yield "--without-ada"
-        yield "--without-cxx"
-        yield "--without-tests"
-        yield "--without-manpages"
-        # yield "--without-progs"
         if PPG.target.is_macos:
-            yield "--disable-db-install"
-            yield "--datadir=/usr/share"
-            yield "--sysconfdir=/etc"
-            yield "--sharedstatedir=/usr/com"
             yield "--with-terminfo-dirs=/usr/share/terminfo"
-            yield "--with-default-terminfo-dir=/usr/share/terminfo"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args())
@@ -210,6 +211,8 @@ class Readline(ModuleBuilder):
     m_include = "readline"
     m_telltale = "{include}/readline/readline.h"
 
+    xenv_CFLAGS = "-fPIC"
+
     @classmethod
     def candidate_modules(cls):
         return [Ncurses]
@@ -223,7 +226,9 @@ class Readline(ModuleBuilder):
         return self.cfg_version("8.1")
 
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--enable-shared=no", "--enable-static=yes", "--disable-install-examples", "--with-curses")
+        self.run_configure(
+            "./configure", "--disable-shared", "--enable-static", "--with-curses", "--enable-multibyte", "--disable-install-examples"
+        )
         self.run_make()
         self.run_make("install")
 
