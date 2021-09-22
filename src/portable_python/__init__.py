@@ -166,6 +166,7 @@ class BuildSetup:
             modules = self.python_builder.modules
             LOG.info("portable-python v%s, current folder: %s" % (runez.get_version(__name__), os.getcwd()))
             LOG.info(runez.joined(modules, list(modules)))
+            LOG.info(PPG.config.config_files_report())
             LOG.info("Platform: %s" % PPG.target)
             LOG.info("Build report:\n%s" % self.python_builder.modules.report())
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)

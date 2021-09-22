@@ -106,6 +106,14 @@ class Config:
                 if v is not None:
                     return v
 
+    def config_files_report(self):
+        """One liner describing which config files are used, if any"""
+        sources = self.sources
+        if sources and len(sources) > 1:
+            return "Config files: %s" % runez.joined(sources[:-1], delimiter=", ")
+
+        return "no config"
+
     def represented(self):
         """Textual (yaml) representation of all configs"""
         result = []
