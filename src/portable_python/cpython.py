@@ -1,3 +1,4 @@
+import os
 import re
 
 import runez
@@ -39,10 +40,14 @@ class Cpython(PythonBuilder):
 
     def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"
-        if PPG.target.is_linux and self.has_configure_opt("--enable-shared", "yes"):
-            # On linux, we ensure relative paths are used here
-            yield "-Wl,-z,origin"
-            yield "-Wl,-rpath=\\$$ORIGIN/../lib"
+        if PPG.target.is_linux:
+            if self.setup.prefix:
+                yield f"-Wl,-rpath={self.setup.prefix}/lib"
+
+            elif self.has_configure_opt("--enable-shared", "yes"):
+                # On linux, we ensure relative paths are used here
+                yield "-Wl,-z,origin"
+                yield "-Wl,-rpath=\\$$ORIGIN/../lib"
 
     def has_configure_opt(self, name, *variants):
         opts = self.c_configure_args_from_config
@@ -119,6 +124,10 @@ class Cpython(PythonBuilder):
         self.run_make("install", f"DESTDIR={self.destdir}")
 
     def _finalize(self):
+        if PPG.target.is_linux and self.setup.prefix:
+            prev = os.environ.get("LD_LIBRARY_PATH")
+            os.environ["LD_LIBRARY_PATH"] = runez.joined(f"{self.install_folder}/lib", prev, delimiter=os.pathsep)
+
         auto_correct_shared_libs(self.c_configure_prefix, self.install_folder)
         bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
         if self.has_configure_opt("--with-ensurepip", "upgrade"):
