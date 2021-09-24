@@ -161,6 +161,7 @@ class BuildSetup:
     @runez.log.timeit("Overall compilation")
     def compile(self):
         """Compile selected python family and version"""
+        self.python_builder.validate_setup()
         self.log_counter = 0
         with runez.Anchored(self.folders.base_folder):
             modules = self.python_builder.modules
@@ -556,9 +557,12 @@ class PythonBuilder(ModuleBuilder):
     def __init__(self, parent_module):
         super().__init__(parent_module)
         self.destdir = self.setup.folders.destdir  # Folder passed to 'make install DESTDIR='
-        self.c_configure_prefix = self.setup.prefix or self.setup.folders.prefix
+        self.c_configure_prefix = self.setup.prefix or self.setup.folders.ppp_marker
         self.install_folder = self.destdir / self.c_configure_prefix.strip("/")
         self.bin_folder = self.install_folder / "bin"
+
+    def validate_setup(self):
+        """Descendants can double-check that setup is correct here, in order to fail early if/when applicable"""
 
     def selected_modules(self):
         desired = self.setup.desired_modules or PPG.config.get_value("%s-modules" % self.m_name)

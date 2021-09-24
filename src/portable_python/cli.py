@@ -7,7 +7,7 @@ from runez.pyenv import PythonDepot, PythonSpec
 from runez.render import PrettyTable
 
 from portable_python import BuildSetup, PPG
-from portable_python.inspector import PythonInspector
+from portable_python.inspector import LibAutoCorrect, PythonInspector
 
 
 LOG = logging.getLogger(__name__)
@@ -198,6 +198,31 @@ def recompress(path, ext):
 
         print("Size of %s: %s" % (runez.short(actual_path), runez.bold(runez.represented_bytesize(actual_path))))
         print("Size of %s: %s" % (runez.short(dest), runez.bold(runez.represented_bytesize(dest))))
+
+
+@main.command()
+@click.option("--commit", is_flag=True, help="Effectively perform the changes")
+@click.option("--prefix", "-p", metavar="PATH", help="--prefix the program was built with (default: same as scanned path)")
+@click.argument("path", required=True)
+def lib_auto_correct(commit, prefix, path):
+    """
+    Scan a python installation, auto-correct exes/libraries to use relative paths
+
+    This is mostly for testing purposes, applies the same method done internally by this tool.
+    Allows to exercise just the lib-auto-correct part without having to wait for full build to complete.
+    """
+    if not runez.DRYRUN:
+        runez.log.set_dryrun(not commit)
+
+    path = runez.resolved_path(path)
+    if not prefix:
+        python = PPG.find_python(path)
+        runez.abort_if(python.problem)
+        r = runez.run(python.executable, "-c", "import sysconfig; print(sysconfig.get_config_var('prefix'))", dryrun=False)
+        prefix = runez.resolved_path(r.output)
+
+    lib_auto_correct = LibAutoCorrect(prefix, runez.to_path(path))
+    lib_auto_correct.run()
 
 
 if __name__ == "__main__":

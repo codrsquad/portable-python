@@ -19,7 +19,7 @@ folders:
   destdir: "{build}"
   dist: dist
   logs: ""
-  prefix: /{version}
+  ppp-marker: /ppp-marker/{version}
   sources: build/sources
 
 ext: gz
@@ -43,7 +43,6 @@ cpython-symlink: bin/python
 cpython-configure:
   - --enable-optimizations      # 3.6+
   - --with-lto                  # 3.6+
-  - --with-ensurepip=upgrade    # 3.6+
 
 windows:
   ext: zip

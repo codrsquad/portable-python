@@ -4,102 +4,7 @@ from unittest.mock import patch
 
 import runez
 
-from portable_python.inspector import auto_correct_shared_libs, find_libs, LibType, PPG, PythonInspector, SoInfo
-
-
-OTOOL_SAMPLE = """
-.../test-sample.so:
- ....../foo/bar.dylib (compatibility version 8.0.0, current version 8.4.0)
- /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib (compatibility version 5.0.0, current version 5.0.0)
- @rpath/libssl.45.dylib (compatibility version 46.0.0, current version 46.1.0)
- /usr/lib/libncurses.5.4.dylib (compatibility version 5.4.0, current version 5.4.0)
- /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1281.0.0)
-"""
-
-LDD_SAMPLE = """
-    linux-vdso.so.1 (...)
-    libpython3.6m.so.1.0 => /BASE/lib/libpython3.6m.dylib.1.0 (...)  # basename taken from left side
-    libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (...)
-    libtinfo.so.5 => not found
-    libbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (...)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (...)
-    librt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (...)
-    /lib64/ld-linux-x86-64.so.2 (...)
-"""
-
-MAC_SHARED_LIB = """
-foo/bin/python:
-  /3.9.6/lib/libpython3.9.dylib (compatibility version 3.9.0, current version 3.9.0)
-  /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1281.0.0)
-"""
-
-
-class MockSharedExeRun:
-    def __init__(self, platform, output):
-        PPG.grab_config(target=f"{platform}-x86_64")
-        self.program = "otool" if platform == "macos" else "ldd"
-        self.output = output
-        self.called = []
-
-    def __call__(self, program, *args, **kwargs):
-        if program == self.program:
-            return runez.program.RunResult(code=0, output=self.output)
-
-        with runez.Anchored(os.getcwd()):
-            self.called.append([program, *(runez.short(x) for x in args)])
-            return runez.program.RunResult(code=0)
-
-    def __enter__(self):
-        self.mock = patch("runez.run", side_effect=self)
-        self.mock.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.mock.stop()
-
-
-def test_exe_correction(temp_folder):
-    runez.touch("foo/bin/python", logger=None)
-    runez.make_executable("foo/bin/python", logger=None)
-    runez.touch("foo/lib/libpython3.9.dylib", logger=None)
-    runez.touch("foo/lib/bar/baz.dylib", logger=None)
-    with MockSharedExeRun("macos", MAC_SHARED_LIB) as m:
-        auto_correct_shared_libs("/3.9.6", runez.to_path("foo").absolute())
-        expected = [
-            ["install_name_tool", "-add_rpath", "@executable_path/../lib", "foo/bin/python"],
-            ["install_name_tool", "-change", "/3.9.6/lib/libpython3.9.dylib", "@rpath/libpython3.9.dylib", "foo/bin/python"],
-            ["install_name_tool", "-add_rpath", "@loader_path/..", "foo/lib/bar/baz.dylib"],
-            ["install_name_tool", "-change", "/3.9.6/lib/libpython3.9.dylib", "@rpath/libpython3.9.dylib", "foo/lib/bar/baz.dylib"],
-        ]
-        assert m.called == expected
-
-
-def test_inspect_lib(logged):
-    inspector = PythonInspector("invoker")
-    with patch("runez.which", return_value="yup"):
-        not_there = SoInfo(inspector, "/dev/null/foo.platform.so")
-        assert str(not_there) == "foo*!.so"
-        assert not_there.is_failed
-        assert not_there.is_problematic
-        assert not_there.size == 0
-        assert "otool exited with code" in logged.pop()
-
-    with patch("runez.which", return_value=None):
-        PPG.grab_config(target="macos-x86_64")
-        info1 = SoInfo(inspector, "_dbm...so")
-        assert str(info1) == "_dbm*!.so"
-        info1.parse_otool(OTOOL_SAMPLE)
-        r = info1.represented()
-        assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
-        rv = info1.represented(verbose=True)
-        assert "[base] @rpath/libssl.45.dylib 46.1.0" in rv
-
-        PPG.grab_config(target="linux-x86_64")
-        inspector.install_folder = "/BASE"
-        info2 = SoInfo(inspector, "_tkinter...so")
-        info2.parse_ldd(LDD_SAMPLE)
-        r = info2.represented()
-        assert r == "_tkinter*!.so missing: tinfo:5 libpython3.6m.so.1.0 tcl8:8.6 bz2:1.0"
+from portable_python.inspector import find_libs, LibAutoCorrect, LibType, PPG, PythonInspector, SoInfo
 
 
 def test_find_libs(temp_folder):
@@ -138,6 +43,55 @@ def test_find_python(temp_folder):
     assert str(r.get_problem(True)).startswith("Uses system libs:")
 
 
+OTOOL_SAMPLE = """
+.../test-sample.so:
+ ....../foo/bar.dylib (compatibility version 8.0.0, current version 8.4.0)
+ /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib (compatibility version 5.0.0, current version 5.0.0)
+ @rpath/libssl.45.dylib (compatibility version 46.0.0, current version 46.1.0)
+ /usr/lib/libncurses.5.4.dylib (compatibility version 5.4.0, current version 5.4.0)
+ /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1281.0.0)
+"""
+
+LDD_SAMPLE = """
+    linux-vdso.so.1 (...)
+    libpython3.6m.so.1.0 => /BASE/lib/libpython3.6m.dylib.1.0 (...)  # basename taken from left side
+    libtcl8.6.so => /usr/lib/x86_64-linux-gnu/libtcl8.6.so (...)
+    libtinfo.so.5 => not found
+    libbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (...)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (...)
+    librt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (...)
+    /lib64/ld-linux-x86-64.so.2 (...)
+"""
+
+
+def test_inspect_lib(logged):
+    inspector = PythonInspector("invoker")
+    with patch("runez.which", return_value="yup"):
+        not_there = SoInfo(inspector, "/dev/null/foo.platform.so")
+        assert str(not_there) == "foo*!.so"
+        assert not_there.is_failed
+        assert not_there.is_problematic
+        assert not_there.size == 0
+        assert "otool exited with code" in logged.pop()
+
+    with patch("runez.which", return_value=None):
+        PPG.grab_config(target="macos-x86_64")
+        info1 = SoInfo(inspector, "_dbm...so")
+        assert str(info1) == "_dbm*!.so"
+        info1.parse_otool(OTOOL_SAMPLE)
+        r = info1.represented()
+        assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
+        rv = info1.represented(verbose=True)
+        assert "[base] @rpath/libssl.45.dylib 46.1.0" in rv
+
+        PPG.grab_config(target="linux-x86_64")
+        inspector.install_folder = "/BASE"
+        info2 = SoInfo(inspector, "_tkinter...so")
+        info2.parse_ldd(LDD_SAMPLE)
+        r = info2.represented()
+        assert r == "_tkinter*!.so missing: tinfo:5 libpython3.6m.so.1.0 tcl8:8.6 bz2:1.0"
+
+
 def test_inspect_module(logged):
     # Exercise _inspect code
     from portable_python.external import _inspect
@@ -164,3 +118,62 @@ def test_inspect_module(logged):
     assert _inspect.pymodule_info("builtins", builtins)
     assert _inspect.pymodule_info("foo", [])
     assert not logged
+
+
+class MockSharedExeRun:
+    def __init__(self, platform):
+        PPG.grab_config(target=f"{platform}-x86_64")
+        self.program_handler = getattr(self, "_%s_run" % platform)
+        self.called = []
+
+    def _linux_run(self, *args):
+        if args[1] == "--print-rpath":
+            return "/3.9.6"
+
+    def _macos_run(self, program, *args):
+        if program == "otool":
+            return "foo/bin/python:\n /3.9.6/lib/libpython3.9.dylib (...)\n /usr/lib/... (...)"
+
+    def __call__(self, *args, **_):
+        x = self.program_handler(*args)
+        if x is not None:
+            return runez.program.RunResult(code=0, output=x)
+
+        with runez.Anchored(os.getcwd()):
+            self.called.append(runez.quoted(*args))
+            return runez.program.RunResult(code=0)
+
+    def __enter__(self):
+        self.mock = patch("runez.run", side_effect=self)
+        self.mock.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.mock.stop()
+
+
+def test_lib_auto_correct(temp_folder):
+    runez.touch("foo/bin/python", logger=None)
+    runez.make_executable("foo/bin/python", logger=None)
+    runez.touch("foo/lib/libpython3.9.dylib", logger=None)
+    runez.touch("foo/lib/bar/baz.dylib", logger=None)
+    with MockSharedExeRun("macos") as m:
+        ac = LibAutoCorrect("/3.9.6", runez.to_path("foo").absolute())
+        ac.run()
+        expected = [
+            "install_name_tool -add_rpath @executable_path/../lib foo/bin/python",
+            "install_name_tool -change /3.9.6/lib/libpython3.9.dylib @rpath/libpython3.9.dylib foo/bin/python",
+            "install_name_tool -add_rpath @loader_path/.. foo/lib/bar/baz.dylib",
+            "install_name_tool -change /3.9.6/lib/libpython3.9.dylib @rpath/libpython3.9.dylib foo/lib/bar/baz.dylib",
+        ]
+        assert m.called == expected
+
+    with MockSharedExeRun("linux") as m:
+        ac = LibAutoCorrect("/3.9.6", runez.to_path("foo").absolute())
+        ac.run()
+        expected = [
+            "patchelf --set-rpath $ORIGIN/../lib foo/bin/python",
+            "patchelf --set-rpath $ORIGIN/.. foo/lib/bar/baz.dylib",
+            "patchelf --set-rpath $ORIGIN/. foo/lib/libpython3.9.dylib",
+        ]
+        assert m.called == expected

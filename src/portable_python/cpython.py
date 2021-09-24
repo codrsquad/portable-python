@@ -1,11 +1,10 @@
-import os
 import re
 
 import runez
 
 from portable_python import patch_file, patch_folder, PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
-from portable_python.inspector import auto_correct_shared_libs, PythonInspector
+from portable_python.inspector import LibAutoCorrect, PythonInspector
 
 
 # https://github.com/docker-library/python/issues/160
@@ -26,6 +25,14 @@ class Cpython(PythonBuilder):
 
     xenv_CFLAGS_NODIST = "-Wno-unused-command-line-argument"
 
+    def validate_setup(self):
+        # We install pip ourselves, as it needs to be done after exe/libs auto-corrected
+        ep = "--with-ensurepip"
+        runez.abort_if(
+            self.has_configure_opt(ep),
+            "Please don't configure %s in config, it is automatically handled" % runez.red(ep),
+        )
+
     @classmethod
     def candidate_modules(cls):
         return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid]
@@ -41,13 +48,8 @@ class Cpython(PythonBuilder):
     def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"
         if PPG.target.is_linux:
-            if self.setup.prefix:
-                yield f"-Wl,-rpath={self.setup.prefix}/lib"
-
-            elif self.has_configure_opt("--enable-shared", "yes"):
-                # On linux, we ensure relative paths are used here
-                yield "-Wl,-z,origin"
-                yield "-Wl,-rpath=\\$$ORIGIN/../lib"
+            yield "-Wl,-z,origin"
+            yield f"-Wl,-rpath={self.c_configure_prefix}"
 
     def has_configure_opt(self, name, *variants):
         opts = self.c_configure_args_from_config
@@ -69,6 +71,7 @@ class Cpython(PythonBuilder):
         if configured:
             yield from configured
 
+        yield "--with-ensurepip=no"
         if not self.has_configure_opt("--with-openssl"):
             if self.version >= "3.7" and self.active_module(Openssl):
                 yield f"--with-openssl={self.deps}"
@@ -109,8 +112,7 @@ class Cpython(PythonBuilder):
                 patch_file(setup_py, special_case, restored)
 
             # Only doable on macos: patch -install_name so produced exes/libs use a relative path
-            install_name = "@executable_path/.."
-            install_name = "-Wl,-install_name,%s" % install_name
+            install_name = "-Wl,-install_name,@executable_path/.."
             patch_folder(self.m_src_build, r"-Wl,-install_name,\$\(prefix\)", install_name)
 
     def _do_linux_compile(self):
@@ -123,29 +125,30 @@ class Cpython(PythonBuilder):
         self.run_make(*make_args)
         self.run_make("install", f"DESTDIR={self.destdir}")
 
+    def _pip_upgrade(self, bin_python, *lib_names):
+        for lib_name in runez.flattened(lib_names, split=True, unique=True):
+            do_install = True
+            if lib_name.startswith("?"):
+                lib_name = lib_name[1:]
+                path = self.install_folder / f"lib/python{self.version.mm}/site-packages/{lib_name}"
+                do_install = path.exists()
+
+            if do_install:
+                self.run(bin_python, "-mpip", "install", "-U", lib_name, fatal=False)
+
     def _finalize(self):
-        if PPG.target.is_linux and self.setup.prefix:
-            prev = os.environ.get("LD_LIBRARY_PATH")
-            os.environ["LD_LIBRARY_PATH"] = runez.joined(f"{self.install_folder}/lib", prev, delimiter=os.pathsep)
+        if self.setup.prefix or self.has_configure_opt("--enable-shared", "yes"):
+            lib_auto_correct = LibAutoCorrect(self.c_configure_prefix, self.install_folder)
+            lib_auto_correct.run()
 
-        auto_correct_shared_libs(self.c_configure_prefix, self.install_folder)
         bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
-        if self.has_configure_opt("--with-ensurepip", "upgrade"):
-            self.run(bin_python, "-mpip", "install", "-U", "pip", fatal=False)
-            setuptools = self.install_folder / f"lib/python{self.version.mm}/site-packages/setuptools"
-            if setuptools.exists():
-                self.run(bin_python, "-mpip", "install", "-U", "setuptools", fatal=False)
-
-        extras = PPG.config.get_value("cpython-pip-install")
-        if extras:
-            extras = runez.flattened(extras, split=" ")
-            for extra in extras:
-                self.run(bin_python, "-mpip", "install", "-U", extra, fatal=False)
+        if not PPG.config.get_value("disable-pip"):
+            self.run(bin_python, "-mensurepip", "--altinstall", "--upgrade", fatal=False)
+            self._pip_upgrade(bin_python, "pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
 
         PPG.config.cleanup_folder(self)
         PPG.config.ensure_main_file_symlinks(self)
         self.run(bin_python, "-mcompileall")
-
         if not self.setup.prefix:
             for f in runez.ls_dir(self.bin_folder):
                 PPG.config.auto_correct_shebang(f, bin_python)

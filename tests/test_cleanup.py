@@ -7,7 +7,7 @@ from portable_python.versions import PPG
 
 def test_cleanup(cli):
     f = PPG.get_folders(version="3.7.12")
-    install_dir = f.destdir / f.version.text
+    install_dir = f.resolved_destdir()
     lib = install_dir / "lib"
 
     # Simulate presence of some key files to verify code that is detecting them is hit

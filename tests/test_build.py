@@ -8,16 +8,18 @@ from .conftest import dummy_tarball
 
 
 def test_build_rc(cli):
-    cli.run("-n", "build", "3.10.0rc2", "-mnone")
+    f = PPG.get_folders(version="3.10.0rc2")
+    install_dir = f.resolved_destdir()
+    cli.run("-n", "-tmacos-arm64", "build", f.version, "-mnone")
     assert cli.succeeded
-    assert "Would tar build/3.10.0rc2 -> dist/cpython-3.10.0rc2-" in cli.logged
+    assert f"Would tar {install_dir} -> dist/cpython-{f.version}-macos-arm64.tar.gz" in cli.logged
 
 
 def test_finalization(cli, monkeypatch):
     f = PPG.get_folders(version="3.9.7")
     dummy_tarball(f, f"Python-{f.version}.tar.xz")
     dummy_tarball(f, "bzip2-1.0.8.tar.gz")
-    bin = f.destdir / f"{f.version}/bin"
+    bin = f.resolved_destdir("bin")
     runez.touch(f.components / "cpython/README", logger=None)
 
     # Create some files to be groomed by CPython

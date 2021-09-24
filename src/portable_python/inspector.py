@@ -27,64 +27,109 @@ class LibType(enum.Enum):
     system = "blue"
 
 
-def auto_correct_shared_libs(prefix, install_folder, _folder=None):
-    """Automatically correct all absolute paths in exes/dynamic libs
-    Needed on macos only for now
-
-    Args:
-        prefix (str): Prefix used in ./configure
-        install_folder (pathlib.Path): Installation folder to scan (all paths will be relative to this)
-        _folder (pathlib.Path): Internal: current folder scanned
-
-    Returns:
-
+class TempChmod:
     """
-    if PPG.target.is_macos:
-        if _folder is None:
-            _folder = install_folder
+    Temporarily chmod a given file.
+    Some libs do not have the writable flag, and some do. We need them to writeable while we auto-correct them.
+    """
 
-        for path in sorted(runez.ls_dir(_folder)):
-            if path.is_dir():
-                auto_correct_shared_libs(prefix, install_folder, _folder=path)
+    def __init__(self, path, chmod=0o755):
+        self.path = path
+        self.chmod = chmod
+        self.old_chmod = None
 
-            elif not path.is_symlink() and (is_dyn_lib(path) or runez.is_executable(path)):
-                _auto_correct_shared_file(prefix, path, install_folder)
+    def __enter__(self):
+        if not runez.DRYRUN:
+            current = self.path.stat().st_mode & 0o777
+            if current != self.chmod:
+                self.old_chmod = current
+                self.path.chmod(self.chmod)
+
+        return self
+
+    def __exit__(self, *_):
+        if self.old_chmod is not None:
+            self.path.chmod(self.old_chmod)
 
 
-def _shared_ref_top_level(relative_path):
-    parts = runez.to_path(relative_path).parts
-    if len(parts) > 1:
-        parts = parts[:-1]  # Remove basename
-        for part in parts:
-            yield part
-            if part != "..":
-                return
+class LibAutoCorrect:
+    """Automatically correct all absolute paths in exes/dynamic libs"""
 
+    def __init__(self, prefix, install_folder):
+        """
+        Args:
+            prefix (str): Prefix used in ./configure
+            install_folder (pathlib.Path): Installation folder to scan (all paths will be relative to this)
+        """
+        self.prefix = prefix
+        self.install_folder = install_folder
+        self._file_corrector = getattr(self, "_auto_correct_%s" % PPG.target.platform)
 
-def _auto_correct_shared_file(prefix, scanned_path, install_folder):
-    prefixed_folder = scanned_path.relative_to(install_folder)
-    prefixed_folder = runez.to_path(f"{prefix}/{prefixed_folder}").parent
-    # patchelf --replace-needed libpython3.9.so.1 $ORIGIN/../lib/libpython3.9.so.1 prefix/bin/python3.9
-    if PPG.target.is_macos:
+    def run(self):
+        self._scan(self.install_folder)
+
+    def _scan(self, folder):
+        for path in sorted(runez.ls_dir(folder)):
+            if not path.is_symlink():
+                if path.is_dir():
+                    self._scan(path)
+
+                elif is_dyn_lib(path) or runez.is_executable(path):
+                    self._file_corrector(path)
+
+    def _auto_correct_linux(self, path):
+        """
+        On linux, we change the /<prefix> rpath to be relative via $ORIGIN
+        """
+        r = runez.run("patchelf", "--print-rpath", path, fatal=False, dryrun=False, logger=False)
+        if self.prefix in r.output:
+            with TempChmod(path, chmod=0o755):
+                relative_location = path.relative_to(self.install_folder).parent
+                new_origin = os.path.relpath("lib", relative_location)
+                runez.run("patchelf", "--set-rpath", f"$ORIGIN/{new_origin}", path)
+
+    def _auto_correct_macos(self, path):
+        """
+        On macos, we use install_name_tool, example:
+            install_name_tool -add_rpath @executable_path/../lib .../bin/python
+            install_name_tool -change /<prefix>/lib/libpython3.9.dylib @rpath/libpython3.9.dylib .../bin/python
+
+        Note that this is here is not necessary thanks to the '-Wl,-install_name,@executable_path/..' patch
+        It is here just as fallback (double-checks that all exes/libs are indeed relative/portable)
+        """
+        prefixed_folder = path.relative_to(self.install_folder)
+        prefixed_folder = runez.to_path(f"{self.prefix}/{prefixed_folder}").parent
         abs_paths = collections.defaultdict(list)
-        r = runez.run("otool", "-L", scanned_path)
+        r = runez.run("otool", "-L", path, dryrun=False, logger=None)
         for line in r.output.splitlines():
             line = line.strip()
-            if line.startswith(prefix):
+            if not line.endswith(":") and line.startswith(self.prefix):
                 ref_path = line.split()[0]
                 relative_path = os.path.relpath(ref_path, prefixed_folder)
-                top_level = runez.joined(_shared_ref_top_level(relative_path), delimiter=os.sep)
-                if top_level:
+                if relative_path != path.name:
+                    # See https://stackoverflow.com/questions/9690362/osx-dll-has-a-reference-to-itself
+                    top_level = runez.joined(self._shared_ref_top_level(relative_path), delimiter=os.sep) or "."
                     abs_paths[top_level].append(ref_path)
 
         if abs_paths:
-            for top_level, ref_paths in abs_paths.items():
-                rpath = "@loader_path" if is_dyn_lib(scanned_path) else "@executable_path"
-                runez.run("install_name_tool", "-add_rpath", f"{rpath}/{top_level}", scanned_path)
-                for ref_path in ref_paths:
-                    relative_to_scanned = os.path.join(prefixed_folder, top_level)
-                    relative_path = os.path.relpath(ref_path, relative_to_scanned)
-                    runez.run("install_name_tool", "-change", ref_path, f"@rpath/{relative_path}", scanned_path)
+            with TempChmod(path, chmod=0o755):
+                for top_level, ref_paths in abs_paths.items():
+                    rpath = "@loader_path" if is_dyn_lib(path) else "@executable_path"
+                    runez.run("install_name_tool", "-add_rpath", f"{rpath}/{top_level}", path)
+                    for ref_path in ref_paths:
+                        relative_to_scanned = os.path.join(prefixed_folder, top_level)
+                        relative_path = os.path.relpath(ref_path, relative_to_scanned)
+                        runez.run("install_name_tool", "-change", ref_path, f"@rpath/{relative_path}", path)
+
+    @staticmethod
+    def _shared_ref_top_level(relative_path):
+        parts = runez.to_path(relative_path).parts
+        if len(parts) > 1:
+            parts = parts[:-1]  # Remove basename
+            for part in parts:
+                yield part
+                if part != "..":
+                    return
 
 
 class ModuleInfo:

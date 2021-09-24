@@ -18,4 +18,3 @@ cpython-use-github: true
 
 cpython-configure:
   - --enable-shared
-  - --with-ensurepip=upgrade

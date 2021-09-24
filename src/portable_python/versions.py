@@ -113,7 +113,7 @@ class Folders:
         self.destdir = self._get_path("destdir")
         self.dist = self._get_path("dist", required=False)
         self.logs = self._get_path("logs", required=False)
-        self.prefix = self._get_value("prefix")
+        self.ppp_marker = self._get_value("ppp-marker")
         self.sources = self._get_path("sources")
 
     def __repr__(self):
@@ -124,6 +124,13 @@ class Folders:
             text = text.format(**self.completions)
 
         return text
+
+    def resolved_destdir(self, relative_path=None):
+        folder = self.destdir / self.ppp_marker.strip("/")
+        if relative_path:
+            folder = folder / relative_path
+
+        return folder
 
     def _get_value(self, key, required=True):
         value = self.config.get_value("folders", key, by_platform=False)

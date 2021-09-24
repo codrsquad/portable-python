@@ -175,7 +175,7 @@ Note that you can use ``--dryrun`` mode to inspect what would be done without do
     Would download https://www.python.org/ftp/python/3.9.7/Python-3.9.7.tar.xz
     Would untar build/sources/Python-3.9.7.tar.xz -> build/components/cpython
     ...
-    Would run: ./configure --prefix=/3.9.7 --enable-optimizations ...
+    Would run: ./configure --prefix=/ppp-marker/3.9.7 --enable-optimizations ...
     Would run: /usr/bin/make
     Would run: /usr/bin/make install DESTDIR=build
     ...
@@ -188,7 +188,7 @@ Build folder structure
 ``portable-python`` uses this file structure (build/ and dist/ folders configurable)::
 
     build/
-        3.9.7/                              # Full installation (after build completes)
+        ppp-marker/3.9.7/                   # Full installation (after build completes)
         components/                         # Builds of statically compiled extension modules are here
         deps/                               # --prefix=.../deps passed to all component ./configure scripts
         sources/

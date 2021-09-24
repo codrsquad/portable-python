@@ -1,2 +1,0 @@
-macos:
-  cpython-modules: zlib xz bzip2 readline openssl
