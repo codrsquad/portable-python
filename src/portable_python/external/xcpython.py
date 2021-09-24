@@ -38,6 +38,10 @@ class Bzip2(ModuleBuilder):
 
     m_telltale = "{include}/bzlib.h"
 
+    def auto_select_reason(self):
+        if PPG.target.is_macos and self.setup.python_spec.version < "3.8":
+            return "Required for versions prior to 3.8"
+
     @property
     def url(self):
         return f"https://sourceware.org/pub/bzip2/bzip2-{self.version}.tar.gz"
@@ -130,6 +134,10 @@ class Openssl(ModuleBuilder):
 
     m_include = "openssl"
     m_telltale = "{include}/openssl/ssl.h"
+
+    def auto_select_reason(self):
+        if PPG.target.is_macos:
+            return "Required on macos"
 
     @property
     def url(self):
@@ -296,6 +304,10 @@ class Xz(ModuleBuilder):
 
     m_telltale = "{include}/lzma.h"
 
+    def auto_select_reason(self):
+        if not self.resolved_telltale:
+            return "Required when lzma.h is not available"
+
     @property
     def url(self):
         return f"https://tukaani.org/xz/xz-{self.version}.tar.gz"
@@ -324,6 +336,10 @@ class Zlib(ModuleBuilder):
     m_telltale = "{include}/zlib.h"
 
     xenv_CFLAGS = "-fPIC"
+
+    def auto_select_reason(self):
+        if PPG.target.is_macos and self.setup.python_spec.version < "3.8":
+            return "Required for versions prior to 3.8"
 
     @property
     def url(self):

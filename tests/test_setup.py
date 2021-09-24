@@ -41,7 +41,7 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     runez.write("pp.yml", "folders:\n build: build/{family}-{version}", logger=None)
     PPG.grab_config("pp.yml", target="linux-x86_64")
     assert str(PPG.cpython) == "cpython"
-    assert str(PPG.config) == "2 config sources [linux-x86_64]"
+    assert str(PPG.config) == "1 config source [linux-x86_64]"
 
     setup = BuildSetup("3.9.6")
     assert str(setup) == "build/cpython-3.9.6"
@@ -55,7 +55,7 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     assert outcome.name == "failed"
     assert reason == "broken, can't compile statically with foo present"
 
-    PPG.config.sources[0].data = dict(ext="foo")
+    PPG.config._sources[0].data = dict(ext="foo")
     assert not logged
     with pytest.raises(BaseException):
         _ = BuildSetup("3.9.6")

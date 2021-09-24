@@ -7,4 +7,4 @@ include: +pp-dev.yml
 folders:
   build: "build/{family}-{version}"   # Allows keeping builds for various versions, and inspect them later
   sources: dist/sources               # Allows keeping source downloads even after rm -rf build
-  logs: "{build}/logs"                # Uncomment (or use in pp-dev.yml) to capture logs for each component build
+  logs: "{build}/logs"                # Set to empty string in pp-dev.yml to disable capturing logs for each component build

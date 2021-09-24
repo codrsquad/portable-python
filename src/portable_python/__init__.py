@@ -106,8 +106,6 @@ class BuildSetup:
 
         self.python_spec = python_spec
         self.folders = PPG.get_folders(base=os.getcwd(), family=python_spec.family, version=python_spec.version)
-        specific_config = self.folders.formatted("+portable-python-{mm}.yml")
-        PPG.config.load(specific_config)
         self.desired_modules = modules
         prefix = self.folders.formatted(prefix)
         self.prefix = prefix
@@ -191,6 +189,7 @@ class ModuleCollection:
 
     def __init__(self, parent_module: "ModuleBuilder", desired=None):
         self.selected = []
+        self.auto_selected = {}
         self.candidates = []
         self.desired = desired
         self.module_by_name = {}  # type: dict[str, ModuleBuilder]
@@ -201,19 +200,23 @@ class ModuleCollection:
                 self.candidates.append(module)
                 self.module_by_name[module.m_name] = module
 
-        if not desired or desired == "none":
-            return
-
         if desired == "all":
             self.selected = self.candidates
             return
 
-        desired = runez.flattened(desired, split=True)
+        desired = [] if desired == "none" else runez.flattened(desired, split=True)
         desired = runez.flattened(desired, split=",")
         unknown = [x for x in desired if x not in self.module_by_name]
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
 
+        for candidate in self.candidates:
+            if candidate.m_name not in desired:
+                reason = candidate.auto_select_reason()
+                if reason:
+                    self.auto_selected[candidate.m_name] = reason
+
+        desired.extend(self.auto_selected.keys())
         self.selected = [self.module_by_name[x] for x in desired]
 
     def __repr__(self):
@@ -255,6 +258,10 @@ class ModuleCollection:
             is_selected = module in self.selected
             note = module.scan_note()
             outcome, problem = module.linker_outcome(is_selected)
+            if name in self.auto_selected:
+                outcome = runez.green("static*")
+                note = "[%s] %s" % (runez.bold("auto-selected"), self.auto_selected[name])
+
             if isinstance(outcome, LinkerOutcome):
                 outcome = runez.colored(outcome.name, outcome.value)
 
@@ -311,6 +318,11 @@ class ModuleBuilder:
 
     def selected_modules(self):
         return ModuleCollection(self, desired="all")
+
+    def auto_select_reason(self):
+        """
+        If this module must be selected (build can't succeed without), descendant should return short explanation why
+        """
 
     def linker_outcome(self, is_selected):
         if self.resolved_telltale is runez.UNSET:

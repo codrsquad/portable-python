@@ -35,7 +35,7 @@ def test_finalization(cli, monkeypatch):
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("-tlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "-mbzip2")
         assert cli.failed
-        assert "selected: bzip2 (1 module)" in cli.logged
+        assert "selected: bzip2" in cli.logged
         assert "INFO Cleaned 2 build artifacts (0 B): __phello__.foo.py idle_test" in cli.logged
         assert f"Symlink {bin}/foo-python <- {bin}/python" in cli.logged
         assert f"Symlink {bin}/pip{f.mm} <- {bin}/pip" in cli.logged

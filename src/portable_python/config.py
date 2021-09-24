@@ -51,7 +51,6 @@ macos:
   allowed-system-libs: .*
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.14
-  cpython-modules: xz openssl
   arm64:
     env:
       MACOSX_DEPLOYMENT_TARGET: 11
@@ -72,17 +71,14 @@ class Config:
             target = runez.system.PlatformId(target)
 
         self.target = target
-        self.sources = []  # type: list[ConfigSource]
+        self.default = ConfigSource("default config", self.parsed_yaml(DEFAULT_CONFIG, "default config"))
+        self._sources = []  # type: list[ConfigSource]
         self.by_path = {}
         for path in self.paths:
             self.load(path)
 
-        default = self.parsed_yaml(DEFAULT_CONFIG, "default config")
-        default = ConfigSource("default config", default)
-        self.sources.append(default)
-
     def __repr__(self):
-        return "%s [%s]" % (runez.plural(self.sources, "config source"), self.target)
+        return "%s [%s]" % (runez.plural(self._sources, "config source"), self.target)
 
     def get_value(self, *key, by_platform=True):
         """
@@ -100,23 +96,27 @@ class Config:
             keys = (key, )
 
         for k in keys:
-            for source in self.sources:
+            for source in self._sources:
                 v = source.get_value(k)
                 if v is not None:
                     return v
 
+        for k in keys:
+            v = self.default.get_value(k)
+            if v is not None:
+                return v
+
     def config_files_report(self):
         """One liner describing which config files are used, if any"""
-        sources = self.sources
-        if sources and len(sources) > 1:
-            return "Config files: %s" % runez.joined(sources[:-1], delimiter=", ")
+        if len(self._sources) > 1:
+            return "Config files: %s" % runez.joined(self._sources[:-1], delimiter=", ")
 
         return "no config"
 
     def represented(self):
         """Textual (yaml) representation of all configs"""
         result = []
-        for source in self.sources:
+        for source in runez.flattened(self._sources, self.default):
             result.append("%s:" % runez.bold(source))
             result.append(source.represented())
 
@@ -288,10 +288,10 @@ class Config:
                     data = self.parsed_yaml(fh, path)
                     source = ConfigSource(path, data)
                     if front:
-                        self.sources.insert(0, source)
+                        self._sources.insert(0, source)
 
                     else:
-                        self.sources.append(source)
+                        self._sources.append(source)
 
                     self.by_path[str(path)] = source
                     for include in runez.flattened(source.get_value("include"), split=True):
