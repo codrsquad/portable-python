@@ -150,6 +150,12 @@ class Cpython(PythonBuilder):
         PPG.config.ensure_main_file_symlinks(self)
         self.run(bin_python, "-mcompileall")
         if not self.setup.prefix:
+            # See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
+            patch_folder(
+                self.install_folder / "lib/pkgconfig",
+                f"prefix={self.c_configure_prefix}",
+                "prefix=${pcfiledir}/../.."
+            )
             for f in runez.ls_dir(self.bin_folder):
                 PPG.config.auto_correct_shebang(f, bin_python)
 
