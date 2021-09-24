@@ -156,8 +156,9 @@ class Cpython(PythonBuilder):
                 f"prefix={self.c_configure_prefix}",
                 "prefix=${pcfiledir}/../.."
             )
-            for f in runez.ls_dir(self.bin_folder):
-                PPG.config.auto_correct_shebang(f, bin_python)
+            cfg = list(runez.ls_dir(self.install_folder / f"lib/python{self.version.mm}/"))
+            cfg = [x for x in cfg if x.name.startswith("config-")]
+            PPG.config.auto_correct_shebang(bin_python, self.bin_folder, *cfg)
 
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())

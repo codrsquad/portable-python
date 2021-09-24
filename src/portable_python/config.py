@@ -247,32 +247,11 @@ class Config:
                     runez.symlink(main_file, desired, overwrite=False)
 
     @staticmethod
-    def auto_correct_shebang(path: pathlib.Path, main_python: pathlib.Path):
-        if path == main_python or not path.is_file() or path.is_symlink():
-            return
-
-        lines = []
-        with open(path) as fh:
-            try:
-                for line in fh:
-                    if lines:
-                        lines.append(line)
-                        continue
-
-                    if not line.startswith("#!") or "bin/python" not in line:
-                        return
-
-                    lines.append("#!/bin/sh\n")
-                    lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % main_python.name)
-
-            except UnicodeError:
-                return
-
-        if lines:
-            LOG.info("Auto-corrected shebang for %s" % runez.short(path))
-            with open(path, "wt") as fh:
-                for line in lines:
-                    fh.write(line)
+    def auto_correct_shebang(main_python: pathlib.Path, *folders):
+        for folder in folders:
+            for path in runez.ls_dir(folder):
+                if path != main_python and runez.is_executable(path) and not path.is_symlink():
+                    Config._auto_correct_shebang_file(main_python, path)
 
     def load(self, path, base=None):
         if path:
@@ -296,6 +275,32 @@ class Config:
                     self.by_path[str(path)] = source
                     for include in runez.flattened(source.get_value("include"), split=True):
                         self.load(include, base=path.parent)
+
+    @staticmethod
+    def _auto_correct_shebang_file(main_python, path):
+        lines = []
+        with open(path) as fh:
+            try:
+                for line in fh:
+                    if lines:
+                        lines.append(line)
+                        continue
+
+                    if not line.startswith("#!") or "bin/python" not in line:
+                        return
+
+                    rel_location = os.path.relpath(main_python, path.parent)
+                    lines.append("#!/bin/sh\n")
+                    lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % rel_location)
+
+            except UnicodeError:
+                return
+
+        if lines:
+            LOG.info("Auto-corrected shebang for %s" % runez.short(path))
+            with open(path, "wt") as fh:
+                for line in lines:
+                    fh.write(line)
 
 
 class ConfigSource:

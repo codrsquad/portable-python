@@ -82,7 +82,7 @@ class LibAutoCorrect:
         On linux, we change the /<prefix> rpath to be relative via $ORIGIN
         """
         r = runez.run("patchelf", "--print-rpath", path, fatal=False, dryrun=False, logger=False)
-        if self.prefix in r.output:
+        if r.output and self.prefix in r.output:
             with TempChmod(path, chmod=0o755):
                 relative_location = path.relative_to(self.install_folder).parent
                 new_origin = os.path.relpath("lib", relative_location)
@@ -101,15 +101,16 @@ class LibAutoCorrect:
         prefixed_folder = runez.to_path(f"{self.prefix}/{prefixed_folder}").parent
         abs_paths = collections.defaultdict(list)
         r = runez.run("otool", "-L", path, dryrun=False, logger=None)
-        for line in r.output.splitlines():
-            line = line.strip()
-            if not line.endswith(":") and line.startswith(self.prefix):
-                ref_path = line.split()[0]
-                relative_path = os.path.relpath(ref_path, prefixed_folder)
-                if relative_path != path.name:
-                    # See https://stackoverflow.com/questions/9690362/osx-dll-has-a-reference-to-itself
-                    top_level = runez.joined(self._shared_ref_top_level(relative_path), delimiter=os.sep) or "."
-                    abs_paths[top_level].append(ref_path)
+        if r.output:
+            for line in r.output.splitlines():
+                line = line.strip()
+                if not line.endswith(":") and line.startswith(self.prefix):
+                    ref_path = line.split()[0]
+                    relative_path = os.path.relpath(ref_path, prefixed_folder)
+                    if relative_path != path.name:
+                        # See https://stackoverflow.com/questions/9690362/osx-dll-has-a-reference-to-itself
+                        top_level = runez.joined(self._shared_ref_top_level(relative_path), delimiter=os.sep) or "."
+                        abs_paths[top_level].append(ref_path)
 
         if abs_paths:
             with TempChmod(path, chmod=0o755):

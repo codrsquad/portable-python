@@ -29,8 +29,14 @@ def test_finalization(cli, monkeypatch):
     runez.touch(bin / f"pip{f.mm}", logger=None)
     runez.symlink(bin / "foo-python", bin / "python3", logger=None)  # Simulate a funky symlink, to test edge cases
     runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
-    runez.write(bin / "some-exe3", "#!/bin/sh\nhello", logger=None)
-    runez.write(bin / "pythond", b"\xe4", logger=None)  # Non-unicode char to trigger edge case
+    runez.write(bin / "some-exe2", "#!/bin/sh\nhello", logger=None)
+    runez.write(bin / "some-exe3", b"\xe4", logger=None)  # Non-unicode char to trigger edge case
+    pd = bin.parent / "lib/python3.9/config-3.9/pythond"
+    runez.write(pd, "#!.../bin/python3\nhello", logger=None)
+    runez.make_executable(bin / "some-exe", logger=None)
+    runez.make_executable(bin / "some-exe2", logger=None)
+    runez.make_executable(bin / "some-exe3", logger=None)
+    runez.make_executable(pd, logger=None)
     monkeypatch.setenv("PP_X_DEBUG", "direct-finalize")
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("-tlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "-mbzip2")
@@ -43,7 +49,7 @@ def test_finalization(cli, monkeypatch):
         assert "Build failed" in cli.logged
 
     assert list(runez.readlines(bin / "some-exe")) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
-    assert list(runez.readlines(bin / "some-exe3")) == ["#!/bin/sh", "hello"]
+    assert list(runez.readlines(bin / "some-exe2")) == ["#!/bin/sh", "hello"]
     assert runez.basename(bin / "python", follow=True) == "foo-python"
 
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
