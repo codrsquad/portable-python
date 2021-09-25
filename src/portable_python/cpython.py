@@ -152,7 +152,6 @@ class Cpython(PythonBuilder):
             self.run(bin_python, "-mensurepip", "--altinstall", "--upgrade", fatal=False)
             self._pip_upgrade(bin_python, "pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
 
-        PPG.config.cleanup_folder(self)
         PPG.config.ensure_main_file_symlinks(self)
         if not self.setup.prefix:
             # See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
@@ -167,6 +166,7 @@ class Cpython(PythonBuilder):
                 rs = RelSysConf(sys_cfg, self.c_configure_prefix)
                 runez.write(sys_cfg, rs.text)
 
+        PPG.config.cleanup_folder(self)
         self.run(bin_python, "-mcompileall")
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())
