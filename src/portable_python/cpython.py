@@ -97,6 +97,12 @@ class Cpython(PythonBuilder):
             if db_order:
                 yield f"--with-dbmliborder={db_order}"
 
+    @runez.cached_property
+    def config_folder(self):
+        for path in runez.ls_dir(self.install_folder / f"lib/python{self.version.mm}"):
+            if path.name.startswith("config-"):
+                return path
+
     def _prepare(self):
         super()._prepare()
         if PPG.target.is_macos:
@@ -148,7 +154,6 @@ class Cpython(PythonBuilder):
 
         PPG.config.cleanup_folder(self)
         PPG.config.ensure_main_file_symlinks(self)
-        self.run(bin_python, "-mcompileall")
         if not self.setup.prefix:
             # See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
             patch_folder(
@@ -156,12 +161,56 @@ class Cpython(PythonBuilder):
                 f"prefix={self.c_configure_prefix}",
                 "prefix=${pcfiledir}/../.."
             )
-            cfg = list(runez.ls_dir(self.install_folder / f"lib/python{self.version.mm}/"))
-            cfg = [x for x in cfg if x.name.startswith("config-")]
-            PPG.config.auto_correct_shebang(bin_python, self.bin_folder, *cfg)
+            PPG.config.auto_correct_shebang(bin_python, self.bin_folder, self.config_folder)
+            sys_cfg = self._find_sys_cfg()
+            if sys_cfg:
+                rs = RelSysConf(sys_cfg, self.c_configure_prefix)
+                runez.write(sys_cfg, rs.text)
 
+        self.run(bin_python, "-mcompileall")
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())
         problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
         if problem:
             runez.abort("Build failed: %s" % problem, fatal=not runez.DRYRUN)
+
+    def _find_sys_cfg(self):
+        if self.config_folder:
+            for path in runez.ls_dir(self.config_folder.parent):
+                if path.name.startswith("_sysconfigdata"):
+                    return path
+
+
+class RelSysConf:
+
+    def __init__(self, path, prefix):
+        self.path = path
+        self.prefix = prefix
+        self.rx_marker = re.compile(r"^build_time_vars\s*=.*")
+        self.rx_strings = re.compile(r"(['\"])([^'\"]+)(['\"])")
+        self.text = "\n".join(self._process_file())
+
+    def _process_file(self):
+        for line in runez.readlines(self.path):
+            if self.rx_marker.match(line):
+                yield "prefix = __file__.rpartition('/')[0].rpartition('/')[0].rpartition('/')[0]"
+
+            if self.prefix in line:
+                line = "".join(self._relativize(line))
+
+            yield line
+
+    def _relativize(self, line):
+        start = 0
+        for m in self.rx_strings.finditer(line):
+            yield line[start:m.start(0)]
+            start = m.end(0)
+            content = m.group(2)
+            if self.prefix in content:
+                quote = m.group(1)
+                yield "f%s%s%s" % (quote, content.replace(self.prefix, "{prefix}"), quote)
+
+            else:
+                yield m.group(0)
+
+        yield line[start:]

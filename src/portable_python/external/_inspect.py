@@ -116,7 +116,7 @@ def main(arg):
 
     if arg and not arg.startswith("-"):
         report = dict((k, module_report(k)) for k in arg.split(","))
-        report = dict(report=report, srcdir=get_srcdir())
+        report = dict(report=report, srcdir=get_srcdir(), prefix=sysconfig.get_config_var("prefix"))
         print(json.dumps(report, indent=2, sort_keys=True))
 
 

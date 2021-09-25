@@ -399,6 +399,7 @@ class PythonInspector:
         if self.output and self.output.startswith("{"):
             self.payload = json.loads(self.output)
 
+        self.reported_prefix = self.payload and self.payload.get("prefix")
         self.srcdir = runez.to_path(self.payload and self.payload.get("srcdir"))
         self.lib_folder = _find_parent_subfolder(self.srcdir, "lib")
         self.install_folder = self.lib_folder and str(self.lib_folder.parent)
@@ -449,6 +450,7 @@ class PythonInspector:
         if self.module_info:
             table = PrettyTable(2)
             table.header[0].align = "right"
+            table.add_row("prefix", runez.short(self.reported_prefix, size=120))
             for v in self.module_info.values():
                 table.add_rows(*v.report_rows())
 
