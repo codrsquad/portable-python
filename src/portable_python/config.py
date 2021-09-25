@@ -37,7 +37,6 @@ cpython-always-clean:
 cpython-always-clean-linux: wininst-*
 cpython-always-clean-macos: wininst-*
 
-cpython-pip-install: wheel
 cpython-symlink: bin/python
 
 cpython-configure:
