@@ -242,9 +242,10 @@ class Config:
         if relative_paths:
             for rp in relative_paths:
                 desired = folder / rp
-                main_file = self.find_main_file(desired, version)
-                if main_file and main_file != desired:
-                    runez.symlink(main_file, desired, overwrite=False)
+                if not desired.exists():
+                    main_file = self.find_main_file(desired, version)
+                    if main_file and main_file != desired:
+                        runez.symlink(main_file, desired, overwrite=False)
 
     @staticmethod
     def auto_correct_shebang(main_python: pathlib.Path, *folders):
