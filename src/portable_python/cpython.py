@@ -1,8 +1,9 @@
+import os
 import re
 
 import runez
 
-from portable_python import patch_file, patch_folder, PPG, PythonBuilder
+from portable_python import LOG, patch_file, patch_folder, PPG, PythonBuilder
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
@@ -24,14 +25,6 @@ class Cpython(PythonBuilder):
     """
 
     xenv_CFLAGS_NODIST = "-Wno-unused-command-line-argument"
-
-    def validate_setup(self):
-        # We install pip ourselves, as it needs to be done after exe/libs auto-corrected
-        ep = "--with-ensurepip"
-        runez.abort_if(
-            self.has_configure_opt(ep),
-            "Please don't configure %s in config, it is automatically handled" % runez.red(ep),
-        )
 
     @classmethod
     def candidate_modules(cls):
@@ -71,7 +64,6 @@ class Cpython(PythonBuilder):
         if configured:
             yield from configured
 
-        yield "--with-ensurepip=no"
         if not self.has_configure_opt("--with-openssl"):
             if self.version >= "3.7" and self.active_module(Openssl):
                 yield f"--with-openssl={self.deps}"
@@ -148,10 +140,7 @@ class Cpython(PythonBuilder):
             lib_auto_correct.run()
 
         bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
-        if not PPG.config.get_value("disable-pip"):
-            self.run(bin_python, "-mensurepip", "--altinstall", "--upgrade", fatal=False)
-            self._pip_upgrade(bin_python, "pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
-
+        self._pip_upgrade(bin_python, "?pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
         PPG.config.ensure_main_file_symlinks(self)
         if not self.setup.prefix:
             # See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
@@ -160,11 +149,15 @@ class Cpython(PythonBuilder):
                 f"prefix={self.c_configure_prefix}",
                 "prefix=${pcfiledir}/../.."
             )
-            PPG.config.auto_correct_shebang(bin_python, self.bin_folder, self.config_folder)
             sys_cfg = self._find_sys_cfg()
             if sys_cfg:
                 rs = RelSysConf(sys_cfg, self.c_configure_prefix)
                 runez.write(sys_cfg, rs.text)
+
+        for folder in (self.bin_folder, self.config_folder):
+            for path in runez.ls_dir(folder):
+                if path != bin_python and runez.is_executable(path) and not path.is_symlink():
+                    self._auto_correct_shebang_file(bin_python, path)
 
         PPG.config.cleanup_folder(self)
         self.run(bin_python, "-mcompileall")
@@ -180,8 +173,38 @@ class Cpython(PythonBuilder):
                 if path.name.startswith("_sysconfigdata"):
                     return path
 
+    def _auto_correct_shebang_file(self, main_python, path):
+        lines = []
+        with open(path) as fh:
+            try:
+                for line in fh:
+                    if lines:
+                        lines.append(line)
+                        continue
+
+                    if not line.startswith("#!") or "bin/python" not in line:
+                        return
+
+                    if self.setup.prefix:
+                        lines.append(f"#!{self.setup.prefix}/bin/{main_python.name}\n")
+
+                    else:
+                        rel_location = os.path.relpath(main_python, path.parent)
+                        lines.append("#!/bin/sh\n")
+                        lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % rel_location)
+
+            except UnicodeError:
+                return
+
+        if lines:
+            LOG.info("Auto-corrected shebang for %s" % runez.short(path))
+            with open(path, "wt") as fh:
+                for line in lines:
+                    fh.write(line)
+
 
 class RelSysConf:
+    """Make _sysconfigdata report paths (prefix etc) relative to its current location"""
 
     def __init__(self, path, prefix):
         self.path = path

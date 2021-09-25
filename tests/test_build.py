@@ -33,6 +33,19 @@ build_time_vars = {'a': '',
 """
 
 
+def _setup_exes(bin):
+    runez.ensure_folder(bin, clean=True, logger=None)
+    runez.touch(bin / "foo-python", logger=None)
+    runez.touch(bin / "pip3.9", logger=None)
+    runez.symlink(bin / "foo-python", bin / "python3", logger=None)  # Simulate a funky symlink, to test edge cases
+    runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
+    runez.write(bin / "some-exe2", "#!/bin/sh\nhello", logger=None)
+    runez.write(bin / "some-exe3", b"\xe4", logger=None)  # Non-unicode char to trigger edge case
+    runez.make_executable(bin / "some-exe", logger=None)
+    runez.make_executable(bin / "some-exe2", logger=None)
+    runez.make_executable(bin / "some-exe3", logger=None)
+
+
 def test_finalization(cli, monkeypatch):
     f = PPG.get_folders(version="3.9.7")
     dummy_tarball(f, f"Python-{f.version}.tar.xz")
@@ -46,17 +59,9 @@ def test_finalization(cli, monkeypatch):
     # Create some files to be groomed by CPython
     runez.touch(bin.parent / "lib/idle_test/foo", logger=None)
     runez.touch(bin.parent / "lib/__phello__.foo.py", logger=None)
-    runez.touch(bin / "foo-python", logger=None)
-    runez.touch(bin / f"pip{f.mm}", logger=None)
-    runez.symlink(bin / "foo-python", bin / "python3", logger=None)  # Simulate a funky symlink, to test edge cases
-    runez.write(bin / "some-exe", "#!.../bin/python3\nhello", logger=None)
-    runez.write(bin / "some-exe2", "#!/bin/sh\nhello", logger=None)
-    runez.write(bin / "some-exe3", b"\xe4", logger=None)  # Non-unicode char to trigger edge case
+    _setup_exes(bin)
     pd = bin.parent / "lib/python3.9/config-3.9/pythond"
     runez.write(pd, "#!.../bin/python3\nhello", logger=None)
-    runez.make_executable(bin / "some-exe", logger=None)
-    runez.make_executable(bin / "some-exe2", logger=None)
-    runez.make_executable(bin / "some-exe3", logger=None)
     runez.make_executable(pd, logger=None)
 
     monkeypatch.setenv("PP_X_DEBUG", "direct-finalize")
@@ -77,9 +82,12 @@ def test_finalization(cli, monkeypatch):
     assert list(runez.readlines(bin / "some-exe2")) == ["#!/bin/sh", "hello"]
     assert runez.basename(bin / "python", follow=True) == "foo-python"
 
+    _setup_exes(f.destdir / "opt/foo/bin")
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
-        cli.run("-tmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "-mbzip2")
+        cli.run("-tmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "--prefix", "/opt/foo", "-mbzip2")
         assert cli.failed
-        assert f"Deleted {bin}/pip{f.mm}" in cli.logged
+        assert f"Deleted build/opt/foo/bin/pip{f.mm}" in cli.logged
         assert f"Cleaned 2 build artifacts (0 B): pip pip{f.mm}" in cli.logged
         assert cli
+
+    assert list(runez.readlines(f.destdir / "opt/foo/bin/some-exe")) == ['#!/opt/foo/bin/foo-python', 'hello']
