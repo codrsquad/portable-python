@@ -20,11 +20,17 @@ jobs:
 
 #    - run: pip install -U pip setuptools
     - run: |
+        set -x
         x=$(dirname $(dirname `which python`))
-        ls -l $x/bin
-        du -sh $x/*
-        du -sh $x/lib/*
-        du -sh $x/lib/python3.9/*
+        head -n2 $x/bin/pip
+        head -n2 $x/lib/python3.9/config-3.9-darwin/python-config.py
+        head -n15 $x/lib/python3.9/_sysconfigdata__darwin_darwin.py
+        /bin/ls -lhS $x/lib/python3.9/lib-dynload | head
+        /bin/ls -lhS $x/lib/python3.9/config-3.9-darwin
+        head $x/build_output.txt
+        head $x/tools_structure.txt
+        du -sh $x/lib/python3.9/ctypes/*
+        du -sh $x/lib/python3.9/idlelib/*
     - run: python -mpip freeze --all
     - run: |
         /usr/bin/python3 -mvenv .venv
