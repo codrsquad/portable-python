@@ -20,11 +20,10 @@ jobs:
 
 #    - run: pip install -U pip setuptools
     - run: |
-        which -a python3
-        which -a python
-        brew list
-    - run: |
         /usr/bin/python3 -mvenv .venv
         .venv/bin/pip install -U pip setuptools
         .venv/bin/pip install -e .
-    - run: .venv/bin/portable-python -n build {{ github.event.inputs.pythonSpec }}
+    - run: .venv/bin/portable-python inspect `which python`
+    - run: echo "${{ github.event.inputs.pythonSpec }}"
+    - run: echo ${{ github.event.inputs.pythonSpec }}
+    - run: echo {{ github.event.inputs.pythonSpec }}
