@@ -19,11 +19,15 @@ jobs:
         python-version: '3.9'
 
 #    - run: pip install -U pip setuptools
+    - run: |
+        x=$(dirname $(dirname `which python`))
+        ls -l $x/bin
+        du -sh $x/*
+        du -sh $x/lib/*
+        du -sh $x/lib/python3.9/*
     - run: python -mpip freeze --all
     - run: |
         /usr/bin/python3 -mvenv .venv
         .venv/bin/pip install -U pip setuptools
         .venv/bin/pip install -e .
-    - run: echo "${{ github.event.inputs.pythonSpec }}"
-    - run: echo ${{ github.event.inputs.pythonSpec }}
-    - run: echo {{ github.event.inputs.pythonSpec }}
+    - run: .venv/bin/portable-python -n build "${{ github.event.inputs.pythonSpec }}"
