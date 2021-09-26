@@ -25,7 +25,7 @@ folders:
 ext: gz
 cpython-always-clean-default:
   - __phello__.foo.py
-  - __pycache__
+  - __pycache__/
   - _test*capi.*
   - idle_test/
   - test/
@@ -35,14 +35,14 @@ cpython-always-clean-default:
 cpython-cache-clean:
   - __pycache__/pydoc*
   - __pycache__/turtle*
-  - config-*/__pycache__
-  - idlelib/__pycache__
-  - ensurepip/*/__pycache__
-  - lib2to3/*/__pycache__
-  - pydoc_data/__pycache__
-  - tkinter/__pycache__
-  - turtledemo/__pycache__
-  - xmlrpc/__pycache__
+  - config-*/__pycache__/
+  - idlelib/__pycache__/
+  - ensurepip/*/__pycache__/
+  - lib2to3/*/__pycache__/
+  - pydoc_data/__pycache__/
+  - tkinter/__pycache__/
+  - turtledemo/__pycache__/
+  - xmlrpc/__pycache__/
 
 # By default, clean old cruft (this can be overridden in user config)
 cpython-always-clean:
