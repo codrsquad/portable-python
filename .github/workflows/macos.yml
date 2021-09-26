@@ -14,26 +14,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
-
-#    - run: pip install -U pip setuptools
-    - run: |
-        set -x
-        x=$(dirname $(dirname `which python`))
-        head -n2 $x/bin/pip
-        head -n2 $x/lib/python3.9/config-3.9-darwin/python-config.py
-        head -n15 $x/lib/python3.9/_sysconfigdata__darwin_darwin.py
-        /bin/ls -lhS $x/lib/python3.9/lib-dynload | head
-        /bin/ls -lhS $x/lib/python3.9/config-3.9-darwin
-        head $x/build_output.txt
-        head $x/tools_structure.txt
-        du -sh $x/lib/python3.9/ctypes/*
-        du -sh $x/lib/python3.9/idlelib/*
-    - run: python -mpip freeze --all
     - run: |
         /usr/bin/python3 -mvenv .venv
         .venv/bin/pip install -U pip setuptools
         .venv/bin/pip install -e .
-    - run: .venv/bin/portable-python -n build "${{ github.event.inputs.pythonSpec }}"
+    - run: .venv/bin/portable-python build "${{ github.event.inputs.pythonSpec }}"
+    - uses: actions/upload-artifact@v2
+      with:
+        path: dist/
+        retention-days: 2
+        if-no-files-found: error
