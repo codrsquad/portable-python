@@ -19,8 +19,7 @@ jobs:
 #        python-version: '3.9'
 
 #    - run: pip install -U pip setuptools
-    - run: pwd && ls -l /usr/local
-    - run: which -a python || true
-    - run: which -a python3 || true
+    - run: ls -l /usr/local/include
     - run: /usr/bin/python3 -mvenv .venv
+    - run: ls -la
     - run: .venv/bin/portable-python -n build {{ github.event.inputs.pythonSpec }}
