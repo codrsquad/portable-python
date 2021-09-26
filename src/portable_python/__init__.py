@@ -108,7 +108,7 @@ class BuildContext:
     def __init__(self, setup):
         self.setup = setup
         self.masked_folders = []
-        self.has_libintl = os.path.exists("/usr/local/include/libintl.h")
+        self.has_libintl = os.path.exists("/usr/local/include/libintl.h") or setup.x_debug == "has-libintl"
         isolate = PPG.config.get_value("isolate-usr-local")
         # 'force' would only be useful for triggering test coverage
         self.isolate_usr_local = isolate == "force" or (self.has_libintl and isolate == "auto")
@@ -120,7 +120,7 @@ class BuildContext:
             runez.abort_if(not PPG.target.is_macos, "/usr/local isolation implemented only for macos currently")
 
             # Safeguard against accidental isolation hack in non-dryrun test
-            assert runez.DRYRUN or not runez.DEV.current_test()
+            runez.abort_if(not runez.DRYRUN and runez.DEV.current_test(), "Folder masking not allowed in tests")
 
             try:
                 for path in ("/usr/local/etc", "/usr/local/include", "/usr/local/lib", "/usr/local/opt"):
