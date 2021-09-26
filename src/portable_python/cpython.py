@@ -164,7 +164,7 @@ class Cpython(PythonBuilder):
         )
         PPG.config.symlink_duplicates(self.install_folder)
 
-        self.run(bin_python, "-mcompileall")
+        self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
         PPG.config.cleanup_folder(self, "cpython-cache-clean")
 
         py_inspector = PythonInspector(self.install_folder)

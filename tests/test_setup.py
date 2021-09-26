@@ -63,9 +63,6 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
 
 
 def test_inspect(cli):
-    cli.run("-n", "inspect", "foo", "bar", "-m+sys")
+    cli.run("-n", "inspect", "foo", "-m+sys")
     assert cli.failed
     assert "foo: not an executable" in cli.logged
-
-    cli.run("-n", "inspect", "foo")
-    assert cli.failed

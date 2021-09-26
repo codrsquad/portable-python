@@ -245,7 +245,7 @@ class SoInfo(Trackable):
         self.is_failed = "_failed" in self.path.name
         self.short_name = "%s*" % self.path.name.partition(".")[0]
         if self.is_failed:
-            self.short_name += "_failed"
+            self.short_name += "_failed"  # pragma: no cover
 
         if program and output:
             func = getattr(self, "parse_%s" % program)
@@ -467,11 +467,9 @@ class PythonInspector:
             report.append(table)
             if verbose:
                 report.append(self.full_so_report)
-                if self.full_so_report.problematic:
+                if self.full_so_report.problematic:  # pragma: no cover (don't have a handy problematic python test case)
                     pb = self.full_so_report.problematic.represented(verbose > 1)
                     report.append(runez.joined(pb, delimiter="\n"))
-
-                if self.full_so_report.problematic:
                     report.append("\n-- Library users:")
                     for what, users in self.full_so_report.lib_tracker.users.items():
                         color = what.tracked_category.value or "green"
@@ -510,16 +508,13 @@ class FullSoReport:
                 continue
 
             info = SoInfo(inspector, path)
-            if path.name.startswith("libpython"):
+            if path.name.startswith("libpython"):  # pragma: no cover (would need to do a fully build with libpython.so...)
                 self.libpython_so.append(info)
 
             self.lib_tracker.add(info)
             self.size += info.size
-            if info.is_problematic:
-                self.problematic.add(info)
-
-            else:
-                self.ok.add(info)
+            target = self.problematic if info.is_problematic else self.ok
+            target.add(info)
 
     def __repr__(self):
         return runez.joined(".so files: %s" % runez.represented_bytesize(self.size), self.problematic, self.ok, delimiter=", ")
@@ -536,8 +531,8 @@ class FullSoReport:
                 if uses_system:
                     return "Uses system libs: %s" % runez.joined(uses_system)
 
-        if self.problematic:
-            return runez.joined(self.problematic)
+        problem = runez.joined(self.problematic)
+        if not problem and not runez.DRYRUN and not self.ok:
+            problem = "Internal error: no OK libs found"
 
-        if not runez.DRYRUN and not self.ok:
-            return "Internal error: no OK libs found"
+        return problem

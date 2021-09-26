@@ -1,5 +1,4 @@
 import logging
-import sys
 
 import click
 import runez
@@ -76,39 +75,20 @@ def diagnostics():
 @click.option("--modules", "-m", help="Modules to inspect")
 @click.option("--verbose", "-v", is_flag=True, multiple=True, default=None, help="Show full so report")
 @click.option("--prefix", "-p", is_flag=True, help="Build was done with --prefix (not portable)")
-@click.argument("pythons", nargs=-1)
-def inspect(modules, verbose, prefix, pythons):
+@click.argument("path")
+def inspect(modules, verbose, prefix, path):
     """Inspect a python installation for non-portable dynamic lib usage"""
     verbose = len(verbose)
-    if not verbose and (not modules or modules == "all"):
-        verbose = 1
+    if path != "invoker":
+        path = runez.resolved_path(path)
 
-    exit_code = 0
-    count = 0
-    pythons = runez.flattened(pythons, split=",")
-    for spec in pythons:
-        if count:
-            print()
-
-        count += 1
-        if spec != "invoker":
-            spec = runez.resolved_path(spec)
-
-        inspector = PythonInspector(spec, modules=modules)
-        if inspector.python.problem:
-            print("%s: %s" % (runez.blue(runez.short(inspector.python.executable)), runez.red(inspector.python.problem)))
-            exit_code = 1
-            continue
-
-        print(runez.blue(inspector.python))
-        print(inspector.represented(verbose=verbose))
-        if not modules or modules == "all":
-            problem = inspector.full_so_report.get_problem(portable=not prefix)
-            if problem:
-                LOG.error(f"Build problem: {problem}")
-                exit_code = 1
-
-    sys.exit(exit_code)
+    inspector = PythonInspector(path, modules=modules)
+    runez.abort_if(inspector.python.problem, "%s: %s" % (runez.red(path), inspector.python.problem))
+    print(runez.blue(inspector.python))
+    print(inspector.represented(verbose=verbose))
+    if not modules or modules == "all":
+        problem = inspector.full_so_report.get_problem(portable=not prefix)
+        runez.abort_if(problem)
 
 
 @main.command(name="list")

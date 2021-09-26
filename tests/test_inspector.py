@@ -36,7 +36,7 @@ def test_find_python(temp_folder):
 
     # Verify using system libs on macos is considered OK
     PPG.grab_config(target="macos-arm64")
-    assert r.get_problem(True) is None
+    assert not r.get_problem(True)
 
     # Verify using system libs on linux is considered a fail
     PPG.grab_config(target="linux-x86_64")

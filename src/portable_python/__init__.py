@@ -70,6 +70,79 @@ def patch_file(path, regex, replacement):
                 LOG.warning("Can't patch '%s': %s" % (runez.short(path), e))
 
 
+class FolderMask:
+    """
+    Unfortunately, python source ./configure and setup.py looks at /usr/local/... we DON'T want that for a portable build
+    as that implies machine where our binary would run must also have the /usr/local/... stuff
+    TODO: find a less hacky way of doing this, or contribute an upstream option to stop looking at /usr/local/
+
+    On macos, we temporarily mask /usr/local with an empty RAM disk mount...
+    This is unfortunately global, and will temporarily mask /usr/local for other workers on the same macos box as well
+    """
+
+    def __init__(self, target_folder):
+        LOG.info("Applying isolation hack/mask to %s" % target_folder)
+        self.target_folder = target_folder
+        r = runez.run("hdiutil", "attach", "-nomount", "ram://2048", fatal=Exception)
+        self.ram_disk = r.output.strip()
+        self.mounted = False
+
+    def mount(self):
+        runez.run("newfs_hfs", "-v", "tmp-portable-python", self.ram_disk, fatal=Exception)
+        runez.run("mount", "-r", "-t", "hfs", "-o", "nobrowse", self.ram_disk, self.target_folder, fatal=Exception)
+        self.mounted = True
+
+    def cleanup(self):
+        LOG.info("Cleaning up isolation hack/mask for %s" % self.target_folder)
+        if self.mounted:
+            runez.run("umount", self.target_folder, fatal=False)
+
+        runez.run("hdiutil", "detach", self.ram_disk, fatal=False)
+
+
+class BuildContext:
+    """
+    Context for BuildSetup.compile()
+    """
+
+    def __init__(self, setup):
+        self.setup = setup
+        self.masked_folders = []
+        self.has_libintl = os.path.exists("/usr/local/include/libintl.h")
+        isolate = PPG.config.get_value("isolate-usr-local")
+        # 'force' would only be useful for triggering test coverage
+        self.isolate_usr_local = isolate == "force" or (self.has_libintl and isolate == "auto")
+
+    def __enter__(self):
+        runez.Anchored.add(self.setup.folders.base_folder)
+        if self.isolate_usr_local:
+            # Fail early if this is attempted on linux (where there should be no need for this, with a good docker image)
+            runez.abort_if(not PPG.target.is_macos, "/usr/local isolation implemented only for macos currently")
+
+            # Safeguard against accidental isolation hack in non-dryrun test
+            assert runez.DRYRUN or not runez.DEV.current_test()
+
+            try:
+                for path in ("/usr/local/etc", "/usr/local/include", "/usr/local/lib", "/usr/local/opt"):
+                    mask = FolderMask(path)
+                    self.masked_folders.append(mask)
+                    mask.mount()
+
+            except BaseException:  # pragma: no cover, ensure cleanup if any folder couldn't be masked
+                self.cleanup()
+                raise
+
+        return self
+
+    def cleanup(self):
+        for mask in self.masked_folders:
+            mask.cleanup()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cleanup()
+        runez.Anchored.pop(self.setup.folders.base_folder)
+
+
 class BuildSetup:
     """
     This class drives the compilation, external modules first, then the target python itself.
@@ -122,15 +195,8 @@ class BuildSetup:
         else:
             self.tarball_name = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
 
-        self.toolchain = self._get_toolchain()
         builder = PPG.family(python_spec.family).get_builder()
         self.python_builder = builder(self)  # type: PythonBuilder
-
-    def _get_toolchain(self):
-        if PPG.target.is_macos and os.path.exists("/usr/local/include/libintl.h"):
-            from portable_python.external import Toolchain
-
-            return Toolchain(self)
 
     def __repr__(self):
         return str(self.folders)
@@ -159,9 +225,14 @@ class BuildSetup:
     @runez.log.timeit("Overall compilation")
     def compile(self):
         """Compile selected python family and version"""
+        if self.folders.logs:
+            self.ensure_clean_folder(self.folders.logs)
+            logs_path = self.folders.logs / "00-portable-python.log"
+            runez.log.setup(file_location=logs_path.as_posix())
+
         self.python_builder.validate_setup()
         self.log_counter = 0
-        with runez.Anchored(self.folders.base_folder):
+        with BuildContext(self) as build_context:
             modules = self.python_builder.modules
             LOG.info("portable-python v%s, current folder: %s" % (runez.get_version(__name__), os.getcwd()))
             LOG.info(runez.joined(modules, list(modules)))
@@ -171,9 +242,13 @@ class BuildSetup:
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
             self.ensure_clean_folder(self.folders.components)
             self.ensure_clean_folder(self.folders.deps)
-            self.ensure_clean_folder(self.folders.logs)
-            if self.toolchain:
-                self.toolchain.compile()
+            if build_context.has_libintl and not build_context.isolate_usr_local:
+                # 2nd layer: if we couldn't mask /usr/local, then provide a dummy libintl.h at least
+                # This isn't perfect, but takes out the main culprit: sneaky libintl
+                from portable_python.external import Toolchain
+
+                toolchain = Toolchain(self)
+                toolchain.compile()
 
             self.python_builder.compile()
             if self.folders.dist:
