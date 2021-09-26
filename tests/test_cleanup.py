@@ -32,7 +32,7 @@ def test_cleanup(cli):
     cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,readline", f.version)
     assert cli.succeeded
     assert "MACOSX_DEPLOYMENT_TARGET=10.25" in cli.logged
-    assert f"Cleaned 3 build artifacts (59 KB): config-{f.mm}-darwin libpython{f.mm}.a pip{f.mm}" in cli.logged
+    assert f"Cleaned 5 build artifacts (59 KB): config-{f.mm}-darwin easy_install idle_test libpython{f.mm}.a pip{f.mm}" in cli.logged
     assert f"Corrected permissions for {f.deps}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={f.build_folder}\n" in cli.logged
     assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged

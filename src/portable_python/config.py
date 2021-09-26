@@ -31,6 +31,19 @@ cpython-always-clean-default:
   - test/
   - tests/
 
+# 2nd pass clean: after -mcompileall, don't keep these seldom used lib's pycaches
+cpython-cache-clean:
+  - __pycache__/pydoc*
+  - __pycache__/turtle*
+  - config-*/__pycache__
+  - idlelib/__pycache__
+  - ensurepip/*/__pycache__
+  - lib2to3/*/__pycache__
+  - pydoc_data/__pycache__
+  - tkinter/__pycache__
+  - turtledemo/__pycache__
+  - xmlrpc/__pycache__
+
 # By default, clean old cruft (this can be overridden in user config)
 cpython-always-clean:
   - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
@@ -142,7 +155,13 @@ class Config:
         except Exception as e:
             runez.abort("Invalid yaml in %s: %s" % (runez.bold(runez.short(source)), e))
 
-    def _cleanup_folder_with_spec(self, module, spec):
+    def cleanup_folder(self, module, *spec):
+        """
+
+        Args:
+            module (portable_python.PythonBuilder): Associated python builder module
+        """
+        spec = runez.flattened(spec, transform=self.get_value)
         spec = runez.flattened(spec, split=True, unique=True)
         if spec:
             spec = [module.setup.folders.formatted(x) for x in spec]
@@ -173,28 +192,6 @@ class Config:
                 names = runez.joined(sorted(set(cleaned)))
                 deleted_size = runez.represented_bytesize(deleted_size)
                 LOG.info("Cleaned %s (%s): %s" % (runez.plural(cleaned, "build artifact"), deleted_size, runez.short(names)))
-
-    def cleanup_folder(self, module):
-        """
-
-        Args:
-            module (portable_python.PythonBuilder): Associated python builder module
-        """
-        key = "%s-always-clean" % module.m_name
-        general_clean = (
-            self.get_value("%s-default" % key),
-            self.get_value(key),
-            self.get_value("%s-%s" % (key, self.target.platform)),
-        )
-        self._cleanup_folder_with_spec(module, general_clean)
-        original_size = runez.filesize(module.install_folder)
-        self._cleanup_folder_with_spec(module, self.get_value("%s-clean" % module.m_name))
-        self.symlink_duplicates(module.install_folder)
-        # Log size before and after cleanup
-        cleaned_size = runez.filesize(module.install_folder)
-        original_size = runez.represented_bytesize(original_size)
-        cleaned_size = runez.represented_bytesize(cleaned_size)
-        LOG.info("Original size: %s, cleaned size: %s" % (original_size, cleaned_size))
 
     def symlink_duplicates(self, folder):
         if self.target.is_linux or self.target.is_macos:

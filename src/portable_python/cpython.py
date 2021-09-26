@@ -159,8 +159,14 @@ class Cpython(PythonBuilder):
                 if path != bin_python and runez.is_executable(path) and not path.is_symlink():
                     self._auto_correct_shebang_file(bin_python, path)
 
-        PPG.config.cleanup_folder(self)
+        PPG.config.cleanup_folder(
+            self, "cpython-always-clean-default", "cpython-always-clean", "cpython-always-clean-%s" % PPG.target.platform, "cpython-clean"
+        )
+        PPG.config.symlink_duplicates(self.install_folder)
+
         self.run(bin_python, "-mcompileall")
+        PPG.config.cleanup_folder(self, "cpython-cache-clean")
+
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())
         problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
