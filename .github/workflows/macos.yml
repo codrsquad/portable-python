@@ -1,0 +1,26 @@
+name: Macos build
+
+on:
+  workflow_dispatch:
+    inputs:
+      pythonSpec:
+        description: 'Python spec'
+        required: true
+
+jobs:
+  publish:
+
+    runs-on: macos-10.15  # macos-11
+
+    steps:
+    - uses: actions/checkout@v2
+#    - uses: actions/setup-python@v2
+#      with:
+#        python-version: '3.9'
+
+#    - run: pip install -U pip setuptools
+    - run: pwd && ls -l /usr/local
+    - run: which -a python || true
+    - run: which -a python3 || true
+    - run: /usr/bin/python3 -mvenv .venv
+    - run: .venv/bin/portable-python -n build {{ github.event.inputs.pythonSpec }}
