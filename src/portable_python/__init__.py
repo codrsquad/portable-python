@@ -440,8 +440,8 @@ class ModuleBuilder:
         if cpu_count is None:
             cpu_count = multiprocessing.cpu_count()
 
-        if cpu_count and cpu_count > 2:
-            cmd.append("-j%s" % (cpu_count // 2))
+        if cpu_count and cpu_count > 3:
+            cmd.append("-j%s" % (cpu_count - 2))
 
         self.run(*cmd, *args)
 
