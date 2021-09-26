@@ -8,18 +8,23 @@ on:
         required: true
 
 jobs:
-  publish:
+  build:
 
     runs-on: macos-10.15  # macos-11
 
     steps:
     - uses: actions/checkout@v2
-#    - uses: actions/setup-python@v2
-#      with:
-#        python-version: '3.9'
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
 
 #    - run: pip install -U pip setuptools
-    - run: ls -l /usr/local/include
-    - run: /usr/bin/python3 -mvenv .venv
-    - run: ls -la
+    - run: |
+        which -a python3
+        which -a python
+        brew list
+    - run: |
+        /usr/bin/python3 -mvenv .venv
+        .venv/bin/pip install -U pip setuptools
+        .venv/bin/pip install -e .
     - run: .venv/bin/portable-python -n build {{ github.event.inputs.pythonSpec }}
