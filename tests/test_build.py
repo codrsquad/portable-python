@@ -67,13 +67,12 @@ def test_finalization(cli, monkeypatch):
     monkeypatch.setenv("PP_X_DEBUG", "direct-finalize")
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("-tlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "-mbzip2")
-        assert cli.failed
+        assert cli.succeeded
         assert "selected: bzip2" in cli.logged
         assert "INFO Cleaned 2 build artifacts (0 B): __phello__.foo.py idle_test" in cli.logged
         assert f"Symlink {bin}/foo-python <- {bin}/python" in cli.logged
         assert f"Symlink {bin}/pip{f.mm} <- {bin}/pip" in cli.logged
         assert f"Auto-corrected shebang for {bin}/some-exe" in cli.logged
-        assert "Build failed" in cli.logged
 
     transformed = "\n".join(runez.readlines(sys_cfg))
     assert transformed.strip() == SAMPLE_SYS_CONF_REL.strip()
@@ -85,9 +84,8 @@ def test_finalization(cli, monkeypatch):
     _setup_exes(f.destdir / "opt/foo/bin")
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("-tmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "--prefix", "/opt/foo", "-mbzip2")
-        assert cli.failed
+        assert cli.succeeded
         assert f"Deleted build/opt/foo/bin/pip{f.mm}" in cli.logged
         assert f"Cleaned 2 build artifacts (0 B): pip pip{f.mm}" in cli.logged
-        assert cli
 
     assert list(runez.readlines(f.destdir / "opt/foo/bin/some-exe")) == ['#!/opt/foo/bin/foo-python', 'hello']

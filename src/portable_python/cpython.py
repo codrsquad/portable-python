@@ -159,19 +159,16 @@ class Cpython(PythonBuilder):
                 if path != bin_python and runez.is_executable(path) and not path.is_symlink():
                     self._auto_correct_shebang_file(bin_python, path)
 
-        PPG.config.cleanup_folder(
-            self, "cpython-always-clean-default", "cpython-always-clean", "cpython-always-clean-%s" % PPG.target.platform, "cpython-clean"
-        )
+        PPG.config.cleanup_folder(self, "cpython-clean-1st-pass")
         PPG.config.symlink_duplicates(self.install_folder)
-
-        self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
-        PPG.config.cleanup_folder(self, "cpython-cache-clean")
-
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())
         problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
-        if problem:
-            runez.abort("Build failed: %s" % problem, fatal=not runez.DRYRUN)
+        runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
+        if PPG.config.get_value("cpython-compile-all"):
+            self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
+
+        PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
 
     def _find_sys_cfg(self):
         if self.config_folder:

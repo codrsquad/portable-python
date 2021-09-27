@@ -10,7 +10,7 @@ macos:                                    # Applies to macos only
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.25       # Overridden on arm64 in sample-config2.yml
 
-  cpython-clean:                          # Not "merged" with overall "clean:" section, taken as-is
+  cpython-clean:
   - bin/pip*                              # Example: remove all bin/pip* commands after build (don't package them)
   - lib/*/config-{mm}-*/                  # Example to reduce space, if not used
   - libpython*.a

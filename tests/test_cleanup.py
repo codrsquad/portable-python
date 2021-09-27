@@ -27,13 +27,13 @@ def test_cleanup(cli):
     runez.write(lib / f"libpython{f.mm}.a", sample_content, logger=None)
     runez.write(lib / f"python{f.mm}/config-{f.mm}-darwin/libpython{f.mm}.a", sample_content, logger=None)
     runez.touch(lib / f"python{f.mm}/site-packages/setuptools", logger=None)
-    runez.touch(lib / f"python{f.mm}/idlelib/__pycache__/foo")
 
     cfg = cli.tests_path("sample-config1.yml")
     cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,readline", f.version)
     assert cli.succeeded
     assert "MACOSX_DEPLOYMENT_TARGET=10.25" in cli.logged
-    assert "Cleaned 6 build artifacts" in cli.logged
+    assert "Cleaned 2 build artifacts" in cli.logged  # 1st pass
+    assert "Cleaned 3 build artifacts" in cli.logged  # 2nd pass
     assert f"Corrected permissions for {f.deps}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={f.build_folder}\n" in cli.logged
     assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged

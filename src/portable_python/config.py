@@ -12,7 +12,6 @@ import yaml
 
 LOG = logging.getLogger(__name__)
 
-
 DEFAULT_CONFIG = """
 folders:
   build: build
@@ -25,16 +24,24 @@ folders:
 ext: gz
 
 # Cleanup tests and multiple optimization variants of __pycache__ (~94 MB)
-cpython-always-clean-default:
+cpython-clean-1st-pass:
   - __phello__.foo.py
   - __pycache__/
   - _test*capi.*
   - idle_test/
   - test/
   - tests/
+  # By default, simplify bin/ folder, should help reduce some of the confusion with ppl running global 'pip install'
+  - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
+
+# wininst-* is probably an old goof (~2 MB of .exe binaries)
+cpython-clean-1st-pass-linux: wininst-*
+cpython-clean-1st-pass-macos: wininst-*
+
+cpython-compile-all: true
 
 # 2nd pass clean: after -mcompileall, don't keep these seldom used lib's pycaches (~1.8 MB)
-cpython-cache-clean:
+cpython-clean-2nd-pass:
   - __pycache__/pydoc*
   - __pycache__/turtle*
   - config-*/__pycache__/
@@ -43,15 +50,6 @@ cpython-cache-clean:
   - pydoc_data/__pycache__/
   - tkinter/__pycache__/
   - turtledemo/__pycache__/
-
-# By default, simplify bin/ folder
-# Old cruft, makes python installation look like a venv... should help reduce some of the confusion with ppl running global 'pip install'
-cpython-always-clean:
-  - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
-
-# wininst-* is probably an old goof (~2 MB of .exe binaries)
-cpython-always-clean-linux: wininst-*
-cpython-always-clean-macos: wininst-*
 
 # Taking the stance that `python` should be there (instead of just `python3`)
 cpython-symlink: bin/python
@@ -159,12 +157,13 @@ class Config:
         except Exception as e:
             runez.abort("Invalid yaml in %s: %s" % (runez.bold(runez.short(source)), e))
 
-    def cleanup_folder(self, module, *spec):
+    def cleanup_folder(self, module, *clean_key):
         """
-
         Args:
             module (portable_python.PythonBuilder): Associated python builder module
+            *clean_key: Config keys to lookup
         """
+        spec = [(x, f"{x}-{self.target.platform}") for x in clean_key]
         spec = runez.flattened(spec, transform=self.get_value)
         spec = runez.flattened(spec, split=True, unique=True)
         if spec:
