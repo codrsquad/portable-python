@@ -73,12 +73,11 @@ def diagnostics():
 
 @main.command()
 @click.option("--modules", "-m", help="Modules to inspect")
-@click.option("--verbose", "-v", is_flag=True, multiple=True, default=None, help="Show full so report")
+@click.option("--verbose", "-v", is_flag=True, help="Show full so report")
 @click.option("--prefix", "-p", is_flag=True, help="Build was done with --prefix (not portable)")
 @click.argument("path")
 def inspect(modules, verbose, prefix, path):
     """Inspect a python installation for non-portable dynamic lib usage"""
-    verbose = len(verbose)
     if path != "invoker":
         path = runez.resolved_path(path)
 

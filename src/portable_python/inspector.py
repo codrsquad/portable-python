@@ -224,7 +224,7 @@ class CLibInfo(Trackable):
 
         return short_name
 
-    def represented(self, verbose=None):
+    def represented(self, verbose=False):
         tc = self.tracked_category
         if verbose:
             yield runez.joined("[%s]" % runez.colored(tc.name, color=tc.value), self.relative_path, self.version, delimiter=" ")
@@ -445,7 +445,7 @@ class PythonInspector:
         full_paths = [runez.to_path(self.install_folder) / x for x in rel_paths]
         return runez.joined(PPG.config.represented_filesize(*full_paths), rel_paths)
 
-    def represented(self, verbose=1):
+    def represented(self, verbose=False):
         report = []
         if self.module_info:
             table = PrettyTable(2)
@@ -454,21 +454,20 @@ class PythonInspector:
             for v in self.module_info.values():
                 table.add_rows(*v.report_rows())
 
-            if verbose > 1:
+            table.add_row("libpython*.a", self.libpython_report(self.full_so_report.lib_static))
+            table.add_row("libpython*.so", self.libpython_report(self.full_so_report.libpython_so))
+            table.add_row("install size", PPG.config.represented_filesize(self.install_folder))
+
+            if runez.log.debug:
                 table.add_row("install dir", runez.short(self.install_folder))
                 table.add_row("lib", runez.short(self.lib_folder))
                 table.add_row("srcdir", runez.short(self.srcdir))
-
-            if verbose:
-                table.add_row("libpython*.a", self.libpython_report(self.full_so_report.lib_static))
-                table.add_row("libpython*.so", self.libpython_report(self.full_so_report.libpython_so))
-                table.add_row("install size", PPG.config.represented_filesize(self.install_folder))
 
             report.append(table)
             if verbose:
                 report.append(self.full_so_report)
                 if self.full_so_report.problematic:  # pragma: no cover (don't have a handy problematic python test case)
-                    pb = self.full_so_report.problematic.represented(verbose > 1)
+                    pb = self.full_so_report.problematic.represented(verbose=runez.log.debug)
                     report.append(runez.joined(pb, delimiter="\n"))
                     report.append("\n-- Library users:")
                     for what, users in self.full_so_report.lib_tracker.users.items():
@@ -476,7 +475,7 @@ class PythonInspector:
                         overview = "%s %s: %s" % (runez.colored(what, color), runez.plural(users, "user"), runez.joined(users))
                         report.append(runez.short(overview))
 
-                if verbose > 1:
+                if runez.log.debug:
                     pb = self.full_so_report.ok.represented(verbose=True)
                     report.append(runez.joined(pb, delimiter="\n"))
 
