@@ -23,6 +23,8 @@ folders:
   sources: build/sources
 
 ext: gz
+
+# Cleanup tests and multiple optimization variants of __pycache__ (~94 MB)
 cpython-always-clean-default:
   - __phello__.foo.py
   - __pycache__/
@@ -31,37 +33,39 @@ cpython-always-clean-default:
   - test/
   - tests/
 
-# 2nd pass clean: after -mcompileall, don't keep these seldom used lib's pycaches
+# 2nd pass clean: after -mcompileall, don't keep these seldom used lib's pycaches (~1.8 MB)
 cpython-cache-clean:
   - __pycache__/pydoc*
   - __pycache__/turtle*
   - config-*/__pycache__/
   - idlelib/__pycache__/
-  - ensurepip/*/__pycache__/
   - lib2to3/*/__pycache__/
   - pydoc_data/__pycache__/
   - tkinter/__pycache__/
   - turtledemo/__pycache__/
-  - xmlrpc/__pycache__/
 
-# By default, clean old cruft (this can be overridden in user config)
+# By default, simplify bin/ folder
+# Old cruft, makes python installation look like a venv... should help reduce some of the confusion with ppl running global 'pip install'
 cpython-always-clean:
   - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
+
+# wininst-* is probably an old goof (~2 MB of .exe binaries)
 cpython-always-clean-linux: wininst-*
 cpython-always-clean-macos: wininst-*
 
+# Taking the stance that `python` should be there (instead of just `python3`)
 cpython-symlink: bin/python
 
 cpython-configure:
-  - --enable-optimizations      # 3.6+
-  - --with-lto                  # 3.6+
-  - --with-ensurepip=upgrade    # 3.6+
+  - --enable-optimizations
+  - --with-lto
+  - --with-ensurepip=upgrade
 
 windows:
   ext: zip
 
 macos:
-  allowed-system-libs: .*
+  allowed-system-libs: .*  # System libs on macos are OK (such as bz2 etc - unless one really wants a fully static exe...)
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.14
   arm64:
