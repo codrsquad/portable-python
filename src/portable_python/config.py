@@ -23,7 +23,7 @@ folders:
 
 ext: gz
 
-# Cleanup tests and multiple optimization variants of __pycache__ (~94 MB)
+# Pre -mcompileall, cleanup tests and useless files (~94 MB)
 cpython-clean-1st-pass:
   - __phello__.foo.py
   - __pycache__/
@@ -31,7 +31,7 @@ cpython-clean-1st-pass:
   - idle_test/
   - test/
   - tests/
-  # By default, simplify bin/ folder, should help reduce some of the confusion with ppl running global 'pip install'
+  # By default, simplify bin/ folder
   - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
 
 # wininst-* is probably an old goof (~2 MB of .exe binaries)
@@ -40,19 +40,19 @@ cpython-clean-1st-pass-macos: wininst-*
 
 cpython-compile-all: true
 
-# 2nd pass clean: after -mcompileall, don't keep these seldom used lib's pycaches (~1.8 MB)
+# After -mcompileall, don't keep seldom used lib's pycaches (~1.8 MB)
 cpython-clean-2nd-pass:
   - __pycache__/pydoc*
   - __pycache__/turtle*
   - config-*/__pycache__/
   - idlelib/__pycache__/
-  - lib2to3/*/__pycache__/
+  - lib2to3/fixes/__pycache__/
   - pydoc_data/__pycache__/
   - tkinter/__pycache__/
   - turtledemo/__pycache__/
 
-# Taking the stance that `python` should be there (instead of just `python3`)
-cpython-symlink: bin/python
+cpython-symlink:
+  - bin/python
 
 cpython-configure:
   - --enable-optimizations
@@ -63,7 +63,7 @@ windows:
   ext: zip
 
 macos:
-  allowed-system-libs: .*  # System libs on macos are OK (such as bz2 etc - unless one really wants a fully static exe...)
+  allowed-system-libs: .*  # System libs on macos are OK (such as bz2 etc)
   env:
     MACOSX_DEPLOYMENT_TARGET: 10.14
   arm64:
