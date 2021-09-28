@@ -63,10 +63,10 @@ class CPythonFamily(VersionFamily):
     """Implementation for cpython"""
 
     client = RestClient()
-    MIN_VERSION = Version("3.6")
 
     def get_available_versions(self):
         """Available versions as per python.org/ftp"""
+        min_version = Version("3.7")  # Earliest non-EOL known to compile well
         if PPG.config.get_value("cpython-use-github"):
             r = self.client.get("https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
             for item in r:
@@ -74,12 +74,14 @@ class CPythonFamily(VersionFamily):
                 if ref and ref.startswith("refs/tags/v"):
                     ref = ref[11:]
                     v = Version(ref)
-                    if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and self.MIN_VERSION < v:
+                    if v.is_valid and v.is_final and v.given_components and len(v.given_components) == 3 and min_version < v:
                         yield v
 
             return
 
-        r = self.client.get_response("https://www.python.org/ftp/python/", logger=logging.debug)
+        upcoming = Version("3.10")  # No need to double-check .0 releases prior to this version
+        base_url = "https://www.python.org/ftp/python"
+        r = self.client.get_response(f"{base_url}/", logger=logging.debug)
         regex = re.compile(r'"(\d+\.\d+\.\d+)/"')
         if r.text:
             for line in r.text.splitlines():
@@ -88,8 +90,10 @@ class CPythonFamily(VersionFamily):
                     m = regex.search(line)
                     if m:
                         v = Version(m.group(1))
-                        if v.is_valid and v.is_final and self.MIN_VERSION < v:
-                            yield v
+                        if v.is_valid and v.is_final and min_version < v:
+                            # For .0 releases, double-check that it's not a release candidate
+                            if v < upcoming or v.patch > 0 or self.client.url_exists(f"{base_url}/{v}/Python-{v}.tar.xz"):
+                                yield v
 
     def get_builder(self):
         from portable_python.cpython import Cpython
