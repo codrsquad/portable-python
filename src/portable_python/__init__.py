@@ -109,13 +109,13 @@ class BuildContext:
         self.setup = setup
         self.masked_folders = []
         self.has_libintl = os.path.exists("/usr/local/include/libintl.h") or setup.x_debug == "has-libintl"
-        isolate = PPG.config.get_value("isolate-usr-local")
-        # 'force' would only be useful for triggering test coverage
-        self.isolate_usr_local = isolate == "force" or (self.has_libintl and isolate == "auto")
+        v = PPG.config.get_value("isolate-usr-local")
+        runez.abort_if(v and v not in ("mount-shadow", "gettext-tiny"), f"Invalid isolation method '{v}'")
+        self.isolate_usr_local = v
 
     def __enter__(self):
         runez.Anchored.add(self.setup.folders.base_folder)
-        if self.isolate_usr_local:
+        if self.isolate_usr_local == "mount-shadow":
             # Fail early if this is attempted on linux (where there should be no need for this, with a good docker image)
             runez.abort_if(not PPG.target.is_macos, "/usr/local isolation implemented only for macos currently")
 
@@ -133,6 +133,14 @@ class BuildContext:
                 raise
 
         return self
+
+    def compile(self):
+        if self.isolate_usr_local == "gettext-tiny":
+            # Provide a dummy libintl.h, this isn't perfect but takes out the main culprit: sneaky libintl
+            from portable_python.external import Toolchain
+
+            toolchain = Toolchain(self.setup)
+            toolchain.compile()
 
     def cleanup(self):
         for mask in self.masked_folders:
@@ -242,14 +250,7 @@ class BuildSetup:
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
             self.ensure_clean_folder(self.folders.components)
             self.ensure_clean_folder(self.folders.deps)
-            if build_context.has_libintl and not build_context.isolate_usr_local:
-                # 2nd layer: if we couldn't mask /usr/local, then provide a dummy libintl.h at least
-                # This isn't perfect, but takes out the main culprit: sneaky libintl
-                from portable_python.external import Toolchain
-
-                toolchain = Toolchain(self)
-                toolchain.compile()
-
+            build_context.compile()
             self.python_builder.compile()
             if self.folders.dist:
                 runez.compress(self.python_builder.install_folder, self.folders.dist / self.tarball_name)

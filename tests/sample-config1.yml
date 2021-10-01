@@ -2,9 +2,13 @@
 
 include: sample-config2.yml               # Allow including other configs, for convenience
 
+linux:
+  x86_64:
+    isolate-usr-local: gettext-tiny       # To trigger test code coverage of the hack via test_cleanup()
+
 macos:                                    # Applies to macos only
   x86_64:
-    isolate-usr-local: force              # To trigger test code coverage of the hack via test_cleanup()
+    isolate-usr-local: mount-shadow       # To trigger test code coverage of the hack via test_cleanup()
 
   ext: .tar.xz                            # Verify this gets picked up on macos (arm64 and/or x86_64)
   env:
