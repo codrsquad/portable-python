@@ -39,6 +39,7 @@ def test_cleanup(cli):
     assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
     assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/setup.py" in cli.logged
     cli.match("Patched 'startswith(...)' in build/components/cpython/setup.py")
+    assert "Exercising configured validation script" in cli.logged
     assert "Can't patch 'build/components/cpython/foo'" in cli.logged
     assert "Lib/trace.py" not in cli.logged
 

@@ -2,6 +2,10 @@
 
 include: sample-config2.yml               # Allow including other configs, for convenience
 
+build-information:
+  more-info1: testing
+  more-info2: see http://...
+
 linux:
   x86_64:
     isolate-usr-local: gettext-tiny       # To trigger test code coverage of the hack via test_cleanup()

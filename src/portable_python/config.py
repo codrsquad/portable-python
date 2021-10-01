@@ -104,6 +104,18 @@ class Config:
         Returns:
             Associated value, if any
         """
+        value, _ = self.get_entry(*key, by_platform=by_platform)
+        return value
+
+    def get_entry(self, *key, by_platform=True):
+        """
+        Args:
+            key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
+            by_platform (bool): If True, value can be configured by platform
+
+        Returns:
+            Associated value, if any
+        """
         if by_platform:
             keys = (self.target.platform, self.target.arch, *key), (self.target.platform, *key), key
 
@@ -114,12 +126,28 @@ class Config:
             for source in self._sources:
                 v = source.get_value(k)
                 if v is not None:
-                    return v
+                    return v, source
 
         for k in keys:
             v = self.default.get_value(k)
             if v is not None:
-                return v
+                return v, self.default
+
+        return None, None
+
+    def resolved_path(self, *key, by_platform=True):
+        value, source = self.get_entry(*key, by_platform=by_platform)
+        if value and source and isinstance(source.source, pathlib.Path):
+            value = runez.resolved_path(value, base=source.source.parent)
+
+        return value
+
+    def build_information(self):
+        build_info = self.get_value("build-information")
+        if isinstance(build_info, dict):
+            build_info = ["%s = %s" % (k, v) for k, v in sorted(build_info.items())]
+
+        return runez.flattened(build_info)
 
     def config_files_report(self):
         """One liner describing which config files are used, if any"""

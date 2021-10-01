@@ -113,6 +113,9 @@ class BuildContext:
         runez.abort_if(v and v not in ("mount-shadow", "gettext-tiny"), f"Invalid isolation method '{v}'")
         self.isolate_usr_local = v
 
+    def __repr__(self):
+        return self.isolate_usr_local or "none"
+
     def __enter__(self):
         runez.Anchored.add(self.setup.folders.base_folder)
         if self.isolate_usr_local == "mount-shadow":
@@ -241,6 +244,7 @@ class BuildSetup:
         self.python_builder.validate_setup()
         self.log_counter = 0
         with BuildContext(self) as build_context:
+            self.build_context = build_context
             modules = self.python_builder.modules
             LOG.info("portable-python v%s, current folder: %s" % (runez.get_version(__name__), os.getcwd()))
             LOG.info(runez.joined(modules, list(modules)))

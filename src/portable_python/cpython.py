@@ -1,3 +1,4 @@
+import datetime
 import os
 import re
 
@@ -165,7 +166,7 @@ class Cpython(PythonBuilder):
         print(py_inspector.represented())
         problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
         runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
-        validation_script = PPG.config.get_value("cpython-validate-script")
+        validation_script = PPG.config.resolved_path("cpython-validate-script")
         if validation_script:
             LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
             self.run(bin_python, validation_script)
@@ -173,7 +174,40 @@ class Cpython(PythonBuilder):
         if PPG.config.get_value("cpython-compile-all"):
             self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
 
+        build_info_file = PPG.config.get_value("build-information-file") or "README.txt"
+        if build_info_file:
+            runez.write(self.install_folder / build_info_file, self.build_information())
+
         PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
+
+    def build_information(self):
+        build_info = PPG.config.build_information()
+        if build_info and build_info[-1]:
+            build_info.append("")
+
+        build_info.append("cpython-source = %s" % self.url)
+        build_info.append("cpython-static = %s" % runez.joined(self.modules.selected))
+        build_info.append("cpython-target = %s" % PPG.target)
+        build_info.append("cpython-version = %s" % self.setup.python_spec)
+        build_info.append("")
+        if self.setup.prefix:
+            build_info.append("prefix = %s" % self.setup.prefix)
+
+        build_info.append("configure-args = %s" % runez.joined(self.c_configure_args()))
+        build_info.append("")
+        compiled_by = os.environ.get("PP_ORIGIN")
+        if not compiled_by:
+            compiled_by = PPG.config.get_value("compiled-by") or "https://pypi.org/project/portable-python/"
+
+        build_info.append("compiled-by = %s" % compiled_by)
+        build_info.append("compiled-date = %s" % datetime.datetime.now().strftime("%Y-%M-%d %H:%M"))
+        build_info.append("compiled-on = %s" % runez.SYS_INFO.platform_info)
+        build_info.append("portable-python-version = %s" % runez.get_version(__package__))
+        if self.setup.build_context.isolate_usr_local:
+            build_info.append("special-context = %s" % self.setup.build_context)
+
+        build_info = runez.joined(build_info, "", keep_empty=True, delimiter="\n", stringify=runez.short)
+        return build_info
 
     def _find_sys_cfg(self):
         if self.config_folder:
