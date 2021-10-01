@@ -132,7 +132,7 @@ class Cpython(PythonBuilder):
                 do_install = path.exists()
 
             if do_install:
-                self.run(bin_python, "-mpip", "install", "-U", lib_name, fatal=False)
+                self.run(bin_python, "-mpip", "install", "-U", lib_name)
 
     def _finalize(self):
         if self.setup.prefix or self.has_configure_opt("--enable-shared", "yes"):
@@ -165,6 +165,11 @@ class Cpython(PythonBuilder):
         print(py_inspector.represented())
         problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
         runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
+        validation_script = PPG.config.get_value("cpython-validate-script")
+        if validation_script:
+            LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
+            self.run(bin_python, validation_script)
+
         if PPG.config.get_value("cpython-compile-all"):
             self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
 

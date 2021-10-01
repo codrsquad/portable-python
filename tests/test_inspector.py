@@ -73,6 +73,7 @@ def test_inspect_lib(logged):
         assert not_there.is_problematic
         assert not_there.size == 0
         assert "otool exited with code" in logged.pop()
+        assert inspector.libpython_report([not_there])  # Verify no crash, edge case testing
 
     with patch("runez.which", return_value=None):
         PPG.grab_config(target="macos-x86_64")

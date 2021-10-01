@@ -17,6 +17,7 @@ macos:                                    # Applies to macos only
 
 # This would get picked up on all platforms
 cpython-symlink: bin/python bin/pip
+cpython-validate-script: foo.py
 cpython-use-github: true
 
 cpython-configure:

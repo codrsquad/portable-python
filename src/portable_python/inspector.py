@@ -502,7 +502,7 @@ class FullSoReport:
         self.libpython_so = []
         self.lib_static = []
         for path in find_libs(self.inspector.lib_folder):
-            if path.name.endswith(".a"):
+            if path.name.endswith(".a"):  # pragma: no cover
                 self.lib_static.append(self.inspector.relative_path(path))
                 continue
 
