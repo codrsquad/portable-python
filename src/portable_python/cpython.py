@@ -193,7 +193,8 @@ class Cpython(PythonBuilder):
         if self.setup.prefix:
             build_info.append("prefix = %s" % self.setup.prefix)
 
-        build_info.append("configure-args = %s" % runez.joined(self.c_configure_args()))
+        args = [runez.short(x) for x in self.c_configure_args()]
+        build_info.append("configure-args = %s" % runez.joined(args))
         build_info.append("")
         compiled_by = os.environ.get("PP_ORIGIN")
         if not compiled_by:
@@ -206,7 +207,7 @@ class Cpython(PythonBuilder):
         if self.setup.build_context.isolate_usr_local:
             build_info.append("special-context = %s" % self.setup.build_context)
 
-        build_info = runez.joined(build_info, "", keep_empty=True, delimiter="\n", stringify=runez.short)
+        build_info = runez.joined(build_info, "", keep_empty=True, delimiter="\n")
         return build_info
 
     def _find_sys_cfg(self):
