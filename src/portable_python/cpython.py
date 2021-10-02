@@ -175,14 +175,17 @@ class Cpython(PythonBuilder):
         if PPG.config.get_value("cpython-compile-all"):
             self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
 
-        build_info_file = PPG.config.get_value("build-information-file") or "manifest.yml"
-        if build_info_file:
+        info_path = PPG.config.get_value("manifest", "build-info")
+        if info_path:
+            contents = self._represented_yaml(self.build_information())
+            runez.write(self.install_folder / info_path, contents)
+
+        info_path = PPG.config.get_value("manifest", "inspection-report")
+        if info_path:
             with runez.colors.ActivateColors(enable=False):
-                contents = self._represented_yaml(self.build_information())
                 py_inspector = PythonInspector(self.install_folder, modules="all")
-                pr = py_inspector.represented(verbose=True)
-                contents += "\ninspection-report: |\n %s\n" % "\n ".join(pr.splitlines())
-                runez.write(self.install_folder / build_info_file, contents)
+                contents = "%s\n" % py_inspector.represented(verbose=True)
+                runez.write(self.install_folder / info_path, contents)
 
         PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
 
@@ -192,13 +195,6 @@ class Cpython(PythonBuilder):
         return runez.joined(content, delimiter="\n")
 
     def build_information(self):
-        build_info = PPG.config.get_value("build-information")
-        if build_info:
-            if not isinstance(build_info, dict):  # pragma: no cover
-                build_info = {"build-info": build_info}
-
-            yield from build_info.items()
-
         yield "cpython", {
                 "prefix": self.setup.prefix,
                 "source": self.url,
@@ -216,6 +212,7 @@ class Cpython(PythonBuilder):
             "portable-python-version": runez.get_version(__package__),
             "special-context": bc.isolate_usr_local and bc,
         }
+        yield "additional-info", PPG.config.get_value("manifest", "additional-info")
 
     def _find_sys_cfg(self):
         if self.config_folder:

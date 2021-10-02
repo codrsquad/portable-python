@@ -21,6 +21,10 @@ folders:
   ppp-marker: /ppp-marker/{version}
   sources: build/sources
 
+manifest:
+    build-info: .manifest.yml
+    inspection-report: .inspection-report.yml
+
 ext: gz
 
 # Pre -mcompileall, cleanup tests and useless files (~94 MB)

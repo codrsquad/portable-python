@@ -2,9 +2,9 @@
 
 include: sample-config2.yml               # Allow including other configs, for convenience
 
-build-information:
-  more-info1: testing
-  more-info2: see http://...
+manifest:
+  additional-info:
+    foo: testing
 
 linux:
   x86_64:
