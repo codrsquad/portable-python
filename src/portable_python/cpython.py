@@ -212,7 +212,9 @@ class Cpython(PythonBuilder):
             "portable-python-version": runez.get_version(__package__),
             "special-context": bc.isolate_usr_local and bc,
         }
-        yield "additional-info", PPG.config.get_value("manifest", "additional-info")
+        additional = PPG.config.get_value("manifest", "additional-info")
+        if additional:
+            yield "additional-info", additional
 
     def _find_sys_cfg(self):
         if self.config_folder:
