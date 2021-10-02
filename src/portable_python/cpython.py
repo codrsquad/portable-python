@@ -3,9 +3,9 @@ import os
 import re
 
 import runez
+import yaml
 
 from portable_python import LOG, patch_file, patch_folder, PPG, PythonBuilder
-from portable_python.config import represented_yaml
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
@@ -191,14 +191,14 @@ class Cpython(PythonBuilder):
 
     @staticmethod
     def _represented_yaml(bits):
-        content = [represented_yaml(runez.serialize.json_sanitized({x: y})) for x, y in bits]
+        content = [yaml.safe_dump(runez.serialize.json_sanitized({x: y}), width=140) for x, y in bits]
         return runez.joined(content, delimiter="\n")
 
     def build_information(self):
         yield "cpython", {
                 "prefix": self.setup.prefix,
                 "source": self.url,
-                "static": runez.joined(self.modules.selected),
+                "static": runez.joined(self.modules.selected) or None,
                 "target": PPG.target,
                 "version": self.version,
         }

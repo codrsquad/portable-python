@@ -4,7 +4,6 @@ import logging
 import os
 import pathlib
 import re
-from io import StringIO
 
 import runez
 import yaml
@@ -296,12 +295,6 @@ class Config:
                         self.load(include, base=path.parent)
 
 
-def represented_yaml(data):
-    buffer = StringIO()
-    yaml.dump(data, stream=buffer)
-    return buffer.getvalue()
-
-
 class ConfigSource:
     """Settings from one config file"""
 
@@ -314,7 +307,7 @@ class ConfigSource:
 
     def represented(self):
         """Textual (yaml) representation of this config"""
-        return represented_yaml(self.data)
+        return yaml.safe_dump(self.data, width=140)
 
     def get_value(self, key):
         """
