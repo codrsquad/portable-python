@@ -186,7 +186,9 @@ class Cpython(PythonBuilder):
             build_info.append("")
 
         build_info.append("cpython-source = %s" % self.url)
-        build_info.append("cpython-static = %s" % runez.joined(self.modules.selected))
+        if self.modules.selected:
+            build_info.append("cpython-static = %s" % runez.joined(self.modules.selected))
+
         build_info.append("cpython-target = %s" % PPG.target)
         build_info.append("cpython-version = %s" % self.setup.python_spec)
         build_info.append("")
