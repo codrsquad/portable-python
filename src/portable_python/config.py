@@ -142,13 +142,6 @@ class Config:
 
         return value
 
-    def build_information(self):
-        build_info = self.get_value("build-information")
-        if isinstance(build_info, dict):
-            build_info = ["%s = %s" % (k, v) for k, v in sorted(build_info.items())]
-
-        return runez.flattened(build_info)
-
     def config_files_report(self):
         """One liner describing which config files are used, if any"""
         if len(self._sources) > 1:
@@ -299,6 +292,12 @@ class Config:
                         self.load(include, base=path.parent)
 
 
+def represented_yaml(data):
+    buffer = StringIO()
+    yaml.dump(data, stream=buffer)
+    return buffer.getvalue()
+
+
 class ConfigSource:
     """Settings from one config file"""
 
@@ -311,9 +310,7 @@ class ConfigSource:
 
     def represented(self):
         """Textual (yaml) representation of this config"""
-        buffer = StringIO()
-        yaml.dump(self.data, stream=buffer)
-        return buffer.getvalue()
+        return represented_yaml(self.data)
 
     def get_value(self, key):
         """

@@ -467,7 +467,7 @@ class PythonInspector:
             if verbose:
                 report.append(self.full_so_report)
                 if self.full_so_report.problematic:  # pragma: no cover (don't have a handy problematic python test case)
-                    pb = self.full_so_report.problematic.represented(verbose=runez.log.debug)
+                    pb = self.full_so_report.problematic.represented(verbose=verbose)
                     report.append(runez.joined(pb, delimiter="\n"))
                     report.append("\n-- Library users:")
                     for what, users in self.full_so_report.lib_tracker.users.items():
@@ -475,7 +475,7 @@ class PythonInspector:
                         overview = "%s %s: %s" % (runez.colored(what, color), runez.plural(users, "user"), runez.joined(users))
                         report.append(runez.short(overview))
 
-                if runez.log.debug:
+                if verbose:
                     pb = self.full_so_report.ok.represented(verbose=True)
                     report.append(runez.joined(pb, delimiter="\n"))
 

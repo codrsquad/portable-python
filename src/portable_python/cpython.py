@@ -5,6 +5,7 @@ import re
 import runez
 
 from portable_python import LOG, patch_file, patch_folder, PPG, PythonBuilder
+from portable_python.config import represented_yaml
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
@@ -174,43 +175,47 @@ class Cpython(PythonBuilder):
         if PPG.config.get_value("cpython-compile-all"):
             self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
 
-        build_info_file = PPG.config.get_value("build-information-file") or "README.txt"
+        build_info_file = PPG.config.get_value("build-information-file") or "manifest.yml"
         if build_info_file:
-            runez.write(self.install_folder / build_info_file, self.build_information())
+            with runez.colors.ActivateColors(enable=False):
+                contents = self._represented_yaml(self.build_information())
+                py_inspector = PythonInspector(self.install_folder, modules="all")
+                pr = py_inspector.represented(verbose=True)
+                contents += "\ninspection-report: |\n %s\n" % "\n ".join(pr.splitlines())
+                runez.write(self.install_folder / build_info_file, contents)
 
         PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
 
+    @staticmethod
+    def _represented_yaml(bits):
+        content = [represented_yaml(runez.serialize.json_sanitized({x: y})) for x, y in bits]
+        return runez.joined(content, delimiter="\n")
+
     def build_information(self):
-        build_info = PPG.config.build_information()
-        if build_info and build_info[-1]:
-            build_info.append("")
+        build_info = PPG.config.get_value("build-information")
+        if build_info:
+            if not isinstance(build_info, dict):  # pragma: no cover
+                build_info = {"build-info": build_info}
 
-        build_info.append("cpython-source = %s" % self.url)
-        if self.modules.selected:
-            build_info.append("cpython-static = %s" % runez.joined(self.modules.selected))
+            yield from build_info.items()
 
-        build_info.append("cpython-target = %s" % PPG.target)
-        build_info.append("cpython-version = %s" % self.setup.python_spec)
-        build_info.append("")
-        if self.setup.prefix:
-            build_info.append("prefix = %s" % self.setup.prefix)
-
-        args = [runez.short(x) for x in self.c_configure_args()]
-        build_info.append("configure-args = %s" % runez.joined(args))
-        build_info.append("")
-        compiled_by = os.environ.get("PP_ORIGIN")
-        if not compiled_by:
-            compiled_by = PPG.config.get_value("compiled-by") or "https://pypi.org/project/portable-python/"
-
-        build_info.append("compiled-by = %s" % compiled_by)
-        build_info.append("compiled-date = %s" % datetime.datetime.now().strftime("%Y-%M-%d %H:%M"))
-        build_info.append("compiled-on = %s" % runez.SYS_INFO.platform_info)
-        build_info.append("portable-python-version = %s" % runez.get_version(__package__))
-        if self.setup.build_context.isolate_usr_local:
-            build_info.append("special-context = %s" % self.setup.build_context)
-
-        build_info = runez.joined(build_info, "", keep_empty=True, delimiter="\n")
-        return build_info
+        yield "cpython", {
+                "prefix": self.setup.prefix,
+                "source": self.url,
+                "static": runez.joined(self.modules.selected),
+                "target": PPG.target,
+                "version": self.version,
+        }
+        yield "configure-args", runez.joined(runez.short(x) for x in self.c_configure_args())
+        compiled_by = os.environ.get("PP_ORIGIN") or PPG.config.get_value("compiled-by")
+        bc = self.setup.build_context
+        yield "compilation-info", {
+            "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
+            "data": datetime.datetime.now().strftime("%Y-%M-%d %H:%M"),
+            "host-platform": runez.SYS_INFO.platform_info,
+            "portable-python-version": runez.get_version(__package__),
+            "special-context": bc.isolate_usr_local and bc,
+        }
 
     def _find_sys_cfg(self):
         if self.config_folder:
