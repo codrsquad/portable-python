@@ -207,7 +207,7 @@ class Cpython(PythonBuilder):
         bc = self.setup.build_context
         yield "compilation-info", {
             "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
-            "data": datetime.datetime.now().strftime("%Y-%M-%d %H:%M"),
+            "data": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
             "host-platform": runez.SYS_INFO.platform_info,
             "portable-python-version": runez.get_version(__package__),
             "special-context": bc.isolate_usr_local and bc,
