@@ -72,7 +72,7 @@ class Gdbm(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.18.1")
+        return self.cfg_version("1.20")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -145,7 +145,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.1.1k")
+        return self.cfg_version("1.1.1l")
 
     def c_configure_args(self):
         yield f"--openssldir={self.deps}"
