@@ -369,11 +369,11 @@ def get_lib_type(install_folder, path, basename):
     if basename.startswith("libpython") and path.startswith(install_folder):
         return LibType.libpython_so
 
-    if not path or path == "not found":
-        return LibType.missing
-
     if PPG.target.is_base_lib(path, basename):
         return LibType.base
+
+    if not path or path == "not found":
+        return LibType.missing
 
     if PPG.target.is_system_lib(path, basename):
         return LibType.system
