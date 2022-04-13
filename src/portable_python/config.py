@@ -16,7 +16,7 @@ folders:
   build: build
   destdir: "{build}"
   dist: dist
-  logs: ""
+  logs: "{build}/logs"
   ppp-marker: /ppp-marker/{version}
   sources: build/sources
 

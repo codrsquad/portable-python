@@ -72,7 +72,7 @@ class Gdbm(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.20")
+        return self.cfg_version("1.23")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -145,7 +145,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.1.1l")
+        return self.cfg_version("1.1.1n")
 
     def c_configure_args(self):
         yield f"--openssldir={self.deps}"
@@ -176,7 +176,7 @@ class Ncurses(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("6.2")
+        return self.cfg_version("6.3")
 
     def c_configure_args(self):
         yield "--disable-shared"
@@ -231,7 +231,7 @@ class Readline(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("8.1")
+        return self.cfg_version("8.2")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -264,7 +264,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.36.0")
+        return self.cfg_version("3.38.2")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -347,7 +347,7 @@ class Zlib(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.2.11")
+        return self.cfg_version("1.2.12")
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--64", "--static")
