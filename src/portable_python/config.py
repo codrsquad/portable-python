@@ -98,6 +98,11 @@ class Config:
     def __repr__(self):
         return "%s [%s]" % (runez.plural(self._sources, "config source"), self.target)
 
+    def completions(self, **given):
+        res = dict(arch=self.target.arch, platform=self.target.platform, subsystem=self.target.subsystem, target=str(self.target))
+        res.update(given)
+        return res
+
     def get_value(self, *key, by_platform=True):
         """
         Args:

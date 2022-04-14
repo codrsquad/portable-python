@@ -109,7 +109,7 @@ class Folders:
         self.family = family
         self.version = Version.from_text(version, strict=True)
         self.mm = self.version and self.version.mm
-        self.completions = dict(family=family, version=version, mm=self.mm)
+        self.completions = config.completions(family=family, version=version, mm=self.mm)
         self.build_folder = self._get_path("build")
         self.completions["build"] = self.build_folder
         self.components = self.build_folder / "components"
