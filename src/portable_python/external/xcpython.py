@@ -350,6 +350,6 @@ class Zlib(ModuleBuilder):
         return self.cfg_version("1.2.12")
 
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--64", "--static")
+        self.run_configure("./configure", "--static")
         self.run_make()
         self.run_make("install")
