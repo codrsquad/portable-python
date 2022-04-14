@@ -231,7 +231,7 @@ class Readline(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("8.1")
+        return self.cfg_version("8.1.2")
 
     def _do_linux_compile(self):
         self.run_configure(
