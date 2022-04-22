@@ -1,7 +1,10 @@
+from runez.http import RestClient
+
 from portable_python import BuildSetup
 from portable_python.versions import CPythonFamily, PPG
 
 
+REST_CLIENT = RestClient()
 GH_CPYTHON_SAMPLE = """
 [
 {"ref": "refs/tags/v3.9.7"},
@@ -18,7 +21,7 @@ PYTHON_ORG_SAMPLE = """
 """
 
 
-@CPythonFamily.client.mock({
+@REST_CLIENT.mock({
     "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE,
     "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE,
 })

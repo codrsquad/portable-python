@@ -62,8 +62,11 @@ class VersionFamily:
 class CPythonFamily(VersionFamily):
     """Implementation for cpython"""
 
-    client = RestClient()
     min_version = "3.7"  # Earliest non-EOL known to compile well
+
+    @runez.cached_property
+    def client(self):
+        return RestClient()
 
     def get_available_versions(self):
         """Available versions as per python.org/ftp"""

@@ -25,7 +25,6 @@ from portable_python.versions import PPG
 
 
 LOG = logging.getLogger(__name__)
-REST_CLIENT = RestClient()
 RX_BINARY = re.compile(r"^.*\.(dylib|gmo|icns|ico|nib|prof.*|tar)$")
 
 
@@ -564,7 +563,7 @@ class ModuleBuilder:
                 basename = runez.basename(self.url, extension_marker="#")
                 path = self.setup.folders.sources / basename
                 if not path.exists():
-                    REST_CLIENT.download(self.url, path)
+                    RestClient().download(self.url, path)
 
                 runez.decompress(path, self.m_src_build, simplify=True)
 
