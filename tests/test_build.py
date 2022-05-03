@@ -65,9 +65,12 @@ def test_finalization(cli, monkeypatch):
     runez.make_executable(pd, logger=None)
 
     monkeypatch.setenv("PP_X_DEBUG", "direct-finalize")
+    monkeypatch.setenv("SOME_ENV", "some-env-value")
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("-tlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "-mbzip2")
         assert cli.succeeded
+        manifest = list(runez.readlines(f"build/ppp-marker/{f.version}/.manifest.yml"))
+        assert "  some_env: some-env-value" in manifest
         assert "selected: bzip2" in cli.logged
         assert "INFO Cleaned 2 build artifacts (0 B): __phello__.foo.py idle_test" in cli.logged
         assert f"Symlink {bin}/foo-python <- {bin}/python" in cli.logged

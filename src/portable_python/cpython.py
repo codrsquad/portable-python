@@ -196,11 +196,11 @@ class Cpython(PythonBuilder):
 
     def build_information(self):
         yield "cpython", {
-                "prefix": self.setup.prefix,
-                "source": self.url,
-                "static": runez.joined(self.modules.selected) or None,
-                "target": PPG.target,
-                "version": self.version,
+            "prefix": self.setup.prefix,
+            "source": self.url,
+            "static": runez.joined(self.modules.selected) or None,
+            "target": PPG.target,
+            "version": self.version,
         }
         yield "configure-args", runez.joined(runez.short(x) for x in self.c_configure_args())
         compiled_by = os.environ.get("PP_ORIGIN") or PPG.config.get_value("compiled-by")
@@ -214,7 +214,14 @@ class Cpython(PythonBuilder):
         }
         additional = PPG.config.get_value("manifest", "additional-info")
         if additional:
-            yield "additional-info", additional
+            res = {}
+            for k, v in additional.items():
+                if isinstance(v, str) and v.startswith("$"):
+                    v = os.environ.get(v[1:])
+
+                res[k] = v
+
+            yield "additional-info", res
 
     def _find_sys_cfg(self):
         if self.config_folder:

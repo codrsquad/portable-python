@@ -4,6 +4,7 @@ include: sample-config2.yml               # Allow including other configs, for c
 
 manifest:
   additional-info:
+    some_env: $SOME_ENV
     foo: testing
 
 linux:
