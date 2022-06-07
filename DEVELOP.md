@@ -23,13 +23,16 @@ You can then run `portable-python` from that venv:
 
 # Run the tests
 
-If you tox, run: `tox` to run all the tests. You can also run:
+If you have tox, just run: `tox` to run all the tests. You can also run:
 - `tox -e py39` to run with just one python version
-- `tox -e style` to check PEP8 formatting etc
+- `tox -e style` to check PEP8 formatting
+- `tox -r` if you changed any `requirements.txt` (`-r` is short for `--recreate`)
+- `tox -re py39` to recreate and run `py39` only
+- etc
 
 If you don't have tox, you can run the tests with: `.venv/bin/pytest tests/`
 
-You can also run any of the `tests/` in IDEs such as PyCharm or vscode.
+You can also run any of the `tests/` in IDEs such as PyCharm or VSCode.
 
 For example in PyCharm, just make sure that `pytest` is selected as "Default test runner"
 in Preferences -> Tools -> Python Integrated Tools.
