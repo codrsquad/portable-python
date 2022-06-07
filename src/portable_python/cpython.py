@@ -4,8 +4,10 @@ import re
 
 import runez
 import yaml
+from runez.pyenv import Version
 
 from portable_python import LOG, patch_file, patch_folder, PPG, PythonBuilder
+from portable_python.external.tkinter import TkInter
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
@@ -30,7 +32,7 @@ class Cpython(PythonBuilder):
 
     @classmethod
     def candidate_modules(cls):
-        return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid]
+        return [LibFFI, Zlib, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid, TkInter]
 
     @property
     def url(self):
@@ -90,6 +92,13 @@ class Cpython(PythonBuilder):
             db_order = runez.joined(db_order, delimiter=":")
             if db_order:
                 yield f"--with-dbmliborder={db_order}"
+
+        tkinter = self.active_module(TkInter)
+        if tkinter:
+            # TODO: this doesn't seem to be enough, on macos cpython's ./configure still picks up the shared macos tcl/tk libs
+            version = Version.from_text(tkinter.version)
+            yield f"--with-tcltk-includes=-I{self.deps}/include"
+            yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{version.mm} -ltk{version.mm}"
 
     @runez.cached_property
     def config_folder(self):

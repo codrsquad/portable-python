@@ -316,7 +316,8 @@ class ModuleCollection:
     def active_module(self, name):
         name = self.get_module_name(name)
         m = self.module_by_name[name]
-        return m in self.selected
+        if m in self.selected:
+            return m
 
     def is_usable_module(self, name):
         """Is module with name either selected, or should be usable via its telltale"""

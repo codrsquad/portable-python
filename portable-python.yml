@@ -9,5 +9,4 @@ folders:
 
 # For quick iteration locally, you can add this to your pp-dev.yml:
 #folders:
-#  sources: dist/sources               # Allows keeping source downloads even after rm -rf build
-#  logs: "{build}/logs"                # Capture logs for each component build
+#  sources: dist/sources               # Allows keeping source downloads even after 'rm -rf build'

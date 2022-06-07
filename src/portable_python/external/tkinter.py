@@ -1,25 +1,20 @@
+"""
+Building Tcl/Tk statically is **best-effort** only, Tcl/Tk is hard to compile... especially on linux
+It is also unclear what version to use, which build docs to follow etc.
+
+Contributions are welcome!
+"""
+
 import runez
-from runez.pyenv import Version
 
 from portable_python import ModuleBuilder, PPG
 
 
-class Cpython(PythonBuilder):
-    """Build CPython binaries"""
-
-    def c_configure_args(self):
-        # ...
-        tkinter = self.active_module(TkInter)
-        if tkinter:
-            version = Version.from_text(tkinter.version)
-            yield f"--with-tcltk-includes=-I{self.deps}/include"
-            yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{version.mm} -ltk{version.mm}"
-
-
 class Tcl(ModuleBuilder):
     """
-    macos: Symbol not found: _CGAffineTransformIdentity
-    linux: needs X11 libs? xproto?
+    Known issues:
+    - macos: Symbol not found: _CGAffineTransformIdentity
+    - linux: needs X11 libs? xproto?
     """
 
     m_build_cwd = "unix"
@@ -30,7 +25,7 @@ class Tcl(ModuleBuilder):
 
     def _prepare(self):
         for path in runez.ls_dir(self.m_src_build / "pkgs"):
-            if path.name.startswith(("sqlite", "tdbc")):
+            if path.name.startswith(("sqlite", "tdbc")):  # pragma: no cover, tcl/tk is "best effort"
                 # Remove packages we don't care about and can pull in unwanted symbols
                 runez.delete(path)
 
@@ -59,7 +54,7 @@ class Tk(ModuleBuilder):
         yield "--enable-threads"
         yield f"--with-tcl={self.deps_lib}"
         yield "--without-x"
-        if PPG.target.is_macos:
+        if PPG.target.is_macos:  # pragma: no cover, tcl/tk is "best effort"
             yield "--enable-aqua=yes"
 
     def _do_linux_compile(self):
@@ -71,6 +66,9 @@ class Tk(ModuleBuilder):
 
 
 class Tix(ModuleBuilder):
+    """
+    What is tix, and why is it needed?
+    """
 
     @property
     def url(self):
@@ -101,9 +99,14 @@ class Tix(ModuleBuilder):
 
 
 class TkInter(ModuleBuilder):
-    """Build tcl/tk"""
+    """
+    Try and build tcl/tk
+    Known issues:
+    - macos: 8.6.10 seems to compile, but cpython ./configure script still picks up the macos shared tcl/tk libs
+    - linux: X11 required, not sure what else
+    """
 
-    m_debian = "tk-dev"
+    m_debian = "-tk-dev"
     m_telltale = ["{include}/tk", "{include}/tk.h"]
 
     @classmethod
