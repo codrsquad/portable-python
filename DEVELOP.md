@@ -9,6 +9,7 @@ If you don't have tox, you can run this (any python 3.6+ will do):
 rm -rf .venv
 /usr/bin/python3 -mvenv .venv
 .venv/bin/pip install -U pip
+.venv/bin/pip install -r requirements.txt -r tests/requirements.txt
 .venv/bin/pip install -e .
 ```
 
