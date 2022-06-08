@@ -21,6 +21,24 @@ Portable python binaries
 This project is a python CLI that aims to make compiling portable python binaries automatable.
 
 
+Supported operating systems
+---------------------------
+
+Currently Windows is not supported, contributions are welcome.
+
+Python binaries can be produced as "portable" (statically linked, can run from any folder
+where the binary is unpacked in), or with a ``--prefix`` (build targeted to live in a
+pre-determined folder, like ``/apps/pythonM.m``)
+
+================  ========  ========
+Operating system  Portable  --prefix
+================  ========  ========
+Linux                ✅        ✅
+Macos                ✅        ✅
+Windows              ❌        ❌
+================  ========  ========
+
+
 What is a "portable python"?
 ----------------------------
 
