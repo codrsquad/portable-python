@@ -181,6 +181,9 @@ class ModuleInfo:
         if hasattr(info, "represented"):
             info = info.represented()
 
+        else:
+            info = runez.short(info)
+
         yield self.name, runez.joined(version, info)
 
 

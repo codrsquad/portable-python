@@ -104,7 +104,7 @@ def test_inspect_module(logged):
     assert _inspect.get_simplified_dirs("/private/tmp/foo") == ["/private/tmp", "/tmp"]
     assert _inspect.get_simplified_dirs("/bar/foo/baz") == ["/bar/foo", "/bar"]
 
-    _inspect.main("readline,zlib,sys,os,foo-bar")
+    _inspect.main("readline,zlib,pip,sys,os,foo-bar")
     assert '"readline": {' in logged.pop()
 
     _inspect.main("sysconfig")

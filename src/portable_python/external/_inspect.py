@@ -115,7 +115,13 @@ def main(arg):
         return
 
     if arg and not arg.startswith("-"):
-        report = dict((k, module_report(k)) for k in arg.split(","))
+        names = arg.split(",")
+        if "pip" in names:
+            # Ensure pip is last, because it tampers with setuptools module
+            names.remove("pip")
+            names.append("pip")
+
+        report = dict((k, module_report(k)) for k in names)
         report = dict(report=report, srcdir=get_srcdir(), prefix=sysconfig.get_config_var("prefix"))
         print(json.dumps(report, indent=2, sort_keys=True))
 
