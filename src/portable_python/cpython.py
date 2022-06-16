@@ -146,7 +146,8 @@ class Cpython(PythonBuilder):
                 self.run(bin_python, "-mpip", "install", "-U", lib_name)
 
     def _finalize(self):
-        if self.setup.prefix or self.has_configure_opt("--enable-shared", "yes"):
+        is_shared = self.setup.prefix or self.has_configure_opt("--enable-shared", "yes")
+        if is_shared:
             lib_auto_correct = LibAutoCorrect(self.c_configure_prefix, self.install_folder)
             lib_auto_correct.run()
 
@@ -174,7 +175,7 @@ class Cpython(PythonBuilder):
         PPG.config.symlink_duplicates(self.install_folder)
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())
-        problem = py_inspector.full_so_report.get_problem(portable=not self.setup.prefix)
+        problem = py_inspector.full_so_report.get_problem(portable=not is_shared)
         runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
         validation_script = PPG.config.resolved_path("cpython-validate-script")
         if validation_script:
