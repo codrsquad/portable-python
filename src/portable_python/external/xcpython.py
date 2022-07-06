@@ -145,7 +145,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.1.1o")
+        return self.cfg_version("1.1.1p")
 
     def c_configure_args(self):
         yield f"--openssldir={self.deps}"
