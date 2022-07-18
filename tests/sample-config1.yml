@@ -25,6 +25,7 @@ macos:                                    # Applies to macos only
   - libpython*.a
 
 # This would get picked up on all platforms
+cpython-check-venvs: all
 cpython-symlink: bin/python bin/pip
 cpython-validate-script: foo.py
 cpython-use-github: true

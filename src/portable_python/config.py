@@ -54,6 +54,8 @@ cpython-clean-2nd-pass:
   - tkinter/__pycache__/
   - turtledemo/__pycache__/
 
+cpython-check-venvs: venv
+
 cpython-symlink:
   - bin/python
 

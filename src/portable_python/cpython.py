@@ -182,8 +182,13 @@ class Cpython(PythonBuilder):
             LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
             self.run(bin_python, validation_script)
 
-        self._check_venv(bin_python)
-        self._check_venv(bin_python, copies=True)
+        check_venvs = PPG.config.get_value("cpython-check-venvs")
+        if check_venvs:
+            if check_venvs in ("venv", "all"):
+                self._check_venv(bin_python)
+
+            if check_venvs in ("copies", "all"):
+                self._check_venv(bin_python, copies=True)
 
         if PPG.config.get_value("cpython-compile-all"):
             self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
@@ -210,7 +215,7 @@ class Cpython(PythonBuilder):
             args.append("--copies")
             folder += "-copies"
 
-        folder = self.destdir / "test-venvs" / folder
+        folder = self.setup.folders.build_folder / "test-venvs" / folder
         self.run(bin_python, *args, folder)
         self.run(bin_python, "-mpip", "--version")
 
