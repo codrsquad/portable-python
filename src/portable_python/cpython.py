@@ -146,7 +146,7 @@ class Cpython(PythonBuilder):
                 self.run(bin_python, "-mpip", "install", "-U", lib_name)
 
     def _finalize(self):
-        is_shared = self.setup.prefix or self.has_configure_opt("--enable-shared", "yes")
+        is_shared = self.has_configure_opt("--enable-shared", "yes")
         if is_shared:
             lib_auto_correct = LibAutoCorrect(self.c_configure_prefix, self.install_folder)
             lib_auto_correct.run()
