@@ -46,7 +46,7 @@ class Cpython(PythonBuilder):
         yield f"-L{self.deps_lib}"
         if PPG.target.is_linux:
             yield "-Wl,-z,origin"
-            yield f"-Wl,-rpath={self.c_configure_prefix}"
+            yield f"-Wl,-rpath={self.c_configure_prefix}/lib"
 
     def has_configure_opt(self, name, *variants):
         opts = self.c_configure_args_from_config
@@ -182,6 +182,9 @@ class Cpython(PythonBuilder):
             LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
             self.run(bin_python, validation_script)
 
+        self._check_venv(bin_python)
+        self._check_venv(bin_python, copies=True)
+
         if PPG.config.get_value("cpython-compile-all"):
             self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
 
@@ -198,6 +201,18 @@ class Cpython(PythonBuilder):
                 runez.write(self.install_folder / info_path, contents)
 
         PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
+
+    def _check_venv(self, bin_python, copies=False):
+        """Verify that the freshly compiled python can create venvs without issue"""
+        folder = "venv"
+        args = ["-mvenv"]
+        if copies:
+            args.append("--copies")
+            folder += "-copies"
+
+        folder = self.destdir / "test-venvs" / folder
+        self.run(bin_python, *args, folder)
+        self.run(bin_python, "-mpip", "--version")
 
     @staticmethod
     def _represented_yaml(bits):
