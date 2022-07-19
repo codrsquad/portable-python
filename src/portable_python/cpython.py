@@ -149,7 +149,7 @@ class Cpython(PythonBuilder):
     def _finalize(self):
         is_shared = self.setup.prefix or self.has_configure_opt("--enable-shared", "yes")
         if is_shared:
-            lib_auto_correct = LibAutoCorrect(self.c_configure_prefix, self.install_folder)
+            lib_auto_correct = LibAutoCorrect(self.c_configure_prefix, self.install_folder, ppp_marker=self.setup.folders.ppp_marker)
             lib_auto_correct.run()
 
         runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")

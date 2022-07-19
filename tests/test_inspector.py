@@ -122,18 +122,19 @@ def test_inspect_module(logged):
 
 
 class MockSharedExeRun:
-    def __init__(self, platform):
+    def __init__(self, platform, prefix):
         PPG.grab_config(target=f"{platform}-x86_64")
         self.program_handler = getattr(self, "_%s_run" % platform)
+        self.prefix = prefix
         self.called = []
 
     def _linux_run(self, *args):
         if args[1] == "--print-rpath":
-            return "/3.9.6"
+            return self.prefix
 
     def _macos_run(self, program, *args):
         if program == "otool":
-            return "foo/bin/python:\n /3.9.6/lib/libpython3.9.dylib (...)\n /usr/lib/... (...)"
+            return f"foo/bin/python:\n {self.prefix}/lib/libpython3.9.dylib (...)\n /usr/lib/... (...)"
 
     def __call__(self, *args, **_):
         x = self.program_handler(*args)
@@ -158,8 +159,9 @@ def test_lib_auto_correct(temp_folder):
     runez.make_executable("foo/bin/python", logger=None)
     runez.touch("foo/lib/libpython3.9.dylib", logger=None)
     runez.touch("foo/lib/bar/baz.dylib", logger=None)
-    with MockSharedExeRun("macos") as m:
-        ac = LibAutoCorrect("/3.9.6", runez.to_path("foo").absolute())
+    foo_path = runez.to_path("foo").absolute()
+    with MockSharedExeRun("macos", "/3.9.6") as m:
+        ac = LibAutoCorrect(m.prefix, foo_path)
         ac.run()
         expected = [
             "install_name_tool -add_rpath @executable_path/../lib foo/bin/python",
@@ -169,12 +171,22 @@ def test_lib_auto_correct(temp_folder):
         ]
         assert m.called == expected
 
-    with MockSharedExeRun("linux") as m:
-        ac = LibAutoCorrect("/3.9.6", runez.to_path("foo").absolute())
+    with MockSharedExeRun("linux", "/3.9.6") as m:
+        ac = LibAutoCorrect(m.prefix, foo_path)
         ac.run()
         expected = [
             "patchelf --set-rpath /3.9.6/lib:$ORIGIN/../lib foo/bin/python",
             "patchelf --set-rpath /3.9.6/lib:$ORIGIN/.. foo/lib/bar/baz.dylib",
             "patchelf --set-rpath /3.9.6/lib:$ORIGIN/. foo/lib/libpython3.9.dylib",
+        ]
+        assert m.called == expected
+
+    with MockSharedExeRun("linux", "/ppp-marker/3.9.6") as m:
+        ac = LibAutoCorrect(m.prefix, foo_path, ppp_marker=m.prefix)
+        ac.run()
+        expected = [
+            "patchelf --set-rpath $ORIGIN/../lib foo/bin/python",
+            "patchelf --set-rpath $ORIGIN/..:$ORIGIN/../lib foo/lib/bar/baz.dylib",
+            "patchelf --set-rpath $ORIGIN/.:$ORIGIN/../lib foo/lib/libpython3.9.dylib",
         ]
         assert m.called == expected

@@ -55,14 +55,16 @@ class TempChmod:
 class LibAutoCorrect:
     """Automatically correct all absolute paths in exes/dynamic libs"""
 
-    def __init__(self, prefix, install_folder):
+    def __init__(self, prefix, install_folder, ppp_marker=None):
         """
         Args:
             prefix (str): Prefix used in ./configure
             install_folder (pathlib.Path): Installation folder to scan (all paths will be relative to this)
+            ppp_marker (str | None): Associated ppp-marker, if any
         """
         self.prefix = prefix
         self.install_folder = install_folder
+        self.ppp_marker = ppp_marker
         self._file_corrector = getattr(self, "_auto_correct_%s" % PPG.target.platform)
 
     def run(self):
@@ -85,8 +87,18 @@ class LibAutoCorrect:
         if r.output and self.prefix in r.output:
             with TempChmod(path, chmod=0o755):
                 relative_location = path.relative_to(self.install_folder).parent
-                new_origin = os.path.relpath("lib", relative_location)
-                runez.run("patchelf", "--set-rpath", f"{self.prefix}/lib:$ORIGIN/{new_origin}", path)
+                new_origin = os.path.relpath("lib", relative_location)  # Allows libpython.so to be found relative to this exe or .so
+                rpath = [f"$ORIGIN/{new_origin}"]
+                if self.prefix != self.ppp_marker:
+                    # Ensure --prefix is always respected when used
+                    rpath.insert(0, f"{self.prefix}/lib")
+
+                elif new_origin != "../lib":
+                    # Ensure lib can be found relative to its python exe as well
+                    rpath.append("$ORIGIN/../lib")
+
+                rpath = runez.joined(rpath, delimiter=":")
+                runez.run("patchelf", "--set-rpath", rpath, path)
 
     def _auto_correct_macos(self, path):
         """
