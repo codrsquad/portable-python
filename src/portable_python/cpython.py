@@ -46,7 +46,8 @@ class Cpython(PythonBuilder):
         yield f"-L{self.deps_lib}"
         if PPG.target.is_linux:
             yield "-Wl,-z,origin"
-            yield f"-Wl,-rpath={self.c_configure_prefix}/lib"
+            # rpath intentionally long to give 'patchelf' some room
+            yield f"-Wl,-rpath={self.c_configure_prefix}/lib:{self.c_configure_prefix}/lib64"
 
     def has_configure_opt(self, name, *variants):
         opts = self.c_configure_args_from_config
@@ -134,7 +135,7 @@ class Cpython(PythonBuilder):
         self.run_make(*make_args)
         self.run_make("install", f"DESTDIR={self.destdir}")
 
-    def _pip_upgrade(self, bin_python, *lib_names):
+    def _pip_upgrade(self, *lib_names):
         for lib_name in runez.flattened(lib_names, split=True, unique=True):
             do_install = True
             if lib_name.startswith("?"):
@@ -143,16 +144,16 @@ class Cpython(PythonBuilder):
                 do_install = path.exists()
 
             if do_install:
-                self.run(bin_python, "-mpip", "install", "-U", lib_name)
+                self.run_python("-mpip", "install", "-U", lib_name)
 
     def _finalize(self):
-        is_shared = not self.setup.prefix and self.has_configure_opt("--enable-shared", "yes")
+        is_shared = self.setup.prefix or self.has_configure_opt("--enable-shared", "yes")
         if is_shared:
             lib_auto_correct = LibAutoCorrect(self.c_configure_prefix, self.install_folder)
             lib_auto_correct.run()
 
-        bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version, fatal=not runez.DRYRUN)
-        self._pip_upgrade(bin_python, "?pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
+        runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
+        self._pip_upgrade("?pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
         PPG.config.ensure_main_file_symlinks(self)
         if not self.setup.prefix:
             # See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
@@ -168,8 +169,8 @@ class Cpython(PythonBuilder):
 
         for folder in (self.bin_folder, self.config_folder):
             for path in runez.ls_dir(folder):
-                if path != bin_python and runez.is_executable(path) and not path.is_symlink():
-                    self._auto_correct_shebang_file(bin_python, path)
+                if path != self.bin_python and runez.is_executable(path) and not path.is_symlink():
+                    self._auto_correct_shebang_file(path)
 
         PPG.config.cleanup_folder(self, "cpython-clean-1st-pass")
         PPG.config.symlink_duplicates(self.install_folder)
@@ -180,18 +181,18 @@ class Cpython(PythonBuilder):
         validation_script = PPG.config.resolved_path("cpython-validate-script")
         if validation_script:
             LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
-            self.run(bin_python, validation_script)
+            self.run_python(validation_script)
 
         check_venvs = PPG.config.get_value("cpython-check-venvs")
         if check_venvs:
             if check_venvs in ("venv", "all"):
-                self._check_venv(bin_python)
+                self._check_venv()
 
             if check_venvs in ("copies", "all"):
-                self._check_venv(bin_python, copies=True)
+                self._check_venv(copies=True)
 
         if PPG.config.get_value("cpython-compile-all"):
-            self.run(bin_python, "-mcompileall", "-q", self.install_folder / "lib")
+            self.run_python("-mcompileall", "-q", self.install_folder / "lib")
 
         info_path = PPG.config.get_value("manifest", "build-info")
         if info_path:
@@ -207,7 +208,7 @@ class Cpython(PythonBuilder):
 
         PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
 
-    def _check_venv(self, bin_python, copies=False):
+    def _check_venv(self, copies=False):
         """Verify that the freshly compiled python can create venvs without issue"""
         folder = "venv"
         args = ["-mvenv"]
@@ -216,8 +217,8 @@ class Cpython(PythonBuilder):
             folder += "-copies"
 
         folder = self.setup.folders.build_folder / "test-venvs" / folder
-        self.run(bin_python, *args, folder)
-        self.run(bin_python, "-mpip", "--version")
+        self.run_python(*args, folder)
+        self.run_python("-mpip", "--version")
 
     @staticmethod
     def _represented_yaml(bits):
@@ -259,7 +260,7 @@ class Cpython(PythonBuilder):
                 if path.name.startswith("_sysconfigdata"):
                     return path
 
-    def _auto_correct_shebang_file(self, main_python, path):
+    def _auto_correct_shebang_file(self, path):
         lines = []
         with open(path) as fh:
             try:
@@ -272,10 +273,10 @@ class Cpython(PythonBuilder):
                         return
 
                     if self.setup.prefix:
-                        lines.append(f"#!{self.setup.prefix}/bin/{main_python.name}\n")
+                        lines.append(f"#!{self.setup.prefix}/bin/{self.bin_python.name}\n")
 
                     else:
-                        rel_location = os.path.relpath(main_python, path.parent)
+                        rel_location = os.path.relpath(self.bin_python, path.parent)
                         lines.append("#!/bin/sh\n")
                         lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % rel_location)
 

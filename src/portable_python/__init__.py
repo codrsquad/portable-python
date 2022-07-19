@@ -13,6 +13,7 @@ import enum
 import logging
 import multiprocessing
 import os
+import pathlib
 import re
 from typing import List
 
@@ -497,8 +498,8 @@ class ModuleBuilder:
         if self.modules.selected:
             yield f"{self.deps_lib}/pkgconfig"
 
-    def run(self, program, *args, fatal=True):
-        return runez.run(program, *args, passthrough=self._log_handler, stdout=None, stderr=None, fatal=fatal)
+    def _do_run(self, program, *args, fatal=True, env=None):
+        return runez.run(program, *args, passthrough=self._log_handler, stdout=None, stderr=None, fatal=fatal, env=env)
 
     def run_configure(self, program, *args, prefix=None):
         """
@@ -513,7 +514,7 @@ class ModuleBuilder:
 
         program = program.split()
         cmd = runez.flattened(*program, prefix, *args)
-        return self.run(*cmd)
+        return self._do_run(*cmd)
 
     def run_make(self, *args, program="make", cpu_count=None):
         cmd = program.split()
@@ -523,7 +524,7 @@ class ModuleBuilder:
         if cpu_count and cpu_count > 3:
             cmd.append("-j%s" % (cpu_count - 2))
 
-        self.run(*cmd, *args)
+        self._do_run(*cmd, *args)
 
     @contextlib.contextmanager
     def captured_logs(self):
@@ -646,6 +647,8 @@ class ModuleBuilder:
 
 class PythonBuilder(ModuleBuilder):
 
+    _bin_python: pathlib.Path = None
+
     def __init__(self, parent_module):
         super().__init__(parent_module)
         self.destdir = self.setup.folders.destdir  # Folder passed to 'make install DESTDIR='
@@ -661,11 +664,30 @@ class PythonBuilder(ModuleBuilder):
         return ModuleCollection(self, desired=desired)
 
     @property
+    def bin_python(self):
+        """
+        Returns:
+            (pathlib.Path | None): Path to freshly compiled bin/python, real file (not symlink)
+        """
+        if self._bin_python is None:
+            self._bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version)
+
+        return self._bin_python
+
+    @property
     def version(self):
         return self.setup.python_spec.version
 
     def xenv_LDFLAGS(self):
         """Python builder does not reuse the common setting"""
+
+    def run_python(self, *args):
+        """Run python command, using the freshly compiled python binary"""
+        env = None
+        if PPG.target.is_linux:
+            env = {"LD_LIBRARY_PATH": str(self.install_folder / "lib")}
+
+        return self._do_run(self.bin_python, *args, env=env)
 
     def _prepare(self):
         # Some libs get funky permissions for some reason

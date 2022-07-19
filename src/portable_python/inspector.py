@@ -86,7 +86,7 @@ class LibAutoCorrect:
             with TempChmod(path, chmod=0o755):
                 relative_location = path.relative_to(self.install_folder).parent
                 new_origin = os.path.relpath("lib", relative_location)
-                runez.run("patchelf", "--set-rpath", f"$ORIGIN/{new_origin}", path)
+                runez.run("patchelf", "--set-rpath", f"{self.prefix}/lib:$ORIGIN/{new_origin}", path)
 
     def _auto_correct_macos(self, path):
         """
@@ -94,7 +94,7 @@ class LibAutoCorrect:
             install_name_tool -add_rpath @executable_path/../lib .../bin/python
             install_name_tool -change /<prefix>/lib/libpython3.9.dylib @rpath/libpython3.9.dylib .../bin/python
 
-        Note that this is here is not necessary thanks to the '-Wl,-install_name,@executable_path/..' patch
+        Note that this is not necessary thanks to the '-Wl,-install_name,@executable_path/..' patch
         It is here just as fallback (double-checks that all exes/libs are indeed relative/portable)
         """
         prefixed_folder = path.relative_to(self.install_folder)
@@ -531,10 +531,10 @@ class FullSoReport:
                     uses_system = [x for x in uses_system if not allowed.match(x)]
 
                 if uses_system:
-                    return "Uses system libs: %s" % runez.joined(uses_system)
+                    return "Uses system libs: %s" % runez.red(runez.joined(uses_system))
 
-        problem = runez.joined(self.problematic)
-        if not problem and not runez.DRYRUN and not self.ok:
-            problem = "Internal error: no OK libs found"
+        if self.problematic:
+            return runez.joined(self.problematic.represented())
 
-        return problem
+        if not runez.DRYRUN and not self.ok:
+            return "Internal error: %s" % runez.red("no OK libs found")

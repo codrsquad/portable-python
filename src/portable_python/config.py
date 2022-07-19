@@ -7,6 +7,7 @@ import re
 
 import runez
 import yaml
+from runez.pyenv import Version
 
 
 LOG = logging.getLogger(__name__)
@@ -248,11 +249,19 @@ class Config:
             return path
 
     @staticmethod
-    def candidate_exes(basename: str, version):
+    def candidate_exes(basename: str, version: Version):
         return basename, "%s%s" % (basename, version.major), "%s%s" % (basename, version.mm)
 
     @staticmethod
-    def find_main_file(desired: pathlib.Path, version, fatal=None):
+    def find_main_file(desired: pathlib.Path, version: Version):
+        """
+        Args:
+            desired: Desired path (base name considered if path not directly available)
+            version: Associated version
+
+        Returns:
+            (pathlib.Path | None): Path to associated real file (not symlink)
+        """
         p = Config.real_path(desired)
         if p:
             return p
@@ -261,9 +270,6 @@ class Config:
             fc = Config.real_path(desired.parent / c)
             if fc:
                 return fc
-
-        if fatal is not None:
-            return runez.abort("Could not determine real path for %s" % runez.short(desired), return_value=desired, fatal=fatal)
 
     def ensure_main_file_symlinks(self, module):
         folder = module.install_folder

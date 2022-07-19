@@ -173,8 +173,8 @@ def test_lib_auto_correct(temp_folder):
         ac = LibAutoCorrect("/3.9.6", runez.to_path("foo").absolute())
         ac.run()
         expected = [
-            "patchelf --set-rpath $ORIGIN/../lib foo/bin/python",
-            "patchelf --set-rpath $ORIGIN/.. foo/lib/bar/baz.dylib",
-            "patchelf --set-rpath $ORIGIN/. foo/lib/libpython3.9.dylib",
+            "patchelf --set-rpath /3.9.6/lib:$ORIGIN/../lib foo/bin/python",
+            "patchelf --set-rpath /3.9.6/lib:$ORIGIN/.. foo/lib/bar/baz.dylib",
+            "patchelf --set-rpath /3.9.6/lib:$ORIGIN/. foo/lib/libpython3.9.dylib",
         ]
         assert m.called == expected
