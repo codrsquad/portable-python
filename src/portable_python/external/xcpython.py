@@ -148,7 +148,7 @@ class Openssl(ModuleBuilder):
         return self.cfg_version("1.1.1q")
 
     def c_configure_args(self):
-        yield f"--openssldir=/etc/ssl"
+        yield "--openssldir=/etc/ssl"
         yield "-DPEDANTIC"
         yield "no-shared", "no-idea", "no-tests"
         if PPG.target.is_macos:
