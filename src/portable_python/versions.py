@@ -82,7 +82,7 @@ class CPythonFamily(VersionFamily):
 
             return
 
-        upcoming = Version("3.10")  # No need to double-check .0 releases prior to this version
+        upcoming = Version("3.11")  # No need to double-check .0 releases prior to this version
         base_url = "https://www.python.org/ftp/python"
         r = self.client.get_response(f"{base_url}/", logger=logging.debug)
         regex = re.compile(r'"(\d+\.\d+\.\d+)/"')
