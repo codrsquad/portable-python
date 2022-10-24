@@ -112,7 +112,7 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.4.2")
+        return self.cfg_version("3.4.4")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -314,7 +314,7 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("5.2.6")
+        return self.cfg_version("5.2.7")
 
     def _do_linux_compile(self):
         self.run_configure(
