@@ -40,7 +40,7 @@ class Cpython(PythonBuilder):
         if PPG.config.get_value("cpython-use-github"):
             return f"https://github.com/python/cpython/archive/refs/tags/v{self.version}.tar.gz"
 
-        return f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tar.xz"
+        return f"https://www.python.org/ftp/python/{self.version.main}/Python-{self.version}.tar.xz"
 
     def xenv_LDFLAGS_NODIST(self):
         yield f"-L{self.deps_lib}"
