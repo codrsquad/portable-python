@@ -264,7 +264,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.39.2")
+        return self.cfg_version("3.39.4")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -347,7 +347,7 @@ class Zlib(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.2.12")
+        return self.cfg_version("1.2.13")
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--static")
