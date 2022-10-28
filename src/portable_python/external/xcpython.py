@@ -314,7 +314,8 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("5.2.7")
+        # With 5.2.7 C compilation error on linux: version node not found for symbol lzma_get_progress@@XZ_5.2
+        return self.cfg_version("5.2.6")
 
     def _do_linux_compile(self):
         self.run_configure(
