@@ -105,13 +105,38 @@ class BuildContext:
     Context for BuildSetup.compile()
     """
 
+    usr_local = "/usr/local"
+
     def __init__(self, setup):
         self.setup = setup
         self.masked_folders = []
-        self.has_libintl = os.path.exists("/usr/local/include/libintl.h") or setup.x_debug == "has-libintl"
-        v = PPG.config.get_value("isolate-usr-local")
+        v = self._resolved_isolation()
         runez.abort_if(v and v not in ("mount-shadow", "gettext-tiny"), f"Invalid isolation method '{v}'")
         self.isolate_usr_local = v
+        if self.isolate_usr_local:
+            LOG.info("isolate-usr-local: %s", self.isolate_usr_local)
+
+    def _resolved_isolation(self):
+        """
+        Returns:
+            (str | None): What strategy to use to work around the fact that python's ./configure script looks at /usr/local
+        """
+        v = PPG.config.get_value("isolate-usr-local")
+        if v == "auto":
+            v = None
+            folder = os.path.join(self.usr_local, "include")
+            if PPG.target.is_macos and os.path.isdir(folder):
+                fnames = ["libintl.h"]
+                if self.setup.python_builder.active_module("gdbm"):
+                    fnames.append("dbm.h")
+                    fnames.append("gdbm.h")
+
+                for fname in fnames:
+                    fpath = os.path.join(folder, fname)
+                    if os.path.exists(fpath):
+                        return "mount-shadow"
+
+        return v
 
     def __repr__(self):
         return self.isolate_usr_local or "none"
@@ -126,7 +151,8 @@ class BuildContext:
             runez.abort_if(not runez.DRYRUN and runez.DEV.current_test(), "Folder masking not allowed in tests")
 
             try:
-                for path in ("/usr/local/etc", "/usr/local/include", "/usr/local/lib", "/usr/local/opt"):
+                for fname in ("etc", "include", "lib", "opt"):
+                    path = os.path.join(self.usr_local, fname)
                     mask = FolderMask(path)
                     self.masked_folders.append(mask)
                     mask.mount()

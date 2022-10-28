@@ -264,10 +264,6 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        if PPG.target.is_macos and PPG.target.arch == "x86_64":
-            # Weird C compilation error on Intel macs with py3.11, not sure what that is about, sticking to older sqlite for now...
-            return self.cfg_version("3.38.5")
-
         return self.cfg_version("3.39.4")
 
     def _do_linux_compile(self):

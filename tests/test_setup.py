@@ -17,7 +17,6 @@ def test_config(cli, monkeypatch):
     assert "--enable-shared" in cli.logged  # From custom config
     assert "--with-system-ffi" in cli.logged  # Because libffi was not compiled
 
-    monkeypatch.setenv("PP_X_DEBUG", "has-libintl")
     cli.run("-ntlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mnone")
     assert cli.succeeded
     assert "env MACOSX_DEPLOYMENT_TARGET" not in cli.logged

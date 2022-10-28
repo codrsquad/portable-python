@@ -12,6 +12,10 @@ linux:
     isolate-usr-local: gettext-tiny       # To trigger test code coverage of the hack via test_cleanup()
 
 macos:                                    # Applies to macos only
+  arm64:
+    cpython-modules: xz openssl gdbm
+    isolate-usr-local: auto               # To trigger test code coverage of the hack via test_cleanup()
+
   x86_64:
     isolate-usr-local: mount-shadow       # To trigger test code coverage of the hack via test_cleanup()
 

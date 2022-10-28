@@ -2,10 +2,11 @@ import os
 
 import runez
 
+from portable_python import BuildContext
 from portable_python.versions import PPG
 
 
-def test_cleanup(cli):
+def test_cleanup(cli, monkeypatch):
     f = PPG.get_folders(version="3.7.12")
     install_dir = f.resolved_destdir()
     lib = install_dir / "lib"
@@ -50,3 +51,9 @@ def test_cleanup(cli):
     assert f"Would symlink {install_dir}/bin/pip{f.mm} <- {install_dir}/bin/pip" in cli.logged
     assert f"Would symlink {lib}/python{f.mm}/config-{f.mm}-darwin/libpython{f.mm}.a <- {lib}/libpython{f.mm}.a"
     assert f"Would tar {install_dir} -> dist/cpython-{f.version}-linux-x86_64.tar.gz" in cli.logged
+
+    runez.touch("include/dbm.h", logger=None)
+    monkeypatch.setattr(BuildContext, "usr_local", os.getcwd())
+    cli.run("-ntmacos-arm64", f"-c{cfg}", "build", f.version)
+    assert cli.succeeded
+    assert "isolate-usr-local: mount-shadow" in cli.logged
