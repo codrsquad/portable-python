@@ -145,7 +145,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.1.1q")
+        return self.cfg_version("1.1.1s")
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
@@ -176,14 +176,13 @@ class Ncurses(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("6.3")
+        # 6.3's configure fails with --enable-pc-files for some reason with py3.11 (looks like an internal error)
+        return self.cfg_version("6.2")
 
     def c_configure_args(self):
         yield "--disable-shared"
         yield "--enable-static"
         yield "--without-ada"
-        yield "--without-cxx"
-        yield "--without-cxx-binding"
         yield "--disable-db-install"
         yield "--without-manpages"
         yield "--without-progs"
