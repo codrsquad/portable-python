@@ -37,11 +37,8 @@ def test_cleanup(cli, monkeypatch):
     assert "Cleaned 3 build artifacts" in cli.logged  # 2nd pass
     assert f"Corrected permissions for {f.deps}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={f.build_folder}\n" in cli.logged
-    assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
-    assert "Patched '/(usr|opt)/local\\b' in build/components/cpython/setup.py" in cli.logged
     cli.match("Patched 'startswith(...)' in build/components/cpython/setup.py")
     assert "Exercising configured validation script" in cli.logged
-    assert "Can't patch 'build/components/cpython/foo'" in cli.logged
     assert "Lib/trace.py" not in cli.logged
 
     cli.run("-ntlinux-x86_64", f"-c{cfg}", "build", f.version, "-mall")
@@ -52,8 +49,12 @@ def test_cleanup(cli, monkeypatch):
     assert f"Would symlink {lib}/python{f.mm}/config-{f.mm}-darwin/libpython{f.mm}.a <- {lib}/libpython{f.mm}.a"
     assert f"Would tar {install_dir} -> dist/cpython-{f.version}-linux-x86_64.tar.gz" in cli.logged
 
+    runez.touch("bin/brew", logger=None)
     runez.touch("include/dbm.h", logger=None)
     monkeypatch.setattr(BuildContext, "usr_local", os.getcwd())
     cli.run("-ntmacos-arm64", f"-c{cfg}", "build", f.version)
     assert cli.succeeded
+    assert "Patched '/usr/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
+    assert "Patched '/usr/local\\b' in build/components/cpython/setup.py" in cli.logged
+    assert "Can't patch 'build/components/cpython/foo'" in cli.logged
     assert "isolate-usr-local: mount-shadow" in cli.logged
