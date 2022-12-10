@@ -149,18 +149,13 @@ class Openssl(ModuleBuilder):
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
-        yield "-DPEDANTIC"
+        # yield "-DPEDANTIC"
         yield "no-shared", "no-idea", "no-tests"
-        if PPG.target.is_macos:
-            yield "darwin64-%s-cc" % PPG.target.arch
-
-        else:
-            yield "%s-%s" % (PPG.target.platform, PPG.target.arch)
 
     def _do_linux_compile(self):
-        self.run_configure("./Configure", self.c_configure_args())
+        self.run_configure("./config", "-v", self.c_configure_args())
         self.run_make("depend")
-        self.run_make("all")
+        self.run_make()
         self.run_make("install_sw")  # See https://github.com/openssl/openssl/issues/8170
 
 

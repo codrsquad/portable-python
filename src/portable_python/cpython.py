@@ -72,6 +72,7 @@ class Cpython(PythonBuilder):
         if not self.has_configure_opt("--with-openssl"):
             if self.version >= "3.7" and self.active_module(Openssl):
                 yield f"--with-openssl={self.deps}"
+                yield f"--with-openssl-rpath=no"
 
         if not self.has_configure_opt("--with-system-ffi"):
             if self.active_module(LibFFI):
