@@ -149,7 +149,6 @@ class Openssl(ModuleBuilder):
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
-        # yield "-DPEDANTIC"
         yield "no-shared", "no-idea", "no-tests"
 
     def _do_linux_compile(self):
