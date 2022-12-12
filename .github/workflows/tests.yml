@@ -21,7 +21,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - run: pip install -U pip tox
+    - run: pip install -U pip 'tox<4'
     - run: tox -e py
     - uses: codecov/codecov-action@v1
       with:
@@ -37,5 +37,5 @@ jobs:
       with:
         python-version: "3.10"
 
-    - run: pip install -U pip tox
+    - run: pip install -U pip 'tox<4'
     - run: tox -e docs,style,security
