@@ -497,6 +497,34 @@ class PythonInspector:
         report = runez.joined(report or self.output, delimiter="\n")
         return runez.joined(report, delimiter="\n")
 
+    @staticmethod
+    def parsed_version(output):
+        """
+        Args:
+            output (str | None): Output to parse
+
+        Returns:
+            (str | None): Simplified version number reported
+        """
+        if output:
+            for line in output.splitlines():
+                line = line.strip()
+                if line:
+                    rx = re.compile(r"^.*?([\d.]+).*$")
+                    m = rx.match(line)
+                    if m:
+                        version = m.group(1)
+                        return version and version.strip()
+
+    @staticmethod
+    def tool_version(tool_name):
+        """Simplified --version extracted from tool with 'tool_name'"""
+        full_path = runez.which(tool_name)
+        if full_path:
+            output = runez.run(full_path, "--version", fatal=False, dryrun=False)
+            if output:
+                return PythonInspector.parsed_version(output.output or output.error)
+
 
 def _find_parent_subfolder(folder, basename):
     while folder and len(folder.parts) > 1:

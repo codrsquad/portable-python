@@ -1,5 +1,6 @@
 import builtins
 import os
+import sys
 from unittest.mock import patch
 
 import runez
@@ -190,3 +191,18 @@ def test_lib_auto_correct(temp_folder):
             "patchelf --set-rpath $ORIGIN/.:$ORIGIN/../lib foo/lib/libpython3.9.dylib",
         ]
         assert m.called == expected
+
+
+def test_tool_version():
+    x = PythonInspector.tool_version(sys.executable)
+    sp = sys.version_info
+    assert x == f"{sp[0]}.{sp[1]}.{sp[2]}"
+
+    x = PythonInspector.parsed_version("gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-44)")
+    assert x == "4.8.5"
+
+    x = PythonInspector.parsed_version("ldd (GNU libc) 2.17")
+    assert x == "2.17"
+
+    x = PythonInspector.parsed_version("ldd (Ubuntu GLIBC 2.35-0ubuntu3.1) 2.35")
+    assert x == "2.35"

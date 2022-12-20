@@ -242,6 +242,7 @@ class Cpython(PythonBuilder):
             "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
             "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
             "host-platform": runez.SYS_INFO.platform_info,
+            "ldd-version": PythonInspector.tool_version("ldd"),
             "portable-python-version": runez.get_version(__package__),
             "special-context": bc.isolate_usr_local and bc,
         }
