@@ -8,7 +8,7 @@ setup(
     author="Zoran Simic zoran@simicweb.com",
     keywords="python, portable, binary",
     url="https://github.com/codrsquad/portable-python",
-    python_requires='>=3.6',
+    python_requires=">=3.6",
     entry_points={
         "console_scripts": [
             "portable-python = portable_python.__main__:main",
