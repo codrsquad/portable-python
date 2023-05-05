@@ -145,7 +145,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.1.1s")
+        return self.cfg_version("1.1.1t")
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
@@ -257,7 +257,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.39.4")
+        return self.cfg_version("3.41.2")
 
     def _do_linux_compile(self):
         self.run_configure(
