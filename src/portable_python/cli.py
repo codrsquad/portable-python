@@ -75,8 +75,9 @@ def diagnostics():
 @click.option("--modules", "-m", help="Modules to inspect")
 @click.option("--verbose", "-v", is_flag=True, help="Show full so report")
 @click.option("--prefix", "-p", is_flag=True, help="Build was done with --prefix (not portable)")
+@click.option("--skip-so", "-s", is_flag=True, help="Don't check all .so-s")
 @click.argument("path")
-def inspect(modules, verbose, prefix, path):
+def inspect(modules, verbose, prefix, skip_so, path):
     """Inspect a python installation for non-portable dynamic lib usage"""
     if path != "invoker":
         path = runez.resolved_path(path)
@@ -85,7 +86,7 @@ def inspect(modules, verbose, prefix, path):
     runez.abort_if(inspector.python.problem, "%s: %s" % (runez.red(path), inspector.python.problem))
     print(runez.blue(inspector.python))
     print(inspector.represented(verbose=verbose))
-    if not modules or modules == "all":
+    if not skip_so and (not modules or modules == "all"):
         problem = inspector.full_so_report.get_problem(portable=not prefix)
         runez.abort_if(problem)
 
