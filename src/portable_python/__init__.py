@@ -197,20 +197,22 @@ class BuildSetup:
             prefix (str | None): --prefix to use
         """
         if isinstance(python_spec, str):
-            v = Version.from_text(python_spec)
-            if v and not v.is_final:
+            v = Version(python_spec)
+            if v.is_valid and not v.is_final:
                 # Accept release candidates
                 family = python_spec.rpartition(":")[0] or "cpython"
-                python_spec = PythonSpec.to_spec(f"{family}:{v.main}")
+                python_spec = PythonSpec.from_text(f"{family}:{v.main}")
                 python_spec.version = v
 
         if not python_spec or python_spec == "latest":
             python_spec = "cpython:%s" % PPG.cpython.latest
 
-        python_spec = PythonSpec.to_spec(python_spec)
-        if not python_spec.version or not python_spec.version.is_valid:
-            runez.abort("Invalid python spec: %s" % runez.red(python_spec))
+        if not isinstance(python_spec, PythonSpec):
+            ps = PythonSpec.from_text(python_spec)
+            runez.abort_if(not ps, "Invalid python spec: %s" % runez.red(python_spec))
+            python_spec = ps
 
+        runez.abort_if(not python_spec.version or not python_spec.version.is_valid, "Invalid python spec: %s" % runez.red(python_spec))
         if len(python_spec.version.given_components) < 3:
             runez.abort("Please provide full desired version: %s is not good enough" % runez.red(python_spec))
 

@@ -21,7 +21,7 @@ def test_find_libs(temp_folder):
     assert x == ["lib-foo.a", "lp.dylib", "lp.so", "lp.so.1.0", "python3.9/config-3.9/libpython3.9.so"]
 
 
-def test_find_python(temp_folder):
+def test_inspect_python(temp_folder):
     PPG.grab_config("foo.yml")
     inspector = PythonInspector("invoker")
     assert str(inspector)
