@@ -97,7 +97,7 @@ class Cpython(PythonBuilder):
         tkinter = self.active_module(TkInter)
         if tkinter:
             # TODO: this doesn't seem to be enough, on macos cpython's ./configure still picks up the shared macos tcl/tk libs
-            version = Version.from_text(tkinter.version)
+            version = Version(tkinter.version)
             yield f"--with-tcltk-includes=-I{self.deps}/include"
             yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{version.mm} -ltk{version.mm}"
 

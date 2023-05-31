@@ -2,7 +2,7 @@ import logging
 
 import click
 import runez
-from runez.pyenv import PythonDepot, PythonSpec
+from runez.pyenv import PythonSpec
 from runez.render import PrettyTable
 
 from portable_python import BuildSetup, PPG
@@ -60,15 +60,12 @@ def build_report(modules, python_spec):
 def diagnostics():
     """Show diagnostics info"""
     with runez.Anchored("."):
-        depot = PythonDepot(use_path=True)
-        depot.scan_path_env_var()
-
         def _diagnostics():
-            yield "invoker python", depot.invoker
+            yield "invoker python", runez.SYS_INFO.invoker_python
             yield from runez.SYS_INFO.diagnostics()
 
         config = PPG.config.represented()
-        print(PrettyTable.two_column_diagnostics(_diagnostics(), depot.representation(), config))
+        print(PrettyTable.two_column_diagnostics(_diagnostics(), config))
 
 
 @main.command()
@@ -163,7 +160,7 @@ def recompress(path, ext):
     Mildly useful for comparing sizes from different compressions
     """
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
-    pspec = PythonSpec.to_spec(path)
+    pspec = PythonSpec.from_text(path)
     folders = PPG.get_folders(base=".", family=pspec and pspec.family, version=pspec and pspec.version)
     with runez.Anchored(folders.base_folder):
         actual_path = _find_recompress_source(folders, path)

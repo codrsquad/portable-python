@@ -30,7 +30,7 @@ class VersionFamily:
         if self._versions is None:
             self._versions = {}
             versions = self.get_available_versions()
-            versions = versions and sorted((Version.from_text(x) for x in versions), reverse=True)
+            versions = versions and sorted(versions, reverse=True)
             if versions:
                 self._latest = versions[0]
                 for v in versions:
@@ -110,7 +110,7 @@ class Folders:
         self.config = config
         self.base_folder = runez.resolved_path(base)
         self.family = family
-        self.version = Version.from_text(version, strict=True)
+        self.version = Version.from_object(version)
         self.mm = self.version and self.version.mm
         self.completions = config.completions(family=family, version=version, mm=self.mm)
         self.build_folder = self._get_path("build")
@@ -190,7 +190,7 @@ class PPG:
     @classmethod
     def find_python(cls, spec):
         if cls._depot is None:
-            cls._depot = PythonDepot(use_path=False)
+            cls._depot = PythonDepot("PATH")
 
         return cls._depot.find_python(spec)
 
