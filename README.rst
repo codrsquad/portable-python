@@ -83,16 +83,19 @@ Building a portable cpython
 
 Once ``portable-python`` is installed:
 
-    # Build a binary
+Build a binary::
+
     cd some-temp-folder
     portable-python build 3.9.7
     ls -l dist/cpython-3.9.7-macos-arm64.tar.gz
 
-    # Unpack it somewhere
+Unpack it somewhere::
+
     tar -C ~/tmp/versions/ -xf dist/cpython-3.9.7-macos-arm64.tar.gz
     ls -l ~/tmp/versions/
 
-    # It's ready to be used
+It's ready to be used::
+
     ~/tmp/versions/3.9.7/bin/python --version
 
 
