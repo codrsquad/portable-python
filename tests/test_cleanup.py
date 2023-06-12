@@ -12,7 +12,7 @@ def test_cleanup(cli, monkeypatch):
     lib = install_dir / "lib"
 
     # Simulate presence of some key files to verify code that is detecting them is hit
-    runez.write(f.components / "cpython/Mac/Makefile.in", "hmm\nmentions /usr/local", logger=None)
+    runez.write(f.components / "cpython/Mac/Makefile.in", "hmm\nmentions /usr/local\n", logger=None)
     runez.write(f.components / "cpython/Lib/trace.py", "hmm\nmentions /usr/local", logger=None)  # ignored because in Lib/ folder
     runez.write(f.components / "cpython/setup.py", "path.startswith('/usr/') and not path.startswith('/usr/local')", logger=None)
     runez.write(f.components / "cpython/foo", b"hello\xe4 /usr/local", logger=None)
@@ -32,6 +32,7 @@ def test_cleanup(cli, monkeypatch):
     cfg = cli.tests_path("sample-config1.yml")
     cli.run("-ntmacos-x86_64", f"-c{cfg}", "build", "-mopenssl,readline", f.version)
     assert cli.succeeded
+    assert "Patched '/usr/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
     assert "MACOSX_DEPLOYMENT_TARGET=10.25" in cli.logged
     assert "Cleaned 2 build artifacts" in cli.logged  # 1st pass
     assert "Cleaned 3 build artifacts" in cli.logged  # 2nd pass
@@ -54,7 +55,6 @@ def test_cleanup(cli, monkeypatch):
     monkeypatch.setattr(BuildContext, "usr_local", os.getcwd())
     cli.run("-ntmacos-arm64", f"-c{cfg}", "build", f.version)
     assert cli.succeeded
-    assert "Patched '/usr/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
     assert "Patched '/usr/local\\b' in build/components/cpython/setup.py" in cli.logged
     assert "Can't patch 'build/components/cpython/foo'" in cli.logged
     assert "isolate-usr-local: mount-shadow" in cli.logged
