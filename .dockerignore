@@ -1,0 +1,15 @@
+.*cache
+.DS_Store*
+*.egg*
+.idea
+*.lock
+*.log
+.tox
+.venv*
+.*version
+
+_Dockerfile*
+__pycache__
+_tmp
+build
+dist

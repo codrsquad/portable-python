@@ -110,20 +110,18 @@ class Cpython(PythonBuilder):
     def _prepare(self):
         super()._prepare()
         if PPG.target.is_macos:
-            brew_path = os.path.join(self.setup.build_context.usr_local, "bin/brew")
-            if os.path.exists(brew_path):
-                # Avoid pollution of static builds via /usr/local on macos
-                rx = re.compile(r"^(Doc|Grammar|Lib|Misc|Modules|PC|Tools|msi|.*\.(md|html|man|pro|rst))$")
-                patch_folder(self.m_src_build, r"/usr/local\b", self.deps.as_posix(), ignore=rx)
-                setup_py = self.m_src_build / "setup.py"
-                if setup_py.exists():
-                    # Special edge case in macosx_sdk_specified() where /usr/local is fine...
-                    x = "startswith({q}/usr/{q}) and not path.startswith({q}{p}{q})"
-                    special_case = x.replace("(", r"\(").replace(")", r"\)").format(q="['\"]", p=self.deps)
-                    restored = x.format(q="'", p='/usr/local')
-                    patch_file(setup_py, special_case, restored)
+            # Avoid pollution of static builds via /usr/local on macOS
+            rx = re.compile(r"^(Doc|Grammar|Lib|Misc|Modules|PC|Tools|msi|.*\.(md|html|man|pro|rst))$")
+            patch_folder(self.m_src_build, r"/usr/local\b", self.deps.as_posix(), ignore=rx)
+            setup_py = self.m_src_build / "setup.py"
+            if setup_py.exists():
+                # Special edge case in macosx_sdk_specified() where /usr/local is fine...
+                x = "startswith({q}/usr/{q}) and not path.startswith({q}{p}{q})"
+                special_case = x.replace("(", r"\(").replace(")", r"\)").format(q="['\"]", p=self.deps)
+                restored = x.format(q="'", p='/usr/local')
+                patch_file(setup_py, special_case, restored)
 
-            # Only doable on macos: patch -install_name so produced exes/libs use a relative path
+            # Only doable on macOS: patch -install_name so produced exes/libs use a relative path
             install_name = "-Wl,-install_name,@executable_path/.."
             patch_folder(self.m_src_build, r"-Wl,-install_name,\$\(prefix\)", install_name)
 
@@ -294,7 +292,7 @@ class Cpython(PythonBuilder):
 
 
 class RelSysConf:
-    """Make _sysconfigdata report paths (prefix etc) relative to its current location"""
+    """Make _sysconfigdata report paths (eg: prefix) relative to its current location"""
 
     def __init__(self, path, prefix):
         self.path = path

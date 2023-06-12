@@ -145,7 +145,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.1.1t")
+        return self.cfg_version("1.1.1u")
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
@@ -170,8 +170,7 @@ class Ncurses(ModuleBuilder):
 
     @property
     def version(self):
-        # 6.3's configure fails with --enable-pc-files for some reason with py3.11 (looks like an internal error)
-        return self.cfg_version("6.2")
+        return self.cfg_version("6.4")
 
     def c_configure_args(self):
         yield "--disable-shared"
@@ -224,14 +223,15 @@ class Readline(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("8.1.2")
+        return self.cfg_version("8.2")
 
     def _do_linux_compile(self):
         self.run_configure(
-            "./configure", "--disable-shared", "--enable-static", "--with-curses", "--enable-multibyte", "--disable-install-examples"
+            "./configure", "--disable-shared", "--enable-static", "--with-curses", "--enable-multibyte",
+            "--disable-install-examples", "--disable-docs", "--enable-portable-binary",
         )
-        self.run_make()
-        self.run_make("install")
+        self.run_make(cpu_count=0)
+        self.run_make("install", cpu_count=0)
 
 
 class Sqlite(ModuleBuilder):
@@ -257,7 +257,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.41.2")
+        return self.cfg_version("3.42.0")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -307,8 +307,7 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        # With 5.2.7 C compilation error on linux: version node not found for symbol lzma_get_progress@@XZ_5.2
-        return self.cfg_version("5.2.6")
+        return self.cfg_version("5.4.3")
 
     def _do_linux_compile(self):
         self.run_configure(
