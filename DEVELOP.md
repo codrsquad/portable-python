@@ -52,3 +52,24 @@ You can then edit the build/run configuration in PyCharm, add some "Parameters" 
 like for example `build-report 3.10.5`, and then set breakpoints wherever you like.
 
 There is a `--dryrun` mode that can come in very handy for rapid iterations.
+
+
+# Building a linux binary via docker
+
+Build a docker image, for example using the provided sample `Dockerfile`:
+
+```shell
+docker build -t portable-python-jammy .
+```
+
+Run the docker image, with a folder `/src/` mounted to point to:
+
+```shell
+docker run -it -v./:/src/ portable-python-jammy /bin/bash
+```
+
+Now inside docker, you run a build:
+
+```shell
+portable-python build 3.11.4
+```

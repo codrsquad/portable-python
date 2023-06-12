@@ -13,12 +13,10 @@ ehthumbs.db
 Icon?
 Thumbs.db
 .new*
-Dockerfile
 
 # Build artifacts
 _Dockerfile*
 __pycache__/
-*.py[cod]
 *.egg*
 .tox/
 .venv*/
