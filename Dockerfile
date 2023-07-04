@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y git htop build-essential \
 RUN /usr/bin/python3 -mpip install -U pip setuptools
 
 COPY ./scripts/portable-python.sh /usr/local/bin/portable-python
+COPY ./scripts/portable-python-update-external-libraries.sh /usr/local/bin/portable-python-update-external-libraries
 COPY ./scripts/bashrc.sh /root/.bashrc
 WORKDIR /src
 
