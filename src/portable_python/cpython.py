@@ -183,6 +183,9 @@ class Cpython(PythonBuilder):
             LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
             self.run_python(validation_script)
 
+        if PPG.config.get_value("cpython-additional-packages"):
+            self.run_python("-mpip", "install", *runez.flattened(PPG.config.get_value("cpython-additional-packages")))
+
         check_venvs = PPG.config.get_value("cpython-check-venvs")
         if check_venvs:
             if check_venvs in ("venv", "all"):
