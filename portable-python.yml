@@ -10,3 +10,12 @@ folders:
 # For quick iteration locally, you can add this to your pp-dev.yml:
 #folders:
 #  sources: dist/sources               # Allows keeping source downloads even after 'rm -rf build'
+
+# Required to build cpython without errors:
+linux:
+  allowed-system-libs: /lib/.*
+
+# Uncomment to install own additional packages:
+cpython-additional-packages:
+#  - Pillow==10.0.0
+#  - flake8==6.0.0
