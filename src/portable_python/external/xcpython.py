@@ -145,7 +145,11 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.1.1u")
+        if self.setup.python_spec.version < "3.10":
+            # TODO: enhance configuration to allow per-version-range settings
+            return self.cfg_version("1.1.1v")
+
+        return self.cfg_version("3.0.10")
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
