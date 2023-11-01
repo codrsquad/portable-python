@@ -71,10 +71,7 @@ windows:
 macos:
   allowed-system-libs: .*  # System libs on macos are OK (such as bz2 etc)
   env:
-    MACOSX_DEPLOYMENT_TARGET: 10.14
-  arm64:
-    env:
-      MACOSX_DEPLOYMENT_TARGET: 12
+    MACOSX_DEPLOYMENT_TARGET: 13  # Ventura, released June 2022
 """
 
 
