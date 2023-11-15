@@ -271,6 +271,9 @@ class Config:
             if fc:
                 return fc
 
+        if runez.DRYRUN:
+            return desired
+
     def ensure_main_file_symlinks(self, module):
         folder = module.install_folder
         version = module.version

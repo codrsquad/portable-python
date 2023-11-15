@@ -33,6 +33,7 @@ cpython-check-venvs: all
 cpython-symlink: bin/python bin/pip
 cpython-validate-script: foo.py
 cpython-use-github: true
+cpython-additional-packages: my-additional-package
 
 cpython-configure:
   - --enable-shared
