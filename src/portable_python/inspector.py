@@ -550,7 +550,7 @@ class FullSoReport:
                 continue
 
             info = SoInfo(inspector, path)
-            if path.name.startswith("libpython"):  # pragma: no cover (would need to do a fully build with libpython.so...)
+            if path.name.startswith("libpython"):  # pragma: no cover (would need to do a full build with libpython.so...)
                 self.libpython_so.append(info)
 
             self.lib_tracker.add(info)
@@ -573,7 +573,7 @@ class FullSoReport:
                 if uses_system:
                     return "Uses system libs: %s" % runez.red(runez.joined(uses_system))
 
-        if self.problematic:
+        if self.problematic:  # pragma: no cover (don't have a handy problematic python test case)
             return runez.joined(self.problematic.represented())
 
         if not runez.DRYRUN and not self.ok:

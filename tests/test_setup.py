@@ -11,6 +11,7 @@ def test_config(cli, monkeypatch):
 
     cli.run("-ntmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mnone")
     assert cli.succeeded
+    assert " -mpip install my-additional-package" in cli.logged
     assert "env MACOSX_DEPLOYMENT_TARGET=12" in cli.logged  # Comes from more specific macos-arm64.yml
     assert " -> dist/cpython-3.9.7-macos-arm64.tar.xz" in cli.logged  # Comes from macos.yml (not defined in macos-arm64.yml)
     cli.match("Would run: build/cpython-.../bin/python -mpip install -U wheel")
@@ -65,4 +66,4 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
 def test_inspect(cli):
     cli.run("-n", "inspect", "foo", "-m+sys")
     assert cli.failed
-    assert "foo is not an executable" in cli.logged
+    assert "foo: not available" in cli.logged
