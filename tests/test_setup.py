@@ -66,4 +66,5 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
 def test_inspect(cli):
     cli.run("-n", "inspect", "foo", "-m+sys")
     assert cli.failed
-    assert "foo: not available" in cli.logged
+    assert "Would run: foo" in cli.logged
+    assert "foo: " in cli.logged
