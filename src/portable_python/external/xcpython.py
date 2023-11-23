@@ -261,7 +261,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.44.0")
+        return self.cfg_version("3.44.1")
 
     def _do_linux_compile(self):
         self.run_configure(

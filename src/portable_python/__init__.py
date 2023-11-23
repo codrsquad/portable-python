@@ -256,6 +256,7 @@ class BuildSetup:
     @runez.log.timeit("Overall compilation")
     def compile(self):
         """Compile selected python family and version"""
+        self.ensure_clean_folder(self.folders.build_folder)
         if self.folders.logs:
             self.ensure_clean_folder(self.folders.logs)
             logs_path = self.folders.logs / "00-portable-python.log"
