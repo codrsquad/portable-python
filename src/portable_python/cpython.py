@@ -153,6 +153,14 @@ class Cpython(PythonBuilder):
             lib_auto_correct.run()
 
         runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
+        if "--with-ensurepip=no" not in self.c_configure_args_from_config:
+            # Ensure that `pip` is indeed installed and up-to-date
+            cmd = ["-mensurepip"]
+            if "--with-ensurepip=install" not in self.c_configure_args_from_config:
+                cmd.append("--upgrade")
+
+            self.run_python(cmd)
+
         self._pip_upgrade("?pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
         PPG.config.ensure_main_file_symlinks(self)
         if not self.setup.prefix:
@@ -183,8 +191,9 @@ class Cpython(PythonBuilder):
             LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
             self.run_python(validation_script)
 
-        if PPG.config.get_value("cpython-additional-packages"):
-            self.run_python("-mpip", "install", *runez.flattened(PPG.config.get_value("cpython-additional-packages")))
+        additional = PPG.config.get_value("cpython-additional-packages")
+        if additional:
+            self.run_python("-mpip", "install", *runez.flattened(additional))
 
         check_venvs = PPG.config.get_value("cpython-check-venvs")
         if check_venvs:
