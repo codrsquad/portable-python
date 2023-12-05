@@ -135,17 +135,6 @@ class Cpython(PythonBuilder):
         self.run_make(*make_args)
         self.run_make("install", f"DESTDIR={self.destdir}")
 
-    def _pip_upgrade(self, *lib_names):
-        for lib_name in runez.flattened(lib_names, split=True, unique=True):
-            do_install = True
-            if lib_name.startswith("?"):
-                lib_name = lib_name[1:]
-                path = self.install_folder / f"lib/python{self.version.mm}/site-packages/{lib_name}"
-                do_install = path.exists()
-
-            if do_install:
-                self.run_python("-mpip", "install", "-U", lib_name)
-
     def _finalize(self):
         is_shared = self.setup.prefix or self.has_configure_opt("--enable-shared", "yes")
         if is_shared:
@@ -153,15 +142,6 @@ class Cpython(PythonBuilder):
             lib_auto_correct.run()
 
         runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
-        if "--with-ensurepip=no" not in self.c_configure_args_from_config:
-            # Ensure that `pip` is indeed installed and up-to-date
-            cmd = ["-mensurepip"]
-            if "--with-ensurepip=install" not in self.c_configure_args_from_config:
-                cmd.append("--upgrade")
-
-            self.run_python(cmd)
-
-        self._pip_upgrade("?pip", "?setuptools", PPG.config.get_value("cpython-pip-install"))
         PPG.config.ensure_main_file_symlinks(self)
         if not self.setup.prefix:
             # See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
