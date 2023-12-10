@@ -162,10 +162,6 @@ class Cpython(PythonBuilder):
 
         PPG.config.cleanup_folder(self, "cpython-clean-1st-pass")
         PPG.config.symlink_duplicates(self.install_folder)
-        py_inspector = PythonInspector(self.install_folder)
-        print(py_inspector.represented())
-        problem = py_inspector.full_so_report.get_problem(portable=not is_shared)
-        runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
         validation_script = PPG.config.resolved_path("cpython-validate-script")
         if validation_script:
             LOG.info("Exercising configured validation script: %s" % runez.short(validation_script))
@@ -173,6 +169,14 @@ class Cpython(PythonBuilder):
 
         additional = PPG.config.get_value("cpython-additional-packages")
         if additional:
+            # Config wants additional packages installed, ensure that `pip` is installed first
+            if "--with-ensurepip=no" not in self.c_configure_args_from_config:
+                cmd = ["-mensurepip"]
+                if "--with-ensurepip=install" not in self.c_configure_args_from_config:
+                    cmd.append("--upgrade")
+
+                self.run_python(cmd)
+
             self.run_python("-mpip", "install", *runez.flattened(additional))
 
         check_venvs = PPG.config.get_value("cpython-check-venvs")
@@ -200,6 +204,11 @@ class Cpython(PythonBuilder):
 
         PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
 
+        py_inspector = PythonInspector(self.install_folder)
+        print(py_inspector.represented())
+        problem = py_inspector.full_so_report.get_problem(portable=not is_shared)
+        runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
+
     def _check_venv(self, copies=False):
         """Verify that the freshly compiled python can create venvs without issue"""
         folder = "venv"
@@ -210,7 +219,7 @@ class Cpython(PythonBuilder):
 
         folder = self.setup.folders.build_folder / "test-venvs" / folder
         self.run_python(*args, folder)
-        self.run_python("-mpip", "--version")
+        self._do_run(folder / "bin/pip", "--version")
 
     @staticmethod
     def _represented_yaml(bits):

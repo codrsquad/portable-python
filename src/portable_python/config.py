@@ -29,14 +29,13 @@ ext: gz
 
 # Pre -mcompileall, cleanup tests and useless files (~94 MB)
 cpython-clean-1st-pass:
-  - __phello__.foo.py
   - __pycache__/
   - _test*capi.*
   - idle_test/
   - test/
   - tests/
   # By default, simplify bin/ folder
-  - bin/2to3* bin/easy_install* bin/idle3* bin/pydoc* bin/pyvenv* bin/wheel*
+  - bin/2to3* bin/easy_install* bin/idle3*
 
 # wininst-* is probably an old goof (~2 MB of .exe binaries)
 cpython-clean-1st-pass-linux: wininst-*
