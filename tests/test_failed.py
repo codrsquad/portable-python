@@ -1,7 +1,20 @@
+from unittest.mock import patch
+
+import runez
+
+
 def test_build_bogus_platform(cli):
     cli.run("-ntfoo-bar", "build", "2.7.1")
     assert cli.failed
     assert "Compiling on platform 'foo' is not yet supported" in cli.logged
+
+
+def test_failed_build(cli):
+    with patch("runez.run", return_value=runez.program.RunResult(code=1)):
+        cli.run("-tmacos-arm64", "build", "3.12.0")
+        assert cli.failed
+        assert "Error while compiling xz:5.4.5: ForbiddenHttpError" in cli.logged
+        assert "Overall compilation failed:" in cli.logged
 
 
 def test_invalid(cli):

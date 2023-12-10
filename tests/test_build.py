@@ -72,7 +72,7 @@ def test_finalization(cli, monkeypatch):
         manifest = list(runez.readlines(f"build/ppp-marker/{f.version}/.manifest.yml"))
         assert "  some_env: some-env-value" in manifest
         assert "selected: bzip2" in cli.logged
-        assert "INFO Cleaned 2 build artifacts (0 B): __phello__.foo.py idle_test" in cli.logged
+        assert "INFO Cleaned 1 build artifact (0 B): idle_test" in cli.logged
         assert f"Symlink {bin}/foo-python <- {bin}/python" in cli.logged
         assert f"Symlink {bin}/pip{f.mm} <- {bin}/pip" in cli.logged
         assert f"Auto-corrected shebang for {bin}/some-exe" in cli.logged

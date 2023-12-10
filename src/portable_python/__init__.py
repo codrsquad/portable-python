@@ -520,7 +520,8 @@ class ModuleBuilder:
             yield f"{self.deps_lib}/pkgconfig"
 
     def _do_run(self, program, *args, fatal=True, env=None):
-        return runez.run(program, *args, passthrough=self._log_handler, stdout=None, stderr=None, fatal=fatal, env=env)
+        logger = self._log_handler
+        return runez.run(program, *args, passthrough=logger, stdout=None, stderr=None, fatal=fatal, env=env, logger=logger or runez.UNSET)
 
     def run_configure(self, program, *args, prefix=None):
         """
@@ -561,6 +562,10 @@ class ModuleBuilder:
                     logging.root.addHandler(self._log_handler)
 
             yield
+
+        except Exception as e:
+            LOG.error("Error while compiling %r: %r", self, e)
+            raise
 
         finally:
             if self._log_handler:
