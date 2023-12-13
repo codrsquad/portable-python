@@ -190,6 +190,14 @@ class Cpython(PythonBuilder):
         if PPG.config.get_value("cpython-compile-all"):
             self.run_python("-mcompileall", "-q", self.install_folder / "lib")
 
+        if self.config_folder:
+            # When --enable-shared is specified, cpython build does not produce 'lib/libpython*.a'
+            # Add it if build was not configured to clean up 'self.config_folder'
+            actual_static = self.config_folder / f"libpython{self.version.mm}.a"
+            symlink_static = self.install_folder / f"lib/libpython{self.version.mm}.a"
+            if actual_static.exists() and not symlink_static.exists():
+                runez.symlink(actual_static, symlink_static)
+
         info_path = PPG.config.get_value("manifest", "build-info")
         if info_path:
             contents = self._represented_yaml(self.build_information())
@@ -281,6 +289,7 @@ class Cpython(PythonBuilder):
                         rel_location = os.path.relpath(self.bin_python, path.parent)
                         lines.append("#!/bin/sh\n")
                         lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % rel_location)
+                        lines.append("# -*- coding: utf-8 -*-\n")
 
             except UnicodeError:
                 return

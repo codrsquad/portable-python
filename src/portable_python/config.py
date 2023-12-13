@@ -230,6 +230,7 @@ class Config:
             _find_file_duplicates(seen, folder)
             duplicates = {k: v for k, v in seen.items() if len(v) > 1}
             for dupes in duplicates.values():
+                LOG.info("Found duplicates: %s" % runez.joined(dupes, delimiter=", "))
                 dupes = sorted(dupes, key=lambda x: len(str(x)))
                 if len(dupes) == 2:
                     shorter, longer = dupes
