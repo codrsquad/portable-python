@@ -80,7 +80,8 @@ def test_finalization(cli, monkeypatch):
     transformed = "\n".join(runez.readlines(sys_cfg))
     assert transformed.strip() == SAMPLE_SYS_CONF_REL.strip()
 
-    assert list(runez.readlines(bin / "some-exe")) == ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "hello"]
+    expected = ["#!/bin/sh", '"exec" "$(dirname $0)/foo-python" "$0" "$@"', "# -*- coding: utf-8 -*-", "hello"]
+    assert list(runez.readlines(bin / "some-exe")) == expected
     assert list(runez.readlines(bin / "some-exe2")) == ["#!/bin/sh", "hello"]
     assert runez.basename(bin / "python", follow=True) == "foo-python"
 
