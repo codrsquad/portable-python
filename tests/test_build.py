@@ -51,18 +51,18 @@ def test_finalization(cli, monkeypatch):
     dummy_tarball(f, f"Python-{f.version}.tar.xz")
     dummy_tarball(f, "bzip2-1.0.8.tar.gz")
     bin = f.resolved_destdir("bin")
-    sys_cfg = bin.parent / f"lib/python{f.mm}/_sysconfigdata__.py"
+    lib = f.resolved_destdir(f"lib/python{f.mm}")
+    sys_cfg = lib / "_sysconfigdata__.py"
 
     runez.touch(f.components / "cpython/README", logger=None)
     runez.write(sys_cfg, SAMPLE_SYS_CONF.strip())
 
     # Create some files to be groomed by CPython
-    runez.touch(bin.parent / "lib/idle_test/foo", logger=None)
-    runez.touch(bin.parent / "lib/__phello__.foo.py", logger=None)
+    runez.touch(lib.parent / "idle_test/foo", logger=None)
+    runez.touch(lib.parent / "__phello__.foo.py", logger=None)
+    runez.touch(lib / "site-packages/pip", logger=None)
     _setup_exes(bin)
-    pd = bin.parent / "lib/python3.9/config-3.9/pythond"
-    runez.write(pd, "#!.../bin/python3\nhello", logger=None)
-    runez.make_executable(pd, logger=None)
+    runez.touch(lib / "config-3.9/libpython3.9.a", logger=None)
 
     monkeypatch.setenv("PP_X_DEBUG", "direct-finalize")
     monkeypatch.setenv("SOME_ENV", "some-env-value")
@@ -76,6 +76,8 @@ def test_finalization(cli, monkeypatch):
         assert f"Symlink {bin}/foo-python <- {bin}/python" in cli.logged
         assert f"Symlink {bin}/pip{f.mm} <- {bin}/pip" in cli.logged
         assert f"Auto-corrected shebang for {bin}/some-exe" in cli.logged
+        assert f"Symlink {lib}/config-3.9/libpython3.9.a <- {lib.parent}/libpython3.9.a" in cli.logged
+        assert f"Marking {lib}/site-packages/ as read-only" in cli.logged
 
     transformed = "\n".join(runez.readlines(sys_cfg))
     assert transformed.strip() == SAMPLE_SYS_CONF_REL.strip()
@@ -91,5 +93,5 @@ def test_finalization(cli, monkeypatch):
         assert cli.succeeded
         assert f"Deleted build/opt/foo/bin/pip{f.mm}" in cli.logged
         assert f"Cleaned 2 build artifacts (0 B): pip pip{f.mm}" in cli.logged
-
-    assert list(runez.readlines(f.destdir / "opt/foo/bin/some-exe")) == ['#!/opt/foo/bin/foo-python', 'hello']
+        # bin/ exes remain unchanged with --prefix
+        assert list(runez.readlines(f.destdir / "opt/foo/bin/some-exe")) == ["#!.../bin/python3", "hello"]

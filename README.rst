@@ -156,11 +156,13 @@ From source, contributions welcome!::
 
     git clone https://github.com/codrsquad/portable-python.git
     cd portable-python
-    tox -e venv
+    python3 -mvenv .venv
+    .venv/bin/pip install -r requirements.txt -r tests/requirements.txt
+    .venv/bin/pip install -e .
     .venv/bin/portable-python --help
     .venv/bin/portable-python inspect /usr/bin/python3
 
-    tox -e py39
+    tox -e py311
     tox -e style
 
 
