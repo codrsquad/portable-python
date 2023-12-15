@@ -185,17 +185,25 @@ class Config:
         except Exception as e:
             runez.abort("Invalid yaml in %s: %s" % (runez.bold(runez.short(source)), e))
 
-    def cleanup_folder(self, module, *clean_key):
+    def cleanup_configured_globs(self, module, *keys):
         """
         Args:
             module (portable_python.PythonBuilder): Associated python builder module
-            *clean_key: Config keys to lookup
+            *keys (str): Config keys to lookup
         """
-        spec = [(x, f"{x}-{self.target.platform}") for x in clean_key]
-        spec = runez.flattened(spec, transform=self.get_value)
-        spec = runez.flattened(spec, split=True, unique=True)
-        if spec:
-            spec = [module.setup.folders.formatted(x) for x in spec]
+        globs = [(x, f"{x}-{self.target.platform}") for x in keys]
+        globs = runez.flattened(globs, transform=self.get_value)
+        globs = runez.flattened(globs, split=True, unique=True)
+        self.cleanup_globs(module, *globs)
+
+    def cleanup_globs(self, module, *globs):
+        """
+        Args:
+            module (portable_python.PythonBuilder): Associated python builder module
+            *globs (str): Glob patterns to clean up
+        """
+        if globs:
+            spec = [module.setup.folders.formatted(x) for x in globs]
             deleted_size = 0
             matcher = FileMatcher(spec)
             LOG.info("Applying clean-up spec: %s" % matcher)
