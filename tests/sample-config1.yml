@@ -34,6 +34,7 @@ cpython-symlink: bin/python bin/pip
 cpython-validate-script: foo.py
 cpython-use-github: true
 cpython-additional-packages: my-additional-package
+cpython-lock-site-packages: true
 
 cpython-configure:
   - --enable-shared

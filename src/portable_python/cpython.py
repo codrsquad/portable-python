@@ -21,6 +21,19 @@ test_struct test_threading test_time test_traceback test_unicode
 """
 
 
+def represented_yaml(key_value_pairs):
+    """
+    Represented yaml for given key/value pairs
+    Args:
+        key_value_pairs (generator): Key/value pairs to represent
+
+    Returns:
+        (str): Yaml representation
+    """
+    content = [yaml.safe_dump(runez.serialize.json_sanitized({x: y}), width=140) for x, y in key_value_pairs]
+    return runez.joined(content, delimiter="\n")
+
+
 # noinspection PyPep8Naming
 class Cpython(PythonBuilder):
     """
@@ -29,6 +42,37 @@ class Cpython(PythonBuilder):
     """
 
     xenv_CFLAGS_NODIST = "-Wno-unused-command-line-argument"
+
+    def build_information(self):
+        """Yields key/value pairs to store as build information"""
+        yield "cpython", {
+            "prefix": self.setup.prefix,
+            "source": self.url,
+            "static": runez.joined(self.modules.selected) or None,
+            "target": PPG.target,
+            "version": self.version,
+        }
+        yield "configure-args", runez.joined(runez.short(x) for x in self.c_configure_args())
+        compiled_by = os.environ.get("PP_ORIGIN") or PPG.config.get_value("compiled-by")
+        bc = self.setup.build_context
+        yield "compilation-info", {
+            "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
+            "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "host-platform": runez.SYS_INFO.platform_info,
+            "ldd-version": PythonInspector.tool_version("ldd"),
+            "portable-python-version": runez.get_version(__package__),
+            "special-context": bc.isolate_usr_local and bc,
+        }
+        additional = PPG.config.get_value("manifest", "additional-info")
+        if additional:
+            res = {}
+            for k, v in additional.items():
+                if isinstance(v, str) and v.startswith("$"):
+                    v = os.environ.get(v[1:])
+
+                res[k] = v
+
+            yield "additional-info", res
 
     @classmethod
     def candidate_modules(cls):
@@ -102,8 +146,14 @@ class Cpython(PythonBuilder):
             yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{version.mm} -ltk{version.mm}"
 
     @runez.cached_property
-    def config_folder(self):
-        for path in runez.ls_dir(self.install_folder / f"lib/python{self.version.mm}"):
+    def prefix_lib_folder(self):
+        """Path to <prefix>/lib/pythonM.m folder"""
+        return self.install_folder / f"lib/python{self.version.mm}"
+
+    @runez.cached_property
+    def prefix_config_folder(self):
+        """Path to"""
+        for path in runez.ls_dir(self.prefix_lib_folder):
             if path.name.startswith("config-"):
                 return path
 
@@ -144,21 +194,8 @@ class Cpython(PythonBuilder):
         runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
         PPG.config.ensure_main_file_symlinks(self)
         if not self.setup.prefix:
-            # See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
-            patch_folder(
-                self.install_folder / "lib/pkgconfig",
-                f"prefix={self.c_configure_prefix}",
-                "prefix=${pcfiledir}/../.."
-            )
-            sys_cfg = self._find_sys_cfg()
-            if sys_cfg:
-                rs = RelSysConf(sys_cfg, self.c_configure_prefix)
-                runez.write(sys_cfg, rs.text)
-
-        for folder in (self.bin_folder, self.config_folder):
-            for path in runez.ls_dir(folder):
-                if path != self.bin_python and runez.is_executable(path) and not path.is_symlink():
-                    self._auto_correct_shebang_file(path)
+            self._relativize_sysconfig()
+            self._relativize_shebangs()
 
         PPG.config.cleanup_folder(self, "cpython-clean-1st-pass")
         PPG.config.symlink_duplicates(self.install_folder)
@@ -179,28 +216,21 @@ class Cpython(PythonBuilder):
 
             self.run_python("-mpip", "install", *runez.flattened(additional))
 
-        check_venvs = PPG.config.get_value("cpython-check-venvs")
-        if check_venvs:
-            if check_venvs in ("venv", "all"):
-                self._check_venv()
-
-            if check_venvs in ("copies", "all"):
-                self._check_venv(copies=True)
-
+        self._validate_venv_module()
         if PPG.config.get_value("cpython-compile-all"):
             self.run_python("-mcompileall", "-q", self.install_folder / "lib")
 
-        if self.config_folder:
+        if self.prefix_config_folder:
             # When --enable-shared is specified, cpython build does not produce 'lib/libpython*.a'
-            # Add it if build was not configured to clean up 'self.config_folder'
-            actual_static = self.config_folder / f"libpython{self.version.mm}.a"
+            # Add it if build was not configured to clean up 'self.prefix_config_folder'
+            actual_static = self.prefix_config_folder / f"libpython{self.version.mm}.a"
             symlink_static = self.install_folder / f"lib/libpython{self.version.mm}.a"
             if actual_static.exists() and not symlink_static.exists():
                 runez.symlink(actual_static, symlink_static)
 
         info_path = PPG.config.get_value("manifest", "build-info")
         if info_path:
-            contents = self._represented_yaml(self.build_information())
+            contents = represented_yaml(self.build_information())
             runez.write(self.install_folder / info_path, contents)
 
         info_path = PPG.config.get_value("manifest", "inspection-report")
@@ -211,14 +241,45 @@ class Cpython(PythonBuilder):
                 runez.write(self.install_folder / info_path, contents)
 
         PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
+        self._lock_site_packages()
 
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())
         problem = py_inspector.full_so_report.get_problem(portable=not is_shared)
         runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
 
-    def _check_venv(self, copies=False):
-        """Verify that the freshly compiled python can create venvs without issue"""
+    def _lock_site_packages(self):
+        """Mark site-packages as read-only, this will force any '-mpip install' to imply --user"""
+        if PPG.config.get_value("cpython-lock-site-packages"):
+            site_packages = self.prefix_lib_folder / "site-packages"
+            if site_packages.exists():
+                # site-packages may not exist if we're running in dry-run mode
+                LOG.info("Marking %s/ as read-only", runez.short(site_packages))
+                site_packages.chmod(0o555)
+
+    def _relativize_shebangs(self):
+        """Autocorrect shebangs in bin/ folder, making them relative to the location of the python executable"""
+        for folder in (self.bin_folder, self.prefix_config_folder):
+            for path in runez.ls_dir(folder):
+                if path != self.bin_python and runez.is_executable(path) and not path.is_symlink():
+                    self._relativize_shebang_file(path)
+
+    def _relativize_sysconfig(self):
+        """
+        Autocorrect pkgconfig and sysconfig to use relative paths
+        See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
+        """
+        patch_folder(
+            self.install_folder / "lib/pkgconfig",
+            f"prefix={self.c_configure_prefix}",
+            "prefix=${pcfiledir}/../.."
+        )
+        sys_cfg = self._find_sys_cfg()
+        if sys_cfg:
+            rs = RelSysConf(sys_cfg, self.c_configure_prefix)
+            runez.write(sys_cfg, rs.text)
+
+    def _validate_venv_creation(self, copies=False):
         folder = "venv"
         args = ["-mvenv"]
         if copies:
@@ -229,67 +290,40 @@ class Cpython(PythonBuilder):
         self.run_python(*args, folder)
         self._do_run(folder / "bin/pip", "--version")
 
-    @staticmethod
-    def _represented_yaml(bits):
-        content = [yaml.safe_dump(runez.serialize.json_sanitized({x: y}), width=140) for x, y in bits]
-        return runez.joined(content, delimiter="\n")
+    def _validate_venv_module(self):
+        """Verify that the freshly compiled python can create venvs without issue"""
+        check_venvs = PPG.config.get_value("cpython-check-venvs")
+        if check_venvs:
+            if check_venvs in ("venv", "all"):
+                self._validate_venv_creation(copies=False)
 
-    def build_information(self):
-        yield "cpython", {
-            "prefix": self.setup.prefix,
-            "source": self.url,
-            "static": runez.joined(self.modules.selected) or None,
-            "target": PPG.target,
-            "version": self.version,
-        }
-        yield "configure-args", runez.joined(runez.short(x) for x in self.c_configure_args())
-        compiled_by = os.environ.get("PP_ORIGIN") or PPG.config.get_value("compiled-by")
-        bc = self.setup.build_context
-        yield "compilation-info", {
-            "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
-            "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "host-platform": runez.SYS_INFO.platform_info,
-            "ldd-version": PythonInspector.tool_version("ldd"),
-            "portable-python-version": runez.get_version(__package__),
-            "special-context": bc.isolate_usr_local and bc,
-        }
-        additional = PPG.config.get_value("manifest", "additional-info")
-        if additional:
-            res = {}
-            for k, v in additional.items():
-                if isinstance(v, str) and v.startswith("$"):
-                    v = os.environ.get(v[1:])
-
-                res[k] = v
-
-            yield "additional-info", res
+            if check_venvs in ("copies", "all"):
+                self._validate_venv_creation(copies=True)
 
     def _find_sys_cfg(self):
-        if self.config_folder:
-            for path in runez.ls_dir(self.config_folder.parent):
+        if self.prefix_config_folder:
+            for path in runez.ls_dir(self.prefix_config_folder.parent):
                 if path.name.startswith("_sysconfigdata"):
                     return path
 
-    def _auto_correct_shebang_file(self, path):
+    def _relativize_shebang_file(self, path):
         lines = []
         with open(path) as fh:
             try:
                 for line in fh:
                     if lines:
+                        # Only modify the first line
                         lines.append(line)
                         continue
 
                     if not line.startswith("#!") or "bin/python" not in line:
+                        # Not a shebang, or not a python shebang
                         return
 
-                    if self.setup.prefix:
-                        lines.append(f"#!{self.setup.prefix}/bin/{self.bin_python.name}\n")
-
-                    else:
-                        rel_location = os.path.relpath(self.bin_python, path.parent)
-                        lines.append("#!/bin/sh\n")
-                        lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % rel_location)
-                        lines.append("# -*- coding: utf-8 -*-\n")
+                    rel_location = os.path.relpath(self.bin_python, path.parent)
+                    lines.append("#!/bin/sh\n")
+                    lines.append('"exec" "$(dirname $0)/%s" "$0" "$@"\n' % rel_location)
+                    lines.append("# -*- coding: utf-8 -*-\n")
 
             except UnicodeError:
                 return
