@@ -152,7 +152,7 @@ class Cpython(PythonBuilder):
 
     @runez.cached_property
     def prefix_config_folder(self):
-        """Path to"""
+        """Path to <prefix>/lib/pythonM.m/config-M.m-<platform>/ folder"""
         for path in runez.ls_dir(self.prefix_lib_folder):
             if path.name.startswith("config-"):
                 return path
