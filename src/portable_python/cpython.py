@@ -154,7 +154,7 @@ class Cpython(PythonBuilder):
     def prefix_config_folder(self):
         """Path to <prefix>/lib/pythonM.m/config-M.m-<platform>/ folder"""
         for path in runez.ls_dir(self.prefix_lib_folder):
-            if path.name.startswith("config-"):
+            if path.is_dir() and path.name.startswith("config-"):
                 return path
 
     def _prepare(self):
