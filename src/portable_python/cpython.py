@@ -1,3 +1,4 @@
+import configparser
 import datetime
 import os
 import re
@@ -202,7 +203,7 @@ class Cpython(PythonBuilder):
             self._relativize_sysconfig()
             self._relativize_shebangs()
 
-        PPG.config.cleanup_folder(self, "cpython-clean-1st-pass")
+        PPG.config.cleanup_configured_globs(self, "cpython-clean-1st-pass")
         PPG.config.symlink_duplicates(self.install_folder)
         validation_script = PPG.config.resolved_path("cpython-validate-script")
         if validation_script:
@@ -245,24 +246,43 @@ class Cpython(PythonBuilder):
                 contents = "%s\n" % py_inspector.represented(verbose=True)
                 runez.write(self.install_folder / info_path, contents)
 
-        PPG.config.cleanup_folder(self, "cpython-clean-2nd-pass", "cpython-clean")
-        self._lock_site_packages()
+        PPG.config.cleanup_configured_globs(self, "cpython-clean-2nd-pass", "cpython-clean")
+        self._apply_pep668()
 
         py_inspector = PythonInspector(self.install_folder)
         print(py_inspector.represented())
         problem = py_inspector.full_so_report.get_problem(portable=not is_shared)
         runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
 
-    def _lock_site_packages(self):
+    def _apply_pep668(self):
         """
-        Mark site-packages as read-only if it exists.
-        This will force any '-mpip install' to imply `--user`.
+        Apply PEP 668, if configured.
+        Additionally:
+        - Delete bin/pip* if they exist
+        - mark `site-packages/` as read-only if it exists, this will force any '-mpip install' to imply `--user`.
         """
-        if PPG.config.get_value("cpython-lock-site-packages"):
-            site_packages = self.prefix_lib_folder / "site-packages"
-            if site_packages.exists():
-                LOG.info("Marking %s/ as read-only", runez.short(site_packages))
-                site_packages.chmod(0o555)
+        content = PPG.config.get_value("cpython-pep668-externally-managed")
+        if not content:
+            return
+
+        runez.abort_if(not content.get("Error"), "Mis-configured 'cpython-pep668-externally-managed', expecting an 'Error' key")
+        config = configparser.ConfigParser()
+        config.add_section("externally-managed")
+        for k, v in content.items():
+            if v:
+                config.set("externally-managed", k, v)
+
+        externally_managed = self.prefix_lib_folder / "EXTERNALLY-MANAGED"
+        if not runez.log.hdry(f"write {runez.short(externally_managed)}"):
+            with open(externally_managed, "w") as fh:
+                config.write(fh)
+
+        PPG.config.cleanup_globs(self, "bin/pip*")
+
+        site_packages = self.prefix_lib_folder / "site-packages"
+        if site_packages.exists():
+            LOG.info("Marking %s/ as read-only", runez.short(site_packages))
+            site_packages.chmod(0o555)
 
     def _relativize_shebangs(self):
         """Autocorrect shebangs in bin/ folder, making them relative to the location of the python executable"""

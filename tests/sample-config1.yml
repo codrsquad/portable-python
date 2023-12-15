@@ -34,7 +34,10 @@ cpython-symlink: bin/python bin/pip
 cpython-validate-script: foo.py
 cpython-use-github: true
 cpython-additional-packages: my-additional-package
-cpython-lock-site-packages: true
+cpython-pep668-externally-managed:
+  Error: |
+    Global pip installations are not allowed
+    Please use a virtual environment
 
 cpython-configure:
   - --enable-shared

@@ -32,6 +32,12 @@ build_time_vars = {'a': '',
 }
 """
 
+EXPECTED_EXTERNALLY_MANAGED = """
+[externally-managed]
+error = Global pip installations are not allowed
+\tPlease use a virtual environment
+"""
+
 
 def _setup_exes(bin):
     runez.ensure_folder(bin, clean=True, logger=None)
@@ -87,7 +93,10 @@ def test_finalization(cli, monkeypatch):
     assert list(runez.readlines(bin / "some-exe2")) == ["#!/bin/sh", "hello"]
     assert runez.basename(bin / "python", follow=True) == "foo-python"
 
+    assert (lib / "EXTERNALLY-MANAGED").read_text().strip() == EXPECTED_EXTERNALLY_MANAGED.strip()
+
     _setup_exes(f.destdir / "opt/foo/bin")
+    runez.touch(f.destdir / "opt/foo/lib/python3.9/site-packages/pip", logger=None)
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
         cli.run("-tmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "--prefix", "/opt/foo", "-mbzip2")
         assert cli.succeeded
