@@ -44,7 +44,11 @@ class Cpython(PythonBuilder):
     xenv_CFLAGS_NODIST = "-Wno-unused-command-line-argument"
 
     def build_information(self):
-        """Yields key/value pairs to store as build information"""
+        """
+        Yields key/value pairs to store as build information.
+        `None` or empty values are "naturally" omitted by the fact we use `runez.joined()` and `runez.flattened()`,
+         which have a default parameter `keep_empty=False`
+        """
         yield "cpython", {
             "prefix": self.setup.prefix,
             "source": self.url,
@@ -57,7 +61,7 @@ class Cpython(PythonBuilder):
         bc = self.setup.build_context
         yield "compilation-info", {
             "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
-            "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "date": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S %Z"),
             "host-platform": runez.SYS_INFO.platform_info,
             "ldd-version": PythonInspector.tool_version("ldd"),
             "portable-python-version": runez.get_version(__package__),
@@ -68,6 +72,7 @@ class Cpython(PythonBuilder):
             res = {}
             for k, v in additional.items():
                 if isinstance(v, str) and v.startswith("$"):
+                    # Expand environment variables
                     v = os.environ.get(v[1:])
 
                 res[k] = v
@@ -249,11 +254,13 @@ class Cpython(PythonBuilder):
         runez.abort_if(problem and self.setup.x_debug != "direct-finalize", "Build failed: %s" % problem)
 
     def _lock_site_packages(self):
-        """Mark site-packages as read-only, this will force any '-mpip install' to imply --user"""
+        """
+        Mark site-packages as read-only if it exists.
+        This will force any '-mpip install' to imply `--user`.
+        """
         if PPG.config.get_value("cpython-lock-site-packages"):
             site_packages = self.prefix_lib_folder / "site-packages"
             if site_packages.exists():
-                # site-packages may not exist if we're running in dry-run mode
                 LOG.info("Marking %s/ as read-only", runez.short(site_packages))
                 site_packages.chmod(0o555)
 
