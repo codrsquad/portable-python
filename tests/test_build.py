@@ -78,12 +78,12 @@ def test_finalization(cli, monkeypatch):
         manifest = list(runez.readlines(f"build/ppp-marker/{f.version}/.manifest.yml"))
         assert "  some_env: some-env-value" in manifest
         assert "selected: bzip2" in cli.logged
-        assert "INFO Cleaned 1 build artifact (0 B): idle_test" in cli.logged
+        assert "Pass 1: Cleaned 1 build artifact (0 B): idle_test" in cli.logged
+        assert f"PEP 668: Cleaned 2 build artifacts (0 B): pip pip{f.mm}" in cli.logged
         assert f"Symlink {bin}/foo-python <- {bin}/python" in cli.logged
         assert f"Symlink {bin}/pip{f.mm} <- {bin}/pip" in cli.logged
         assert f"Auto-corrected shebang for {bin}/some-exe" in cli.logged
         assert f"Symlink {lib}/config-3.9/libpython3.9.a <- {lib.parent}/libpython3.9.a" in cli.logged
-        assert f"Marking {lib}/site-packages/ as read-only" in cli.logged
 
     transformed = "\n".join(runez.readlines(sys_cfg))
     assert transformed.strip() == SAMPLE_SYS_CONF_REL.strip()
@@ -101,6 +101,6 @@ def test_finalization(cli, monkeypatch):
         cli.run("-tmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "--prefix", "/opt/foo", "-mbzip2")
         assert cli.succeeded
         assert f"Deleted build/opt/foo/bin/pip{f.mm}" in cli.logged
-        assert f"Cleaned 2 build artifacts (0 B): pip pip{f.mm}" in cli.logged
+        assert f"PEP 668: Cleaned 2 build artifacts (0 B): pip pip{f.mm}" in cli.logged
         # bin/ exes remain unchanged with --prefix
         assert list(runez.readlines(f.destdir / "opt/foo/bin/some-exe")) == ["#!.../bin/python3", "hello"]

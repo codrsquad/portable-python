@@ -185,20 +185,22 @@ class Config:
         except Exception as e:
             runez.abort("Invalid yaml in %s: %s" % (runez.bold(runez.short(source)), e))
 
-    def cleanup_configured_globs(self, module, *keys):
+    def cleanup_configured_globs(self, title, module, *keys):
         """
         Args:
+            title (str): Title to use in log messages
             module (portable_python.PythonBuilder): Associated python builder module
             *keys (str): Config keys to lookup
         """
         globs = [(x, f"{x}-{self.target.platform}") for x in keys]
         globs = runez.flattened(globs, transform=self.get_value)
         globs = runez.flattened(globs, split=True, unique=True)
-        self.cleanup_globs(module, *globs)
+        self.cleanup_globs(title, module, *globs)
 
-    def cleanup_globs(self, module, *globs):
+    def cleanup_globs(self, title, module, *globs):
         """
         Args:
+            title (str): Title to use in log messages
             module (portable_python.PythonBuilder): Associated python builder module
             *globs (str): Glob patterns to clean up
         """
@@ -230,7 +232,8 @@ class Config:
             if cleaned:
                 names = runez.joined(sorted(set(cleaned)))
                 deleted_size = runez.represented_bytesize(deleted_size)
-                LOG.info("Cleaned %s (%s): %s" % (runez.plural(cleaned, "build artifact"), deleted_size, runez.short(names)))
+                count = runez.plural(cleaned, "build artifact")
+                LOG.info("%s: Cleaned %s (%s): %s", title, count, deleted_size, runez.short(names))
 
     def symlink_duplicates(self, folder):
         if self.target.is_linux or self.target.is_macos:
