@@ -62,7 +62,7 @@ class Cpython(PythonBuilder):
         bc = self.setup.build_context
         yield "compilation-info", {
             "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
-            "date": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "date": datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z"),
             "host-platform": runez.SYS_INFO.platform_info,
             "ldd-version": PythonInspector.tool_version("ldd"),
             "portable-python-version": runez.get_version(__package__),
@@ -203,7 +203,7 @@ class Cpython(PythonBuilder):
             self._relativize_sysconfig()
             self._relativize_shebangs()
 
-        PPG.config.cleanup_configured_globs(self, "cpython-clean-1st-pass")
+        PPG.config.cleanup_configured_globs("Pass 1", self, "cpython-clean-1st-pass")
         PPG.config.symlink_duplicates(self.install_folder)
         validation_script = PPG.config.resolved_path("cpython-validate-script")
         if validation_script:
@@ -246,7 +246,7 @@ class Cpython(PythonBuilder):
                 contents = "%s\n" % py_inspector.represented(verbose=True)
                 runez.write(self.install_folder / info_path, contents)
 
-        PPG.config.cleanup_configured_globs(self, "cpython-clean-2nd-pass", "cpython-clean")
+        PPG.config.cleanup_configured_globs("Pass 2", self, "cpython-clean-2nd-pass", "cpython-clean")
         self._apply_pep668()
 
         py_inspector = PythonInspector(self.install_folder)
@@ -266,23 +266,13 @@ class Cpython(PythonBuilder):
             return
 
         runez.abort_if(not content.get("Error"), "Mis-configured 'cpython-pep668-externally-managed', expecting an 'Error' key")
-        config = configparser.ConfigParser()
-        config.add_section("externally-managed")
-        for k, v in content.items():
-            if v:
-                config.set("externally-managed", k, v)
-
+        PPG.config.cleanup_globs("PEP 668", self, "bin/pip*")
         externally_managed = self.prefix_lib_folder / "EXTERNALLY-MANAGED"
         if not runez.log.hdry(f"write {runez.short(externally_managed)}"):
+            config = configparser.ConfigParser()
+            config["externally-managed"] = content
             with open(externally_managed, "w") as fh:
                 config.write(fh)
-
-        PPG.config.cleanup_globs(self, "bin/pip*")
-
-        site_packages = self.prefix_lib_folder / "site-packages"
-        if site_packages.exists():
-            LOG.info("Marking %s/ as read-only", runez.short(site_packages))
-            site_packages.chmod(0o555)
 
     def _relativize_shebangs(self):
         """Autocorrect shebangs in bin/ folder, making them relative to the location of the python executable"""

@@ -34,8 +34,9 @@ def test_cleanup(cli, monkeypatch):
     assert cli.succeeded
     assert "Patched '/usr/local\\b' in build/components/cpython/Mac/Makefile.in" in cli.logged
     assert "MACOSX_DEPLOYMENT_TARGET=10.25" in cli.logged
-    assert "Cleaned 2 build artifacts" in cli.logged  # 1st pass
-    assert "Cleaned 3 build artifacts" in cli.logged  # 2nd pass
+    assert "Pass 1: Cleaned" in cli.logged
+    assert "Pass 2: Cleaned" in cli.logged
+    assert "PEP 668: Cleaned" in cli.logged
     assert f"Corrected permissions for {f.deps}/lib/libssl.a" in cli.logged
     assert f" install DESTDIR={f.build_folder}\n" in cli.logged
     cli.match("Patched 'startswith(...)' in build/components/cpython/setup.py")
