@@ -78,9 +78,12 @@ class Config:
 
     def __init__(self, paths=None, target=None):
         """
-        Args:
-            paths (str | list | None): Path(s) to config file(s)
-            target (str | runez.system.PlatformId | None): Target platform (for testing, defaults to current platform)
+        Parameters
+        ----------
+        paths : str | list | None
+            Path(s) to config file(s)
+        target : str | runez.system.PlatformId | None
+            Target platform (for testing, defaults to current platform)
         """
         self.paths = runez.flattened(paths, split=",")
         if not isinstance(target, runez.system.PlatformId):
@@ -195,10 +198,14 @@ class Config:
 
     def cleanup_configured_globs(self, title, module, *keys):
         """
-        Args:
-            title (str): Title to use in log messages
-            module (portable_python.PythonBuilder): Associated python builder module
-            *keys (str): Config keys to lookup
+        Parameters
+        ----------
+        title : str
+            Title to use in log messages
+        module : portable_python.PythonBuilder
+            Associated python builder module
+        *keys : str
+            Config keys to lookup
         """
         globs = [(x, f"{x}-{self.target.platform}") for x in keys]
         globs = runez.flattened(globs, transform=self.get_value)
@@ -207,10 +214,14 @@ class Config:
 
     def cleanup_globs(self, title, module, *globs):
         """
-        Args:
-            title (str): Title to use in log messages
-            module (portable_python.PythonBuilder): Associated python builder module
-            *globs (str): Glob patterns to clean up
+        Parameters
+        ----------
+        title : str
+            Title to use in log messages
+        module : portable_python.PythonBuilder
+            Associated python builder module
+        *globs : str
+            Glob patterns to clean up
         """
         if globs:
             spec = [module.setup.folders.formatted(x) for x in globs]

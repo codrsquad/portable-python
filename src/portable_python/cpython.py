@@ -23,7 +23,7 @@ test_struct test_threading test_time test_traceback test_unicode
 
 def represented_yaml(key_value_pairs):
     """
-    Represented yaml for given key/value pairs
+    Yaml representation for given key/value pairs
 
     Parameters
     ----------
@@ -50,9 +50,13 @@ class Cpython(PythonBuilder):
 
     def build_information(self):
         """
-        Yields key/value pairs to store as build information.
+        Build information to store in manifest.
         `None` or empty values are "naturally" omitted by the fact we use `runez.joined()` and `runez.flattened()`,
-         which have a default parameter `keep_empty=False`
+         which have a default parameter `keep_empty=False`.
+
+        Yields
+        ------
+        (str, dict)
         """
         yield (
             "cpython",
