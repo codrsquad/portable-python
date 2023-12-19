@@ -3,7 +3,6 @@ from runez.http import RestClient
 from portable_python import BuildSetup
 from portable_python.versions import CPythonFamily, PPG
 
-
 REST_CLIENT = RestClient()
 GH_CPYTHON_SAMPLE = """
 [
@@ -21,10 +20,12 @@ PYTHON_ORG_SAMPLE = """
 """
 
 
-@REST_CLIENT.mock({
-    "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE,
-    "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE,
-})
+@REST_CLIENT.mock(
+    {
+        "https://www.python.org/ftp/python/": PYTHON_ORG_SAMPLE,
+        "https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.": GH_CPYTHON_SAMPLE,
+    },
+)
 def test_list(cli, monkeypatch):
     # Edge cases
     monkeypatch.setattr(PPG, "config", None)

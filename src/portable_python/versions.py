@@ -6,6 +6,7 @@ Not trying to do historical stuff here, older (or EOL-ed) versions will be remov
 import logging
 import os
 import re
+from typing import ClassVar
 
 import runez
 from runez.http import RestClient
@@ -54,8 +55,10 @@ class VersionFamily:
 
     def get_builder(self):
         """
-        Returns:
-            (portable_python.PythonBuilder)
+        Returns
+        -------
+        portable_python.PythonBuilder
+            Builder implementation for this family
         """
 
 
@@ -105,7 +108,6 @@ class CPythonFamily(VersionFamily):
 
 
 class Folders:
-
     def __init__(self, config: Config, base=None, family=None, version=None):
         self.config = config
         self.base_folder = runez.resolved_path(base)
@@ -160,10 +162,21 @@ class Folders:
 
 
 class PPG:
-    """Globals"""
+    """
+    Global settings for portable-python
+
+    Attributes
+    ----------
+    families : dict[str, VersionFamily]
+        Mapping of family names to implementations
+    config : portable_python.config.Config
+        Global configuration
+    target : runez.system.PlatformId
+        Target platform
+    """
 
     cpython = CPythonFamily()
-    families = dict(cpython=cpython)
+    families: ClassVar[dict] = {"cpython": cpython}
     config = Config()
     target = config.target
 

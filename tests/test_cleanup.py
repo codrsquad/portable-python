@@ -48,7 +48,7 @@ def test_cleanup(cli, monkeypatch):
     assert "MACOSX_DEPLOYMENT_TARGET" not in cli.logged
     assert "selected: all" in cli.logged
     assert f"Would symlink {install_dir}/bin/pip{f.mm} <- {install_dir}/bin/pip" in cli.logged
-    assert f"Would symlink {lib}/python{f.mm}/config-{f.mm}-darwin/libpython{f.mm}.a <- {lib}/libpython{f.mm}.a"
+    assert f"Would symlink {lib}/python{f.mm}/config-{f.mm}-darwin/libpython{f.mm}.a <- {lib}/libpython{f.mm}.a" in cli.logged
     assert f"Would tar {install_dir} -> dist/cpython-{f.version}-linux-x86_64.tar.gz" in cli.logged
 
     runez.touch("bin/brew", logger=None)

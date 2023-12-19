@@ -9,7 +9,6 @@ import runez
 import yaml
 from runez.pyenv import Version
 
-
 LOG = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = """
@@ -98,17 +97,21 @@ class Config:
         return "%s [%s]" % (runez.plural(self._sources, "config source"), self.target)
 
     def completions(self, **given):
-        res = dict(arch=self.target.arch, platform=self.target.platform, subsystem=self.target.subsystem, target=str(self.target))
+        res = {"arch": self.target.arch, "platform": self.target.platform, "subsystem": self.target.subsystem, "target": str(self.target)}
         res.update(given)
         return res
 
     def get_value(self, *key, by_platform=True):
         """
-        Args:
-            key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
-            by_platform (bool): If True, value can be configured by platform
+        Parameters
+        ----------
+        key : strzz | tuple
+            Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
+        by_platform : bool
+            If True, value can be configured by platform
 
-        Returns:
+        Returns
+        -------
             Associated value, if any
         """
         value, _ = self.get_entry(*key, by_platform=by_platform)
@@ -116,18 +119,23 @@ class Config:
 
     def get_entry(self, *key, by_platform=True):
         """
-        Args:
-            key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
-            by_platform (bool): If True, value can be configured by platform
+        Parameters
+        ----------
+        key : str | tuple
+            Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
+        by_platform : bool
+            If True, value can be configured by platform
 
-        Returns:
-            Associated value, if any
+        Returns
+        -------
+        (str | int | float | bool | dict | list | None, ConfigSource | None)
+            Associated value (if any), together with the source that defined it
         """
         if by_platform:
             keys = (self.target.platform, self.target.arch, *key), (self.target.platform, *key), key
 
         else:
-            keys = (key, )
+            keys = (key,)
 
         for k in keys:
             for source in self._sources:
@@ -150,7 +158,7 @@ class Config:
         return value
 
     def config_files_report(self):
-        """One liner describing which config files are used, if any"""
+        """One-liner describing which config files are used, if any"""
         if len(self._sources) > 1:
             return "Config files: %s" % runez.joined(self._sources[:-1], delimiter=", ")
 
@@ -174,7 +182,7 @@ class Config:
     def delete(path):
         size = runez.filesize(path)
         runez.delete(path, logger=None)
-        LOG.info("Deleted %s (%s)" % (runez.short(path), runez.represented_bytesize(size)))
+        LOG.info("Deleted %s (%s)", runez.short(path), runez.represented_bytesize(size))
         return size
 
     @staticmethod
@@ -208,7 +216,7 @@ class Config:
             spec = [module.setup.folders.formatted(x) for x in globs]
             deleted_size = 0
             matcher = FileMatcher(spec)
-            LOG.info("Applying clean-up spec: %s" % matcher)
+            LOG.info("Applying clean-up spec: %s", matcher)
             cleaned = []
             for dirpath, dirnames, filenames in os.walk(module.install_folder):
                 removed = []
@@ -241,7 +249,7 @@ class Config:
             _find_file_duplicates(seen, folder)
             duplicates = {k: v for k, v in seen.items() if len(v) > 1}
             for dupes in duplicates.values():
-                LOG.info("Found duplicates: %s" % runez.joined(dupes, delimiter=", "))
+                LOG.info("Found duplicates: %s", runez.joined(dupes, delimiter=", "))
                 dupes = sorted(dupes, key=lambda x: len(str(x)))
                 if len(dupes) == 2:
                     shorter, longer = dupes
@@ -261,14 +269,19 @@ class Config:
         return basename, "%s%s" % (basename, version.major), "%s%s" % (basename, version.mm)
 
     @staticmethod
-    def find_main_file(desired: pathlib.Path, version: Version):
+    def find_main_file(desired, version):
         """
-        Args:
-            desired: Desired path (base name considered if path not directly available)
-            version: Associated version
+        Parameters
+        ----------
+        desired : pathlib.Path
+            Desired path (base name considered if path not directly available)
+        version : Version
+            Associated version
 
-        Returns:
-            (pathlib.Path | None): Path to associated real file (not symlink)
+        Returns
+        -------
+        pathlib.Path | None
+            Path to associated real file (not symlink)
         """
         p = Config.real_path(desired)
         if p:
@@ -335,10 +348,14 @@ class ConfigSource:
 
     def get_value(self, key):
         """
-        Args:
-            key (str | tuple): Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
+        Parameters
+        ----------
+        key : str | tuple
+            Key to look up, tuple represents hierarchy, ie: a/b -> (a, b)
 
-        Returns:
+        Returns
+        -------
+        str | int | float | bool | dict | list | None
             Associated value, if any
         """
         return self._deep_get(self.data, key)
@@ -360,7 +377,6 @@ class ConfigSource:
 
 
 class FileMatcher:
-
     def __init__(self, clean_spec):
         self.matches = []
         for spec in clean_spec:
@@ -376,7 +392,6 @@ class FileMatcher:
 
 
 class SingleFileMatch:
-
     _on_folder = False
     _rx_basename = None
     _rx_path = None

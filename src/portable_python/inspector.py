@@ -11,7 +11,6 @@ from runez.render import PrettyTable
 from portable_python.tracking import Trackable, Tracker
 from portable_python.versions import PPG
 
-
 LOG = logging.getLogger(__name__)
 RX_DYNLIB = re.compile(r"^.*\.(so(\.[0-9.]+)?|dylib)$")
 
@@ -146,7 +145,6 @@ class LibAutoCorrect:
 
 
 class ModuleInfo:
-
     _regex = re.compile(r"^(.*?)\s*(\S+/(lib(64)?/.*))$")
 
     def __init__(self, inspector: "PythonInspector", name: str, payload: dict):
@@ -166,8 +164,7 @@ class ModuleInfo:
         path = self.filepath
         if path:
             if is_dyn_lib(path):
-                info = SoInfo(self.inspector, path)
-                return info
+                return SoInfo(self.inspector, path)
 
             if path.name.startswith("__init__."):
                 path = path.parent
@@ -200,7 +197,6 @@ class ModuleInfo:
 
 
 class CLibInfo(Trackable):
-
     def __init__(self, inspector: "PythonInspector", path: str, version: str, basename: str):
         self.inspector = inspector
         if not basename:
@@ -249,7 +245,6 @@ class CLibInfo(Trackable):
 
 
 class SoInfo(Trackable):
-
     def __init__(self, inspector: "PythonInspector", path):
         self.inspector = inspector
         self.path = runez.to_path(path)
@@ -286,7 +281,7 @@ class SoInfo(Trackable):
             if runez.which(program):
                 r = runez.run(*cmd, path, fatal=False, logger=None)
                 if not r.succeeded:
-                    logging.warning("%s exited with code %s for %s: %s" % (program, r.exit_code, path, r.full_output))
+                    logging.warning("%s exited with code %s for %s: %s", program, r.exit_code, path, r.full_output)
                     return program, None
 
                 return program, r.output
@@ -397,7 +392,6 @@ def get_lib_type(install_folder, path, basename):
 
 
 class PythonInspector:
-
     default = "_bz2,_ctypes,_curses,_decimal,_dbm,_gdbm,_lzma,_tkinter,_sqlite3,_ssl,_uuid,pip,readline,pyexpat,setuptools,zlib"
     additional = "_asyncio,_functools,_tracemalloc,dbm.gnu,ensurepip,ossaudiodev,spwd,sys,tkinter,venv,wheel"
 
@@ -500,11 +494,15 @@ class PythonInspector:
     @staticmethod
     def parsed_version(output):
         """
-        Args:
-            output (str | None): Output to parse
+        Parameters
+        ----------
+        output : str | None
+            Output to parse
 
-        Returns:
-            (str | None): Simplified version number reported
+        Returns
+        -------
+        str | None
+            Simplified version number reported
         """
         if output:
             for line in output.splitlines():
@@ -535,7 +533,6 @@ def _find_parent_subfolder(folder, basename):
 
 
 class FullSoReport:
-
     def __init__(self, inspector: PythonInspector):
         self.inspector = inspector
         self.size = 0

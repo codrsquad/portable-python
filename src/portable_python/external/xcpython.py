@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import runez
 
 from portable_python import LinkerOutcome, ModuleBuilder, PPG
@@ -64,7 +66,7 @@ class Gdbm(ModuleBuilder):
     """
 
     m_debian = "libgdbm-dev"
-    m_telltale = ["{include}/gdbm.h"]
+    m_telltale: ClassVar[list] = ["{include}/gdbm.h"]
 
     @property
     def url(self):
@@ -102,7 +104,7 @@ class LibFFI(ModuleBuilder):
     """
 
     m_debian = "!libffi-dev"
-    m_telltale = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
+    m_telltale: ClassVar[list] = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
 
     xenv_CFLAGS = "-fPIC"
 
@@ -163,7 +165,6 @@ class Openssl(ModuleBuilder):
 
 
 class Ncurses(ModuleBuilder):
-
     m_include = "ncursesw"
 
     xenv_CFLAGS = "-fPIC"
@@ -231,8 +232,14 @@ class Readline(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure(
-            "./configure", "--disable-shared", "--enable-static", "--with-curses", "--enable-multibyte",
-            "--disable-install-examples", "--disable-docs", "--enable-portable-binary",
+            "./configure",
+            "--disable-shared",
+            "--enable-static",
+            "--with-curses",
+            "--enable-multibyte",
+            "--disable-install-examples",
+            "--disable-docs",
+            "--enable-portable-binary",
         )
         self.run_make(cpu_count=0)
         self.run_make("install", cpu_count=0)
@@ -245,7 +252,7 @@ class Sqlite(ModuleBuilder):
     """
 
     m_debian = "+libsqlite3-dev"
-    m_telltale = ["{include}/sqlite3.h"]
+    m_telltale: ClassVar[list] = ["{include}/sqlite3.h"]
 
     xenv_CFLAGS = "-fPIC"
 
@@ -265,7 +272,12 @@ class Sqlite(ModuleBuilder):
 
     def _do_linux_compile(self):
         self.run_configure(
-            "./configure", "--enable-shared=no", "--enable-static=yes", "--disable-tcl", "--disable-readline", "--with-pic=yes"
+            "./configure",
+            "--enable-shared=no",
+            "--enable-static=yes",
+            "--disable-tcl",
+            "--disable-readline",
+            "--with-pic=yes",
         )
         self.run_make()
         self.run_make("install")
@@ -279,7 +291,7 @@ class Uuid(ModuleBuilder):
 
     m_debian = "+uuid-dev"
     m_include = "uuid"
-    m_telltale = ["{include}/uuid/uuid.h"]
+    m_telltale: ClassVar[list] = ["{include}/uuid/uuid.h"]
 
     xenv_CFLAGS = "-fPIC"
 
@@ -298,7 +310,6 @@ class Uuid(ModuleBuilder):
 
 
 class Xz(ModuleBuilder):
-
     m_telltale = "{include}/lzma.h"
 
     def auto_select_reason(self):
@@ -316,8 +327,14 @@ class Xz(ModuleBuilder):
     def _do_linux_compile(self):
         self.run_configure(
             "./configure",
-            "--enable-shared=no", "--enable-static=yes", "--with-pic=yes", "--disable-rpath",
-            "--disable-dependency-tracking", "--disable-doc", "--disable-nls", "--without-libintl-prefix",
+            "--enable-shared=no",
+            "--enable-static=yes",
+            "--with-pic=yes",
+            "--disable-rpath",
+            "--disable-dependency-tracking",
+            "--disable-doc",
+            "--disable-nls",
+            "--without-libintl-prefix",
         )
         self.run_make()
         self.run_make("install")

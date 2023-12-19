@@ -15,7 +15,7 @@ import multiprocessing
 import os
 import pathlib
 import re
-from typing import List
+from typing import ClassVar, List
 
 import runez
 from runez.http import RestClient
@@ -23,7 +23,6 @@ from runez.pyenv import PythonSpec
 from runez.render import Header, PrettyTable
 
 from portable_python.versions import PPG
-
 
 LOG = logging.getLogger(__name__)
 RX_BINARY = re.compile(r"^.*\.(dylib|gmo|icns|ico|nib|prof.*|tar)$")
@@ -53,21 +52,21 @@ def patch_folder(folder, regex, replacement, ignore=None):
 
 def patch_file(path, regex, replacement):
     try:
-        with open(path, "rt") as fh:
+        with open(path) as fh:
             text = fh.read()
 
         new_text = re.sub(regex, replacement, text, flags=re.MULTILINE)
         if text != new_text:
-            with open(path, "wt") as fh:
+            with open(path, "w") as fh:
                 fh.write(new_text)
 
-            LOG.info("Patched '%s' in %s" % (regex, runez.short(path)))
+            LOG.info("Patched '%s' in %s", regex, runez.short(path))
 
     except Exception as e:
-        with open(path, "rt", errors="ignore") as fh:
+        with open(path, errors="ignore") as fh:
             text = fh.read()
             if re.search(regex, text):
-                LOG.warning("Can't patch '%s': %s" % (runez.short(path), e))
+                LOG.warning("Can't patch '%s': %s", runez.short(path), e)
 
 
 class FolderMask:
@@ -81,7 +80,7 @@ class FolderMask:
     """
 
     def __init__(self, target_folder):
-        LOG.info("Applying isolation hack/mask to %s" % target_folder)
+        LOG.info("Applying isolation hack/mask to %s", target_folder)
         self.target_folder = target_folder
         r = runez.run("hdiutil", "attach", "-nomount", "ram://2048", fatal=Exception)
         self.ram_disk = r.output.strip()
@@ -93,7 +92,7 @@ class FolderMask:
         self.mounted = True
 
     def cleanup(self):
-        LOG.info("Cleaning up isolation hack/mask for %s" % self.target_folder)
+        LOG.info("Cleaning up isolation hack/mask for %s", self.target_folder)
         if self.mounted:
             runez.run("umount", self.target_folder, fatal=False)
 
@@ -118,8 +117,10 @@ class BuildContext:
 
     def _resolved_isolation(self):
         """
-        Returns:
-            (str | None): What strategy to use to work around the fact that python's ./configure script looks at /usr/local
+        Returns
+        -------
+            str | None
+                What strategy to use to work around the fact that python's ./configure script looks at /usr/local
         """
         v = PPG.config.get_value("isolate-usr-local")
         if v == "auto":
@@ -267,11 +268,11 @@ class BuildSetup:
         with BuildContext(self) as build_context:
             self.build_context = build_context
             modules = self.python_builder.modules
-            LOG.info("portable-python v%s, current folder: %s" % (runez.get_version(__name__), os.getcwd()))
+            LOG.info("portable-python v%s, current folder: %s", runez.get_version(__name__), os.getcwd())
             LOG.info(runez.joined(modules, list(modules)))
             LOG.info(PPG.config.config_files_report())
-            LOG.info("Platform: %s" % PPG.target)
-            LOG.info("Build report:\n%s" % self.python_builder.modules.report())
+            LOG.info("Platform: %s", PPG.target)
+            LOG.info("Build report:\n%s", self.python_builder.modules.report())
             self.validate_module_selection(fatal=not runez.DRYRUN and not self.x_debug)
             self.ensure_clean_folder(self.folders.components)
             self.ensure_clean_folder(self.folders.deps)
@@ -375,7 +376,6 @@ class ModuleCollection:
 
 
 class LinkerOutcome(enum.Enum):
-
     absent = "orange"
     failed = "red"
     shared = "blue"
@@ -389,6 +389,7 @@ class ModuleBuilder:
     m_build_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
     m_debian = None
     m_include: str = None  # Optional: subfolder to automatically list in CPATH when this module is active
+    m_telltale: ClassVar[list]  # Optional: list of files that, if present, indicate this module is installed
 
     setup: BuildSetup
     parent_module: "ModuleBuilder" = None
@@ -458,7 +459,7 @@ class ModuleBuilder:
         if self.resolved_telltale:
             return "has %s" % self.resolved_telltale
 
-        return "no %s" % getattr(self, "m_telltale")
+        return "no %s" % self.m_telltale
 
     def _find_telltale(self):
         telltales = getattr(self, "m_telltale", runez.UNSET)
@@ -564,7 +565,8 @@ class ModuleBuilder:
             yield
 
         except Exception as e:
-            LOG.error("Error while compiling %r: %r", self, e)
+            overview = repr(e)
+            LOG.exception("Error while compiling %s: %s", self, overview)
             raise
 
         finally:
@@ -598,7 +600,7 @@ class ModuleBuilder:
                 env_vars = self._get_env_vars()
                 prev_env_vars = {}
                 for var_name, value in env_vars.items():
-                    LOG.info("env %s=%s" % (var_name, runez.short(value, size=2048)))
+                    LOG.info("env %s=%s", var_name, runez.short(value, size=2048))
                     prev_env_vars[var_name] = os.environ.get(var_name)
                     os.environ[var_name] = value
 
@@ -672,7 +674,6 @@ class ModuleBuilder:
 
 
 class PythonBuilder(ModuleBuilder):
-
     _bin_python: pathlib.Path = None
 
     def __init__(self, parent_module):
@@ -692,8 +693,10 @@ class PythonBuilder(ModuleBuilder):
     @property
     def bin_python(self):
         """
-        Returns:
-            (pathlib.Path | None): Path to freshly compiled bin/python, real file (not symlink)
+        Returns
+        -------
+            pathlib.Path | None
+                Path to freshly compiled bin/python, real file (not symlink)
         """
         if self._bin_python is None:
             self._bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version)
@@ -724,5 +727,5 @@ class PythonBuilder(ModuleBuilder):
                 expected = 0o755 if path.is_dir() else 0o644
                 current = path.stat().st_mode & 0o777
                 if current != expected:
-                    LOG.info("Corrected permissions for %s (was %s)" % (runez.short(path), oct(current)))
+                    LOG.info("Corrected permissions for %s (was %s)", runez.short(path), oct(current))
                     path.chmod(expected)

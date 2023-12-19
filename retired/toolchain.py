@@ -40,7 +40,6 @@ class PkgConfig(ModuleBuilder):
 
     @property
     def url(self):
-        # return f"https://github.com/freedesktop/pkg-config/archive/refs/tags/pkg-config-{self.version}.tar.gz"
         return f"https://pkg-config.freedesktop.org/releases/pkg-config-{self.version}.tar.gz"
 
     @property

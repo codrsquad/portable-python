@@ -4,7 +4,6 @@ import re
 import sys
 import sysconfig
 
-
 RX_VERSION = re.compile(r"\d\.\d")
 INSIGHTS = {
     "_gdbm": "_GDBM_VERSION",
@@ -38,7 +37,7 @@ def get_version(text):
 def pymodule_version_info(key, value, pymodule):
     version = get_version(value)
     if version:
-        result = dict(version_field=key, version=version)
+        result = {"version_field": key, "version": version}
         if hasattr(pymodule, "__file__"):
             result["path"] = pymodule.__file__
 
@@ -54,14 +53,14 @@ def pymodule_info(module_name, pymodule):
             return v
 
     if hasattr(pymodule, "__file__"):
-        return dict(path=pymodule.__file__)
+        return {"path": pymodule.__file__}
 
     if hasattr(pymodule, "__spec__"):
-        v = getattr(pymodule.__spec__, "origin")
+        v = getattr(pymodule.__spec__, "origin", None)
         if v == "built-in":
-            return dict(version=v)
+            return {"version": v}
 
-    return dict(note=str(dir(pymodule)))
+    return {"note": str(dir(pymodule))}
 
 
 def module_report(module_name):
@@ -71,9 +70,9 @@ def module_report(module_name):
     except Exception as e:
         note = str(e)
         if "No module named" in note:
-            return dict(version="*absent*")
+            return {"version": "*absent*"}
 
-        return dict(version="*absent*", note=note)
+        return {"version": "*absent*", "note": note}
 
 
 def get_srcdir():
@@ -92,7 +91,7 @@ def get_simplified_dirs(path):
         if path.startswith("/private"):
             result.append(path[8:])  # whoever compiled didn't use realpath(tmp)
 
-        elif not path.startswith("/tmp"):  # nosec, just simplifying paths
+        elif not path.startswith("/tmp"):  # noqa: S108, just simplifying path representation
             result.append(os.path.dirname(result[0]))
 
     return result
@@ -121,8 +120,8 @@ def main(arg):
             names.remove("pip")
             names.append("pip")
 
-        report = dict((k, module_report(k)) for k in names)
-        report = dict(report=report, srcdir=get_srcdir(), prefix=sysconfig.get_config_var("prefix"))
+        report = dict((k, module_report(k)) for k in names)  # noqa: C402, works on py2 as well (can inspect py2)
+        report = {"report": report, "srcdir": get_srcdir(), "prefix": sysconfig.get_config_var("prefix")}
         print(json.dumps(report, indent=2, sort_keys=True))
 
 

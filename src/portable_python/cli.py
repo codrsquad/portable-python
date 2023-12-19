@@ -8,7 +8,6 @@ from runez.render import PrettyTable
 from portable_python import BuildSetup, PPG
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
-
 LOG = logging.getLogger(__name__)
 
 
@@ -60,10 +59,6 @@ def build_report(modules, python_spec):
 def diagnostics():
     """Show diagnostics info"""
     with runez.Anchored("."):
-        def _diagnostics():
-            yield "invoker python", runez.SYS_INFO.invoker_python
-            yield from runez.SYS_INFO.diagnostics()
-
         config = PPG.config.represented()
         print(PrettyTable.two_column_diagnostics(_diagnostics(), config))
 
@@ -104,6 +99,11 @@ def list_cmd(json, family):
     print("%s:" % runez.bold(family))
     for mm, v in fam.available_versions.items():
         print("  %s: %s" % (runez.bold(mm), v))
+
+
+def _diagnostics():
+    yield "invoker python", runez.SYS_INFO.invoker_python
+    yield from runez.SYS_INFO.diagnostics()
 
 
 def _find_recompress_source(folders, path):
@@ -158,7 +158,7 @@ def recompress(path, ext):
 
     \b
     Mildly useful for comparing sizes from different compressions
-    """
+    """  # noqa: D301
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
     pspec = PythonSpec.from_text(path)
     folders = PPG.get_folders(base=".", family=pspec and pspec.family, version=pspec and pspec.version)
@@ -203,6 +203,6 @@ def lib_auto_correct(commit, prefix, path):
 
 
 if __name__ == "__main__":
-    from portable_python.cli import main  # noqa, re-import with proper package
+    from portable_python.cli import main
 
     main()

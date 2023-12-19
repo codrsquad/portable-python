@@ -133,7 +133,7 @@ class MockSharedExeRun:
         if args[1] == "--print-rpath":
             return self.prefix
 
-    def _macos_run(self, program, *args):
+    def _macos_run(self, program, *_):
         if program == "otool":
             return f"foo/bin/python:\n {self.prefix}/lib/libpython3.9.dylib (...)\n /usr/lib/... (...)"
 
