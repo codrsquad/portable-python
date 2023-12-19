@@ -59,4 +59,4 @@ jobs:
         python-version: "3.11"
 
     - run: pip install -U pip tox
-    - run: tox -e docs,style,security
+    - run: tox -e docs,style

@@ -56,10 +56,14 @@ class LibAutoCorrect:
 
     def __init__(self, prefix, install_folder, ppp_marker=None):
         """
-        Args:
-            prefix (str): Prefix used in ./configure
-            install_folder (pathlib.Path): Installation folder to scan (all paths will be relative to this)
-            ppp_marker (str | None): Associated ppp-marker, if any
+        Parameters
+        ----------
+        prefix: str
+            Prefix used in ./configure
+        install_folder : pathlib.Path
+            Installation folder to scan (all paths will be relative to this)
+        ppp_marker : str | None
+            Path to ppp-marker, if any
         """
         self.prefix = prefix
         self.install_folder = install_folder
@@ -102,6 +106,7 @@ class LibAutoCorrect:
     def _auto_correct_macos(self, path):
         """
         On macos, we use install_name_tool, example:
+
             install_name_tool -add_rpath @executable_path/../lib .../bin/python
             install_name_tool -change /<prefix>/lib/libpython3.9.dylib @rpath/libpython3.9.dylib .../bin/python
 
@@ -494,6 +499,8 @@ class PythonInspector:
     @staticmethod
     def parsed_version(output):
         """
+        Version mentioned in `output`
+
         Parameters
         ----------
         output : str | None

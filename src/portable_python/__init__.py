@@ -35,11 +35,16 @@ def is_binary_file(path):
 def patch_folder(folder, regex, replacement, ignore=None):
     """Replace all occurrences of 'old_text' by 'new_text' in all files in 'folder'
 
-    Args:
-        folder (pathlib.Path): Folder to scan
-        regex: Regex to replace
-        replacement (str): Replacement text
-        ignore: Regex stating what to ignore
+    Parameters
+    ----------
+    folder : pathlib.Path
+        Folder to scan
+    regex : str
+        Regex to replace
+    replacement : str
+        Replacement text
+    ignore : re.Pattern | None
+        Regex stating what to ignore
     """
     for path in runez.ls_dir(folder):
         if not path.is_symlink() and (not ignore or not ignore.match(path.name)):
@@ -117,10 +122,12 @@ class BuildContext:
 
     def _resolved_isolation(self):
         """
+        Isolation setting currently configured.
+
         Returns
         -------
-            str | None
-                What strategy to use to work around the fact that python's ./configure script looks at /usr/local
+        str | None
+            What strategy to use to work around the fact that python's ./configure script looks at /usr/local
         """
         v = PPG.config.get_value("isolate-usr-local")
         if v == "auto":
@@ -183,7 +190,7 @@ class BuildContext:
 
 class BuildSetup:
     """
-    This class drives the compilation, external modules first, then the target python itself.
+    Drives the compilation, external modules first, then the target python itself.
     All modules are compiled in the same manner, follow the same conventional build layout.
     """
 
@@ -192,10 +199,14 @@ class BuildSetup:
 
     def __init__(self, python_spec=None, modules=None, prefix=None):
         """
-        Args:
-            python_spec (str | PythonSpec | None): Python to build (family and version)
-            modules (str | None): Modules to build (default: from config)
-            prefix (str | None): --prefix to use
+        Parameters
+        ----------
+        python_spec : str | PythonSpec | None
+            Python to build (family and version)
+        modules : str | None
+            Modules to build (default: from config)
+        prefix : str | None
+            --prefix to use
         """
         if not python_spec or python_spec == "latest":
             python_spec = PPG.cpython.latest
@@ -397,8 +408,10 @@ class ModuleBuilder:
 
     def __init__(self, parent_module):
         """
-        Args:
-            parent_module (BuildSetup | ModuleBuilder): Associated parent
+        Parameters
+        ----------
+        parent_module : BuildSetup | ModuleBuilder
+            Associated parent
         """
         self.m_name = ModuleCollection.get_module_name(self.__class__)
         if isinstance(parent_module, BuildSetup):
@@ -526,8 +539,7 @@ class ModuleBuilder:
 
     def run_configure(self, program, *args, prefix=None):
         """
-        Calling ./configure is similar across all components.
-        This allows to have descendants customize each part relatively elegantly
+        Run ./configure script for this module.
         """
         if prefix is None:
             prefix = self.deps

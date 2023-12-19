@@ -1,6 +1,7 @@
 """
-Tracking only a handful of most recent (and non-EOL) versions by design
-Not trying to do historical stuff here, older (or EOL-ed) versions will be removed from the list without notice
+Tracking only a handful of most recent (and non-EOL) versions by design.
+
+Not trying to do historical stuff here, older (or EOL-ed) versions will be removed from the list without notice.
 """
 
 import logging
@@ -50,11 +51,19 @@ class VersionFamily:
         self._fetch_versions()
         return self._versions
 
-    def get_available_versions(self) -> list:
-        """Implementation supplied by descendant: iterable of available versions, can be strings"""
+    def get_available_versions(self):
+        """
+        Available versions.
+
+        Returns
+        -------
+        list[Version]
+        """
 
     def get_builder(self):
         """
+        Builder implementation for this family.
+
         Returns
         -------
         portable_python.PythonBuilder

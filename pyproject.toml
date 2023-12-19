@@ -55,8 +55,6 @@ ignore = [
     "D200",  # One-line docstring should fit on one line with quotes
     "D205",  # 1 blank line required between summary line and description
     "D400",  # First line should end with a period
-    "D401",  # First line should be in imperative mood
-    "D404",  # First word of the docstring should not be This
     # Not useful:
     "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
 ]
