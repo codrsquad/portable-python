@@ -24,7 +24,6 @@ extend-select = [
     "G",   # flake8-logging-format
     "I",   # isort
     "INT", # flake8-gettext
-    "PD",  # pandas-vet
     "PGH", # pygrep-hooks
     "PIE", # flake8-pie
     "PT", # flake8-pytest
