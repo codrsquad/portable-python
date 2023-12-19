@@ -5,6 +5,8 @@ It is also unclear what version to use, which build docs to follow etc.
 Contributions are welcome!
 """
 
+from typing import ClassVar
+
 import runez
 
 from portable_python import ModuleBuilder, PPG
@@ -37,7 +39,6 @@ class Tcl(ModuleBuilder):
 
 
 class Tk(ModuleBuilder):
-
     m_build_cwd = "unix"
 
     @property
@@ -107,7 +108,7 @@ class TkInter(ModuleBuilder):
     """
 
     m_debian = "-tk-dev"
-    m_telltale = ["{include}/tk", "{include}/tk.h"]
+    m_telltale: ClassVar[list] = ["{include}/tk", "{include}/tk.h"]
 
     @classmethod
     def candidate_modules(cls):

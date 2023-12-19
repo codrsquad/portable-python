@@ -2,7 +2,6 @@ import runez
 
 
 class Trackable:
-
     tracked_category = None
 
     def __eq__(self, other):
@@ -16,7 +15,6 @@ class Trackable:
 
 
 class TrackedCollection:
-
     def __init__(self, name):
         self.name = name
         self.items = []
@@ -38,7 +36,6 @@ class TrackedCollection:
 
 
 class Tracker(TrackedCollection):
-
     def __init__(self, enum, name=None):
         self.kind = enum.__name__.replace("Type", "").lower()
         super().__init__(name or self.kind)

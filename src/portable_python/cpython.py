@@ -12,7 +12,6 @@ from portable_python.external.tkinter import TkInter
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
-
 # https://github.com/docker-library/python/issues/160
 PGO_TESTS = """
 -m test.regrtest --pgo test_array test_base64 test_binascii test_binhex test_binop test_bytes test_c_locale_coercion
@@ -25,11 +24,16 @@ test_struct test_threading test_time test_traceback test_unicode
 def represented_yaml(key_value_pairs):
     """
     Represented yaml for given key/value pairs
-    Args:
-        key_value_pairs (generator): Key/value pairs to represent
 
-    Returns:
-        (str): Yaml representation
+    Parameters
+    ----------
+    key_value_pairs : iterable
+        Key/value pairs to represent
+
+    Returns
+    -------
+    str
+        Yaml representation
     """
     content = [yaml.safe_dump(runez.serialize.json_sanitized({x: y}), width=140) for x, y in key_value_pairs]
     return runez.joined(content, delimiter="\n")
@@ -50,24 +54,30 @@ class Cpython(PythonBuilder):
         `None` or empty values are "naturally" omitted by the fact we use `runez.joined()` and `runez.flattened()`,
          which have a default parameter `keep_empty=False`
         """
-        yield "cpython", {
-            "prefix": self.setup.prefix,
-            "source": self.url,
-            "static": runez.joined(self.modules.selected) or None,
-            "target": PPG.target,
-            "version": self.version,
-        }
+        yield (
+            "cpython",
+            {
+                "prefix": self.setup.prefix,
+                "source": self.url,
+                "static": runez.joined(self.modules.selected) or None,
+                "target": PPG.target,
+                "version": self.version,
+            },
+        )
         yield "configure-args", runez.joined(runez.short(x) for x in self.c_configure_args())
         compiled_by = os.environ.get("PP_ORIGIN") or PPG.config.get_value("compiled-by")
         bc = self.setup.build_context
-        yield "compilation-info", {
-            "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
-            "date": datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z"),
-            "host-platform": runez.SYS_INFO.platform_info,
-            "ldd-version": PythonInspector.tool_version("ldd"),
-            "portable-python-version": runez.get_version(__package__),
-            "special-context": bc.isolate_usr_local and bc,
-        }
+        yield (
+            "compilation-info",
+            {
+                "compiled-by": compiled_by or "https://pypi.org/project/portable-python/",
+                "date": datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "host-platform": runez.SYS_INFO.platform_info,
+                "ldd-version": PythonInspector.tool_version("ldd"),
+                "portable-python-version": runez.get_version(__package__),
+                "special-context": bc.isolate_usr_local and bc,
+            },
+        )
         additional = PPG.config.get_value("manifest", "additional-info")
         if additional:
             res = {}
@@ -174,7 +184,7 @@ class Cpython(PythonBuilder):
                 # Special edge case in macosx_sdk_specified() where /usr/local is fine...
                 x = "startswith({q}/usr/{q}) and not path.startswith({q}{p}{q})"
                 special_case = x.replace("(", r"\(").replace(")", r"\)").format(q="['\"]", p=self.deps)
-                restored = x.format(q="'", p='/usr/local')
+                restored = x.format(q="'", p="/usr/local")
                 patch_file(setup_py, special_case, restored)
 
             # Only doable on macOS: patch -install_name so produced exes/libs use a relative path
@@ -286,11 +296,7 @@ class Cpython(PythonBuilder):
         Autocorrect pkgconfig and sysconfig to use relative paths
         See https://manpages.debian.org/stretch/pkg-config/pkg-config.1.en.html#PKG-CONFIG_DERIVED_VARIABLES
         """
-        patch_folder(
-            self.install_folder / "lib/pkgconfig",
-            f"prefix={self.c_configure_prefix}",
-            "prefix=${pcfiledir}/../.."
-        )
+        patch_folder(self.install_folder / "lib/pkgconfig", f"prefix={self.c_configure_prefix}", "prefix=${pcfiledir}/../..")
         sys_cfg = self._find_sys_cfg()
         if sys_cfg:
             rs = RelSysConf(sys_cfg, self.c_configure_prefix)
@@ -347,7 +353,7 @@ class Cpython(PythonBuilder):
 
         if lines:
             LOG.info("Auto-corrected shebang for %s" % runez.short(path))
-            with open(path, "wt") as fh:
+            with open(path, "w") as fh:
                 for line in lines:
                     fh.write(line)
 
@@ -375,7 +381,7 @@ class RelSysConf:
     def _relativize(self, line):
         start = 0
         for m in self.rx_strings.finditer(line):
-            yield line[start:m.start(0)]
+            yield line[start : m.start(0)]
             start = m.end(0)
             content = m.group(2)
             if self.prefix in content:

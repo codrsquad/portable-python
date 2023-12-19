@@ -5,8 +5,8 @@ from portable_python import BuildSetup, ModuleBuilder
 from portable_python.versions import PPG
 
 
-def test_config(cli, monkeypatch):
-    with pytest.raises(BaseException):
+def test_config(cli):
+    with pytest.raises(runez.system.AbortException):
         PPG.config.parsed_yaml("a: b\ninvalid line", "testing")
 
     cli.run("-ntmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mnone")
@@ -34,8 +34,8 @@ def test_diagnostics(cli):
 
 def test_edge_cases(temp_folder, monkeypatch, logged):
     monkeypatch.setattr(PPG, "config", None)
-    with pytest.raises(BaseException):
-        PPG.grab_config(runez.DEV.tests_path("sample-incomplete.yml"))
+    PPG.grab_config(runez.DEV.tests_path("sample-incomplete.yml"))
+    with pytest.raises(runez.system.AbortException):
         PPG.get_folders()
     assert "Folder 'destdir' must be configured" in logged.pop()
 
@@ -56,9 +56,10 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     assert outcome.name == "failed"
     assert reason == "broken, can't compile statically with foo present"
 
-    PPG.config._sources[0].data = dict(ext="foo")
+    sources = getattr(PPG.config, "_sources", None)
+    monkeypatch.setattr(sources[0], "data", {"ext": "foo"})
     assert not logged
-    with pytest.raises(BaseException):
+    with pytest.raises(runez.system.AbortException):
         _ = BuildSetup("3.9.6")
     assert "Invalid extension 'foo'" in logged.pop()
 
