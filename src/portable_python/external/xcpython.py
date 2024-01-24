@@ -344,7 +344,7 @@ class Zlib(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.3")
+        return self.cfg_version("1.3.1")
 
     def _do_linux_compile(self):
         self.run_configure("./configure", "--static")
