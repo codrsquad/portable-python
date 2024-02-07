@@ -7,7 +7,7 @@ def test_build_bogus_platform(cli):
 def test_failed_build(cli):
     cli.run("-tmacos-arm64", "build", "3.12.0")
     assert cli.failed
-    assert "Error while compiling xz:5.4.5: ForbiddenHttpError" in cli.logged
+    assert "Error while compiling xz:5.4.6: ForbiddenHttpError" in cli.logged
     assert "Overall compilation failed:" in cli.logged
 
 
