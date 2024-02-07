@@ -147,10 +147,8 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        if self.setup.python_spec.version < "3.10":
-            # TODO: enhance configuration to allow per-version-range settings
-            return self.cfg_version("1.1.1w")
-
+        # See https://endoflife.date/openssl
+        # This default here picks the most conservative longest supported version
         return self.cfg_version("3.0.13")
 
     def c_configure_args(self):
