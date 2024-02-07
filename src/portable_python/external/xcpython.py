@@ -151,7 +151,7 @@ class Openssl(ModuleBuilder):
             # TODO: enhance configuration to allow per-version-range settings
             return self.cfg_version("1.1.1w")
 
-        return self.cfg_version("3.0.12")
+        return self.cfg_version("3.0.13")
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
@@ -268,7 +268,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.44.1")
+        return self.cfg_version("3.45.1")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -322,7 +322,7 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("5.4.5")
+        return self.cfg_version("5.4.6")
 
     def _do_linux_compile(self):
         self.run_configure(
