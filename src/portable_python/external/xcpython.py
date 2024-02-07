@@ -318,7 +318,7 @@ class Xz(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://tukaani.org/xz/xz-{self.version}.tar.gz"
+        return f"https://github.com/tukaani-project/xz/releases/download/v{self.version}/xz-{self.version}.tar.gz"
 
     @property
     def version(self):
