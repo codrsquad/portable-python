@@ -67,7 +67,6 @@ windows:
   ext: zip
 
 macos:
-  allowed-system-libs: .*  # System libs on macos are OK (such as bz2 etc)
   env:
     MACOSX_DEPLOYMENT_TARGET: 13  # Ventura, released June 2022
 """

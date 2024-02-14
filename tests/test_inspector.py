@@ -21,7 +21,7 @@ def test_find_libs(temp_folder):
     assert x == ["lib-foo.a", "lp.dylib", "lp.so", "lp.so.1.0", "python3.9/config-3.9/libpython3.9.so"]
 
 
-def test_inspect_python(temp_folder):
+def test_inspect_python(temp_folder, monkeypatch):
     PPG.grab_config("foo.yml")
     inspector = PythonInspector("invoker")
     assert str(inspector)
@@ -41,7 +41,9 @@ def test_inspect_python(temp_folder):
 
     # Verify using system libs on linux is considered a fail
     PPG.grab_config(target="linux-x86_64")
-    assert str(r.get_problem(True)).startswith("Uses system libs:")
+    monkeypatch.setitem(PPG.config.default.data, "linux", {"allowed-system-libs": "/foo"})
+    problem = r.get_problem(True)
+    assert problem.startswith("Uses system libs:")
 
 
 OTOOL_SAMPLE = """
