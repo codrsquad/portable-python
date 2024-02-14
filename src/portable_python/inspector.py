@@ -567,11 +567,12 @@ class FullSoReport:
 
     def get_problem(self, portable) -> str:
         if portable:
-            uses_system = [x.relative_path for x in self.lib_tracker.category[LibType.system].items]
-            if uses_system:
-                allowed = PPG.config.get_value("allowed-system-libs")
-                if allowed:
-                    allowed = re.compile(allowed)
+            allowed = PPG.config.get_value("allowed-system-libs")
+            if allowed:
+                # allowed-system-libs needs to be defined for the check to occur (opt-in)
+                allowed = re.compile(allowed)
+                uses_system = [x.relative_path for x in self.lib_tracker.category[LibType.system].items]
+                if uses_system:
                     uses_system = [x for x in uses_system if not allowed.match(x)]
 
                 if uses_system:

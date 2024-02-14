@@ -11,9 +11,9 @@ folders:
 #folders:
 #  sources: dist/sources               # Allows keeping source downloads even after 'rm -rf build'
 
-# Required to build cpython without errors:
-linux:
-  allowed-system-libs: /lib/.*
+# If you want to ensure that no non-system lib is referred from libpython.so
+#linux:
+#  allowed-system-libs: /lib/.*
 
 # Uncomment to install own additional packages:
 cpython-additional-packages:
