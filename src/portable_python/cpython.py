@@ -211,12 +211,6 @@ class Cpython(PythonBuilder):
             lib_auto_correct = LibAutoCorrect(self.c_configure_prefix, self.install_folder, ppp_marker=self.setup.folders.ppp_marker)
             lib_auto_correct.run()
 
-        runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
-        PPG.config.ensure_main_file_symlinks(self)
-        if not self.setup.prefix:
-            self._relativize_sysconfig()
-            self._relativize_shebangs()
-
         PPG.config.cleanup_configured_globs("Pass 1", self, "cpython-clean-1st-pass")
         PPG.config.symlink_duplicates(self.install_folder)
         validation_script = PPG.config.resolved_path("cpython-validate-script")
@@ -235,6 +229,12 @@ class Cpython(PythonBuilder):
                 self.run_python(cmd)
 
             self.run_python("-mpip", "install", *runez.flattened(additional))
+
+        runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
+        PPG.config.ensure_main_file_symlinks(self)
+        if not self.setup.prefix:
+            self._relativize_sysconfig()
+            self._relativize_shebangs()
 
         self._validate_venv_module()
         if PPG.config.get_value("cpython-compile-all"):
