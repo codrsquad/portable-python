@@ -526,10 +526,15 @@ class ModuleBuilder:
 
     def xenv_PATH(self):
         yield f"{self.deps}/bin"
+        yield from os.environ.get("PATH", "").split(":")
         yield "/usr/bin"
         yield "/bin"
 
+    def xenv_LD_LIBRARY_PATH(self):
+        yield from os.environ.get("LD_LIBRARY_PATH", "").split(":")
+
     def xenv_PKG_CONFIG_PATH(self):
+        yield from os.environ.get("PKG_CONFIG_PATH", "").split(":")
         if self.modules.selected:
             yield f"{self.deps_lib}/pkgconfig"
 
