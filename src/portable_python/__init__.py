@@ -610,7 +610,14 @@ class ModuleBuilder:
                 basename = runez.basename(self.url, extension_marker="#")
                 path = self.setup.folders.sources / basename
                 if not path.exists():
-                    RestClient().download(self.url, path)
+                    proxies = {}
+                    http_proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+                    if http_proxy:
+                        proxies["http"] = http_proxy
+                    https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+                    if https_proxy:
+                        proxies["https"] = https_proxy
+                    RestClient().download(self.url, path, proxies=proxies)
 
                 runez.decompress(path, self.m_src_build, simplify=True)
 
