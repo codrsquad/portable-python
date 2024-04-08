@@ -229,7 +229,7 @@ class Cpython(PythonBuilder):
 
                 self.run_python(cmd)
 
-            self.run_python("-mpip", "install", *runez.flattened(additional))
+            self.run_python("-mpip", "install", "--no-cache-dir", "--upgrade", *runez.flattened(additional))
 
         runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
         PPG.config.ensure_main_file_symlinks(self)
