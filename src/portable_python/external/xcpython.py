@@ -149,7 +149,7 @@ class Openssl(ModuleBuilder):
     def version(self):
         # See https://endoflife.date/openssl
         # This default here picks the most conservative longest supported version
-        return self.cfg_version("3.0.13")
+        return self.cfg_version("3.0.15")
 
     def c_configure_args(self):
         yield "--openssldir=/etc/ssl"
