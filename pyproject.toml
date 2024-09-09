@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "setupmeta"]
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 cache-dir = ".tox/.ruff_cache"
@@ -57,9 +58,6 @@ ignore = [
     # Not useful:
     "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
 ]
-
-[tool.ruff.lint.flake8-builtins]
-builtins-ignorelist = ["bin", "compile"]
 
 [tool.ruff.lint.isort]
 order-by-type = false

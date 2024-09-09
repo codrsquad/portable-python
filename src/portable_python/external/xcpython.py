@@ -143,7 +143,7 @@ class Openssl(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://www.openssl.org/source/openssl-{self.version}.tar.gz"
+        return f"https://github.com/openssl/openssl/releases/download/openssl-{self.version}/openssl-{self.version}.tar.gz"
 
     @property
     def version(self):
