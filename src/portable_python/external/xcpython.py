@@ -143,12 +143,18 @@ class Openssl(ModuleBuilder):
 
     @property
     def url(self):
+        if self.version and self.version.startswith("1.1.1"):
+            # Not sure why URL suddenly changed for this on github...
+            vfolder = self.version.replace(".", "_")
+            return f"https://github.com/openssl/openssl/releases/download/OpenSSL_{vfolder}/openssl-{self.version}.tar.gz"
+
         return f"https://github.com/openssl/openssl/releases/download/openssl-{self.version}/openssl-{self.version}.tar.gz"
 
     @property
     def version(self):
         # See https://endoflife.date/openssl
         # This default here picks the most conservative longest supported version
+        return self.cfg_version("1.1.1w")
         return self.cfg_version("3.0.15")
 
     def c_configure_args(self):
