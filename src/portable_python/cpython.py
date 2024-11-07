@@ -203,7 +203,8 @@ class Cpython(PythonBuilder):
             make_args.append(f"PROFILE_TASK={pgo_tests}")
 
         self.run_make(*make_args)
-        self.run_make("install", f"DESTDIR={self.destdir}")
+        # Don't parallelize `make install`, see https://github.com/python/cpython/issues/109796
+        self.run_make("install", f"DESTDIR={self.destdir}", cpu_count=0)
 
     def _finalize(self):
         is_shared = self.setup.prefix or self.has_configure_opt("--enable-shared", "yes")
