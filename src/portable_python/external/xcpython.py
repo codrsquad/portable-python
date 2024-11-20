@@ -244,8 +244,8 @@ class Readline(ModuleBuilder):
             "--disable-docs",
             "--enable-portable-binary",
         )
-        self.run_make(cpu_count=0)
-        self.run_make("install", cpu_count=0)
+        self.run_make()
+        self.run_make("install")
 
 
 class Sqlite(ModuleBuilder):

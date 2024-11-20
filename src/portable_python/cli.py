@@ -14,19 +14,21 @@ LOG = logging.getLogger(__name__)
 @runez.click.group()
 @runez.click.version()
 @runez.click.color()
-@runez.click.debug("-v")
 @runez.click.dryrun("-n")
 @click.option("--config", "-c", metavar="PATH", default="portable-python.yml", show_default=True, help="Path to config file to use")
+@click.option("--quiet", "-q", is_flag=True, help="Turn off DEBUG logging")
 @click.option("--target", "-t", hidden=True, help="For internal use / testing")
-def main(debug, config, target):
+def main(config, quiet, target):
     """
     Build (optionally portable) python binaries
     """
+    level = logging.INFO if quiet else logging.DEBUG
     runez.system.AbortException = SystemExit
     runez.log.setup(
-        debug=debug,
+        debug=not quiet,
+        level=level,
         console_format="%(levelname)s %(message)s",
-        console_level=logging.INFO,
+        console_level=level,
         default_logger=LOG.info,
         locations=None,
     )
