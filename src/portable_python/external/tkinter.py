@@ -116,4 +116,4 @@ class TkInter(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("8.6.10")
+        return self.cfg_version("8.6.15")

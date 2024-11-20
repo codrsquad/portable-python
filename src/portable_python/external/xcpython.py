@@ -74,7 +74,7 @@ class Gdbm(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.23")
+        return self.cfg_version("1.24")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -114,7 +114,7 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.4.4")
+        return self.cfg_version("3.4.6")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -178,7 +178,7 @@ class Ncurses(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("6.4")
+        return self.cfg_version("6.5")
 
     def c_configure_args(self):
         yield "--disable-shared"
@@ -231,7 +231,7 @@ class Readline(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("8.2")
+        return self.cfg_version("8.2.13")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -271,7 +271,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.45.1")
+        return self.cfg_version("3.47.0")
 
     def _do_linux_compile(self):
         self.run_configure(
@@ -325,7 +325,7 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("5.4.6")
+        return self.cfg_version("5.6.3")
 
     def _do_linux_compile(self):
         self.run_configure(
