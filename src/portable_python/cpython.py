@@ -204,7 +204,7 @@ class Cpython(PythonBuilder):
 
         self.run_make(*make_args)
         # Don't parallelize `make install`, see https://github.com/python/cpython/issues/109796
-        self.run_make("install", f"DESTDIR={self.destdir}", cpu_count=0)
+        self.run_make("install", f"DESTDIR={self.destdir}")
 
     def _finalize(self):
         is_shared = self.setup.prefix or self.has_configure_opt("--enable-shared", "yes")

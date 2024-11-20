@@ -13,8 +13,8 @@ class GettextTiny(ModuleBuilder):
         return self.cfg_version("0.3.2")
 
     def _do_linux_compile(self):
-        self.run_make("LIBINTL=NOOP", cpu_count=0)
-        self.run_make("LIBINTL=NOOP", f"DESTDIR={self.deps}", "prefix=/", "install", cpu_count=0)
+        self.run_make("LIBINTL=NOOP")
+        self.run_make("LIBINTL=NOOP", f"DESTDIR={self.deps}", "prefix=/", "install")
 
 
 class Toolchain(ModuleBuilder):

@@ -539,8 +539,7 @@ class ModuleBuilder:
             yield f"{self.deps_lib}/pkgconfig"
 
     def _do_run(self, program, *args, fatal=True, env=None):
-        logger = self._log_handler
-        return runez.run(program, *args, passthrough=logger, stdout=None, stderr=None, fatal=fatal, env=env, logger=logger or runez.UNSET)
+        return runez.run(program, *args, passthrough=self._log_handler, stdout=None, stderr=None, fatal=fatal, env=env)
 
     def run_configure(self, program, *args, prefix=None):
         """
@@ -558,11 +557,13 @@ class ModuleBuilder:
 
     def run_make(self, *args, program="make", cpu_count=None):
         cmd = program.split()
-        if cpu_count is None:
-            cpu_count = multiprocessing.cpu_count()
+        if cpu_count and cpu_count < 0:
+            available = multiprocessing.cpu_count()
+            if available and available > 0:
+                cpu_count += available
 
-        if cpu_count and cpu_count > 3:
-            cmd.append("-j%s" % (cpu_count - 2))
+        if cpu_count and cpu_count > 1:
+            cmd.append("-j%s" % cpu_count)
 
         self._do_run(*cmd, *args)
 
