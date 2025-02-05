@@ -491,6 +491,9 @@ class ModuleBuilder:
     def cfg_version(self, default):
         return PPG.config.get_value("%s-version" % self.m_name) or default
 
+    def cfg_patches(self):
+        return PPG.config.get_value("%s-patches" % self.m_name)
+
     @property
     def url(self):
         """Url of source tarball, if any"""
@@ -639,6 +642,7 @@ class ModuleBuilder:
                         folder = folder / self.m_build_cwd
 
                     with runez.CurrentFolder(folder):
+                        self._apply_patches()
                         self._prepare()
                         func()
                         self._finalize()
@@ -651,6 +655,15 @@ class ModuleBuilder:
 
                     else:
                         os.environ[k] = v
+
+    def _apply_patches(self):
+        if patches := self.cfg_patches():
+            for patch in patches:
+                if runez.DRYRUN:
+                    print(f"Would apply patch: {patch}")
+                else:
+                    print(f"Applying patch: {patch}")
+                    patch_file(patch["file"], patch["regex"], patch["replacement"])
 
     def _get_env_vars(self):
         """Yield all found env vars, first found wins"""
