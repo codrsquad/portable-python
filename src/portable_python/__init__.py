@@ -16,6 +16,7 @@ import os
 import pathlib
 import re
 from typing import ClassVar, List
+from string import Template
 
 import runez
 from runez.http import RestClient
@@ -490,6 +491,16 @@ class ModuleBuilder:
 
     def cfg_version(self, default):
         return PPG.config.get_value("%s-version" % self.m_name) or default
+
+    def cfg_url(self, version):
+        if config_url := PPG.config.get_value("%s-url" % self.m_name):
+            url_template = Template(config_url)
+            return url_template.substitute(version=version)
+
+    def cfg_configure(self, deps_lib):
+        if configure := PPG.config.get_value("%s-configure" % self.m_name):
+            configure_template = Template(configure)
+            return configure_template.substitute(deps_lib=deps_lib)
 
     @property
     def url(self):
