@@ -53,7 +53,7 @@ class Tk(ModuleBuilder):
     def c_configure_args(self):
         yield "--enable-shared=no"
         yield "--enable-threads"
-        yield f"--with-tcl={self.deps_lib}"
+        yield f"--with-tcl={self.deps_lib_dir}"
         yield "--without-x"
         if PPG.target.is_macos:  # pragma: no cover, tcl/tk is "best effort"
             yield "--enable-aqua=yes"
@@ -89,8 +89,8 @@ class Tix(ModuleBuilder):
     def c_configure_args(self):
         yield "--enable-shared=no"
         yield "--enable-threads"
-        yield f"--with-tcl={self.deps_lib}"
-        yield f"--with-tk={self.deps_lib}"
+        yield f"--with-tcl={self.deps_lib_dir}"
+        yield f"--with-tk={self.deps_lib_dir}"
         yield "--without-x"
 
     def _do_linux_compile(self):
