@@ -30,12 +30,12 @@ class Bdb(ModuleBuilder):
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "--enable-shared=no"
             yield "--enable-static=yes"
             yield "--enable-dbm"
             yield "--with-pic=yes"
-
 
     def _do_linux_compile(self):
         self.run_configure("../dist/configure", self.c_configure_args())
@@ -85,10 +85,11 @@ class Gdbm(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("1.24")
-    
+
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "--enable-shared=no"
             yield "--enable-static=yes"
@@ -122,22 +123,24 @@ class LibFFI(ModuleBuilder):
 
     @property
     def url(self):
-        return self.cfg_url(self.version) or f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
+        return (
+            self.cfg_url(self.version) or f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
+        )
 
     @property
     def version(self):
         return self.cfg_version("3.4.6")
-    
+
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "--enable-shared=no"
             yield "--enable-static=yes"
             yield "--with-pic=yes"
             yield PPG.target.is_macos and "--disable-multi-os-directory"
             yield "--disable-docs"
-        
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args())
@@ -162,7 +165,10 @@ class Openssl(ModuleBuilder):
         if self.version and self.version.startswith("1.1.1"):
             # Not sure why URL suddenly changed for this on github...
             vfolder = self.version.replace(".", "_")
-            return self.cfg_url(self.version) or f"https://github.com/openssl/openssl/releases/download/OpenSSL_{vfolder}/openssl-{self.version}.tar.gz"
+            return (
+                self.cfg_url(self.version)
+                or f"https://github.com/openssl/openssl/releases/download/OpenSSL_{vfolder}/openssl-{self.version}.tar.gz"
+            )
 
         return f"https://github.com/openssl/openssl/releases/download/openssl-{self.version}/openssl-{self.version}.tar.gz"
 
@@ -175,6 +181,7 @@ class Openssl(ModuleBuilder):
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "-v"
             yield "--openssldir=/etc/ssl"
@@ -203,6 +210,7 @@ class Ncurses(ModuleBuilder):
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "--disable-shared"
             yield "--enable-static"
@@ -259,6 +267,7 @@ class Readline(ModuleBuilder):
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "--enable-shared=no"
             yield "--enable-static=yes"
@@ -298,16 +307,17 @@ class Sqlite(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("3.47.0")
-    
+
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
-            yield "--enable-shared=no",
-            yield "--enable-static=yes",
-            yield "--disable-tcl",
-            yield "--disable-readline",
-            yield "--with-pic=yes",
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--disable-tcl"
+            yield "--disable-readline"
+            yield "--with-pic=yes"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args())
@@ -338,6 +348,7 @@ class Uuid(ModuleBuilder):
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "--enable-shared=no"
             yield "--enable-static=yes"
@@ -363,19 +374,20 @@ class Xz(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("5.6.3")
-    
+
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
-            yield "--enable-shared=no",
-            yield "--enable-static=yes",
-            yield "--with-pic=yes",
-            yield "--disable-rpath",
-            yield "--disable-dependency-tracking",
-            yield "--disable-doc",
-            yield "--disable-nls",
-            yield "--without-libintl-prefix",
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--with-pic=yes"
+            yield "--disable-rpath"
+            yield "--disable-dependency-tracking"
+            yield "--disable-doc"
+            yield "--disable-nls"
+            yield "--without-libintl-prefix"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args())
@@ -405,10 +417,11 @@ class Zlib(ModuleBuilder):
     @property
     def version(self):
         return self.cfg_version("1.3.1")
-    
+
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib):
             yield config_args
+
         else:
             yield "--static"
 
