@@ -13,28 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - run: pip install -U pip tox
-    - run: tox -e py
-    - uses: codecov/codecov-action@v3
-      with:
-        files: .tox/test-reports/coverage.xml
-
-  test-eol:
-    # EOL-ed versions of python are exercised on older linux distros for a while longer
-    # Testing against these versions will eventually be retired
-    runs-on: ubuntu-20.04
-
-    strategy:
-      matrix:
-        python-version: ["3.6", "3.7"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4

@@ -21,14 +21,24 @@ class Bdb(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://ftp.osuosl.org/pub/blfs/conglomeration/db/db-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://ftp.osuosl.org/pub/blfs/conglomeration/db/db-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("6.2.32")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--enable-dbm"
+            yield "--with-pic=yes"
+
     def _do_linux_compile(self):
-        self.run_configure("../dist/configure", "--enable-shared=no", "--enable-static=yes", "--enable-dbm", "--with-pic=yes")
+        self.run_configure("../dist/configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
 
@@ -46,7 +56,7 @@ class Bzip2(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://sourceware.org/pub/bzip2/bzip2-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://sourceware.org/pub/bzip2/bzip2-{self.version}.tar.gz"
 
     @property
     def version(self):
@@ -70,27 +80,30 @@ class Gdbm(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("1.24")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--with-pic=yes"
+            yield "--disable-nls"
+            yield "--disable-dependency-tracking"
+            yield "--disable-rpath"
+            yield "--disable-silent-rules"
+            yield "--without-libiconv-prefix"
+            yield "--without-libintl-prefix"
+            yield "--without-readline"
+
     def _do_linux_compile(self):
-        self.run_configure(
-            "./configure",
-            "--enable-shared=no",
-            "--enable-static=yes",
-            "--with-pic=yes",
-            "--enable-libgdbm-compat",
-            "--disable-dependency-tracking",
-            "--disable-nls",
-            "--disable-rpath",
-            "--disable-silent-rules",
-            "--without-libiconv-prefix",
-            "--without-libintl-prefix",
-            "--without-readline",
-        )
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
         runez.move(self.deps / "include/ndbm.h", self.deps / "include/gdbm-ndbm.h")
@@ -110,21 +123,27 @@ class LibFFI(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
+        return (
+            self.cfg_url(self.version) or f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz"
+        )
 
     @property
     def version(self):
         return self.cfg_version("3.4.6")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--with-pic=yes"
+            yield PPG.target.is_macos and "--disable-multi-os-directory"
+            yield "--disable-docs"
+
     def _do_linux_compile(self):
-        self.run_configure(
-            "./configure",
-            "--enable-shared=no",
-            "--enable-static=yes",
-            "--with-pic=yes",
-            PPG.target.is_macos and "--disable-multi-os-directory",
-            "--disable-docs",
-        )
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
 
@@ -146,7 +165,10 @@ class Openssl(ModuleBuilder):
         if self.version and self.version.startswith("1.1.1"):
             # Not sure why URL suddenly changed for this on github...
             vfolder = self.version.replace(".", "_")
-            return f"https://github.com/openssl/openssl/releases/download/OpenSSL_{vfolder}/openssl-{self.version}.tar.gz"
+            return (
+                self.cfg_url(self.version)
+                or f"https://github.com/openssl/openssl/releases/download/OpenSSL_{vfolder}/openssl-{self.version}.tar.gz"
+            )
 
         return f"https://github.com/openssl/openssl/releases/download/openssl-{self.version}/openssl-{self.version}.tar.gz"
 
@@ -157,11 +179,16 @@ class Openssl(ModuleBuilder):
         return self.cfg_version("3.0.15")
 
     def c_configure_args(self):
-        yield "--openssldir=/etc/ssl"
-        yield "no-shared", "no-idea", "no-tests"
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "-v"
+            yield "--openssldir=/etc/ssl"
+            yield "no-shared", "no-idea", "no-tests"
 
     def _do_linux_compile(self):
-        self.run_configure("./config", "-v", self.c_configure_args())
+        self.run_configure("./config", self.c_configure_args())
         self.run_make("depend")
         self.run_make()
         self.run_make("install_sw")  # See https://github.com/openssl/openssl/issues/8170
@@ -174,33 +201,37 @@ class Ncurses(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://ftp.gnu.org/pub/gnu/ncurses/ncurses-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://ftp.gnu.org/pub/gnu/ncurses/ncurses-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("6.5")
 
     def c_configure_args(self):
-        yield "--disable-shared"
-        yield "--enable-static"
-        yield "--without-ada"
-        yield "--disable-db-install"
-        yield "--without-manpages"
-        yield "--without-progs"
-        yield "--without-tests"
-        yield f"--with-pkg-config-libdir={self.deps_lib}/pkgconfig"
-        yield "--enable-pc-files"
-        yield "--with-debug=no"
-        yield "--with-gpm=no"
-        yield "--enable-widec"
-        yield "--enable-symlinks"
-        yield "--enable-sigwinch"
-        yield "--without-develop"
-        if PPG.target.is_linux:
-            yield "--with-terminfo-dirs=/etc/terminfo:/lib/terminfo:/usr/share/terminfo"
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
 
-        if PPG.target.is_macos:
-            yield "--with-terminfo-dirs=/usr/share/terminfo"
+        else:
+            yield "--disable-shared"
+            yield "--enable-static"
+            yield "--without-ada"
+            yield "--disable-db-install"
+            yield "--without-manpages"
+            yield "--without-progs"
+            yield "--without-tests"
+            yield f"--with-pkg-config-libdir={self.deps_lib}/pkgconfig"
+            yield "--enable-pc-files"
+            yield "--with-debug=no"
+            yield "--with-gpm=no"
+            yield "--enable-widec"
+            yield "--enable-symlinks"
+            yield "--enable-sigwinch"
+            yield "--without-develop"
+            if PPG.target.is_linux:
+                yield "--with-terminfo-dirs=/etc/terminfo:/lib/terminfo:/usr/share/terminfo"
+
+            if PPG.target.is_macos:
+                yield "--with-terminfo-dirs=/usr/share/terminfo"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args())
@@ -227,23 +258,27 @@ class Readline(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://ftp.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://ftp.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("8.2.13")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--with-curses"
+            yield "--enable-multibyte"
+            yield "--disable-install-examples"
+            yield "--disable-docs"
+            yield "--enable-portable-binary"
+
     def _do_linux_compile(self):
-        self.run_configure(
-            "./configure",
-            "--disable-shared",
-            "--enable-static",
-            "--with-curses",
-            "--enable-multibyte",
-            "--disable-install-examples",
-            "--disable-docs",
-            "--enable-portable-binary",
-        )
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
 
@@ -267,21 +302,25 @@ class Sqlite(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://github.com/sqlite/sqlite/archive/refs/tags/version-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://github.com/sqlite/sqlite/archive/refs/tags/version-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("3.47.0")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--disable-tcl"
+            yield "--disable-readline"
+            yield "--with-pic=yes"
+
     def _do_linux_compile(self):
-        self.run_configure(
-            "./configure",
-            "--enable-shared=no",
-            "--enable-static=yes",
-            "--disable-tcl",
-            "--disable-readline",
-            "--with-pic=yes",
-        )
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
 
@@ -300,14 +339,23 @@ class Uuid(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://sourceforge.net/projects/libuuid/files/libuuid-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://sourceforge.net/projects/libuuid/files/libuuid-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("1.0.3")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--with-pic=yes"
+
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--enable-shared=no", "--enable-static=yes", "--with-pic=yes")
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
 
@@ -321,24 +369,28 @@ class Xz(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://downloads.sourceforge.net/project/lzmautils/xz-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://downloads.sourceforge.net/project/lzmautils/xz-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("5.6.3")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--enable-shared=no"
+            yield "--enable-static=yes"
+            yield "--with-pic=yes"
+            yield "--disable-rpath"
+            yield "--disable-dependency-tracking"
+            yield "--disable-doc"
+            yield "--disable-nls"
+            yield "--without-libintl-prefix"
+
     def _do_linux_compile(self):
-        self.run_configure(
-            "./configure",
-            "--enable-shared=no",
-            "--enable-static=yes",
-            "--with-pic=yes",
-            "--disable-rpath",
-            "--disable-dependency-tracking",
-            "--disable-doc",
-            "--disable-nls",
-            "--without-libintl-prefix",
-        )
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
 
@@ -360,13 +412,20 @@ class Zlib(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://zlib.net/fossils/zlib-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://zlib.net/fossils/zlib-{self.version}.tar.gz"
 
     @property
     def version(self):
         return self.cfg_version("1.3.1")
 
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib):
+            yield config_args
+
+        else:
+            yield "--static"
+
     def _do_linux_compile(self):
-        self.run_configure("./configure", "--static")
+        self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
