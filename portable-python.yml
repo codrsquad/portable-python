@@ -46,3 +46,11 @@ cpython-additional-packages:
 # openssl-configure:
 #  - -v
 #  - --openssldir=/etc/ssl
+
+
+# Uncomment if you need to patch the source code of a module before compiling it
+#cpython-modules: zlib
+#zlib-patches:
+#  - file: configure
+#    regex: "# start off configure.log"
+#    replacement: "echo starting zlib configure script with patches"
