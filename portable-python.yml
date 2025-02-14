@@ -20,6 +20,34 @@ cpython-additional-packages:
 #  - Pillow==10.0.0
 #  - flake8==6.0.0
 
+# Uncomment to download, compile and statically link Python module dependencies
+# cpython-modules: libffi zlib xz bzip2 openssl uuid sqlite
+
+# Uncomment to override a dependency version
+# libffi-version: 3.3
+
+# Uncomment to override cpython or a dependency source URL
+# Note: string "$version" will be replaced with version string (e.g. 1.2.3)
+# cpython-url: https://my-cpython-mirror/cpython-$version.tar.gz
+# zlib-url: https://my-zlib-mirror/zlib-$version.tar.gz
+
+# Uncomment to override the ./configure arguments for a dependency
+# Note: this will replace the default arguments, not extend them
+# Note: the string "$deps_lib" will be replaced with the output libs directory for the module
+# openssl-configure: -v --openssldir=/etc/ssl no-shared no-idea no-tests no-dso
+
+# Note: It's also possible to set configure args per platform/arch
+# linux:
+  # openssl-configure: --with-terminfo-dirs=/etc/terminfo:/lib/terminfo:/usr/share/terminfo
+# macos:
+  # openssl-configure: --with-terminfo-dirs=/usr/share/terminfo
+
+# Note: you can also use one argument per line syntax
+# openssl-configure:
+#  - -v
+#  - --openssldir=/etc/ssl
+
+
 # Uncomment if you need to patch the source code of a module before compiling it
 #cpython-modules: zlib
 #zlib-patches:
