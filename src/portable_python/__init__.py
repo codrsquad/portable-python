@@ -15,8 +15,8 @@ import multiprocessing
 import os
 import pathlib
 import re
-from typing import ClassVar, List
 from string import Template
+from typing import ClassVar, List
 
 import runez
 from runez.http import RestClient
