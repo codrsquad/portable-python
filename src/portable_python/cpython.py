@@ -168,7 +168,9 @@ class Cpython(PythonBuilder):
             yield f"--with-tcltk-includes=-I{self.deps}/include"
 
             lib_dir_flags = " ".join(f"-L{lib_dir}" for lib_dir in self.deps_lib_dirs)
-            yield f"--with-tcltk-libs={lib_dir_flags} -ltcl{version.mm} -ltk{version.mm}"
+            yield f"--with-tcltk-libs={lib_dir_flags}"
+            yield f"-ltcl{version.mm}"
+            yield f"-ltk{version.mm}"
 
     @runez.cached_property
     def prefix_lib_folder(self):
