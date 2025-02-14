@@ -29,7 +29,11 @@ cpython-additional-packages:
 # Uncomment to override cpython or a dependency source URL
 # Note: string "$version" will be replaced with version string (e.g. 1.2.3)
 # cpython-url: https://my-cpython-mirror/cpython-$version.tar.gz
+# cpython-http-headers:
+#  - Authorization: Bearer ${GITHUB_TOKEN}
 # zlib-url: https://my-zlib-mirror/zlib-$version.tar.gz
+# zlib-http-headers:
+#  - Authorization: Bearer ${GITHUB_TOKEN}
 
 # Uncomment to override the ./configure arguments for a dependency
 # Note: this will replace the default arguments, not extend them

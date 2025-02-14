@@ -492,6 +492,10 @@ class ModuleBuilder:
     def cfg_version(self, default):
         return PPG.config.get_value("%s-version" % self.m_name) or default
 
+    def cfg_http_headers(self):
+        if config_http_headers := PPG.config.get_value("%s-http-headers" % self.m_name):
+            return config_http_headers
+
     def cfg_url(self, version):
         if config_url := PPG.config.get_value("%s-url" % self.m_name):
             url_template = Template(config_url)
@@ -643,7 +647,14 @@ class ModuleBuilder:
                     https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
                     if https_proxy:
                         proxies["https"] = https_proxy
-                    RestClient().download(self.url, path, proxies=proxies)
+
+                    expanded_url = os.path.expandvars(self.url)
+                    expanded_http_headers = {}
+                    if headers := self.cfg_http_headers():
+                        for header_dict in headers:
+                            for key, value in header_dict.items():
+                                expanded_http_headers[os.path.expandvars(key)] = os.path.expandvars(value)
+                    RestClient().download(expanded_url, path, proxies=proxies, headers=expanded_http_headers)
 
                 runez.decompress(path, self.m_src_build, simplify=True)
 
