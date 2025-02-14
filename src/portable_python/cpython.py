@@ -8,8 +8,8 @@ import yaml
 from runez.pyenv import Version
 
 from portable_python import LOG, patch_file, patch_folder, PPG, PythonBuilder
-from portable_python.external.tkinter import TkInter
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
+from portable_python.external.xtkinter import TkInter
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
 # https://github.com/docker-library/python/issues/160
