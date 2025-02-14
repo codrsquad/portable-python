@@ -561,7 +561,7 @@ class ModuleBuilder:
     def xenv_PKG_CONFIG_PATH(self):
         yield from os.environ.get("PKG_CONFIG_PATH", "").split(":")
         if self.modules.selected:
-            yield f"{self.deps_lib_dir}/pkgconfig"
+            yield from (f"{lib_dir}/pkgconfig" for lib_dir in self.deps_lib_dirs)
 
     def _do_run(self, program, *args, fatal=True, env=None):
         return runez.run(program, *args, passthrough=self._log_handler, stdout=None, stderr=None, fatal=fatal, env=env)
