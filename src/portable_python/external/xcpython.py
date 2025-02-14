@@ -28,7 +28,7 @@ class Bdb(ModuleBuilder):
         return self.cfg_version("6.2.32")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -87,7 +87,7 @@ class Gdbm(ModuleBuilder):
         return self.cfg_version("1.24")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -132,7 +132,7 @@ class LibFFI(ModuleBuilder):
         return self.cfg_version("3.4.6")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -179,7 +179,7 @@ class Openssl(ModuleBuilder):
         return self.cfg_version("3.0.15")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -208,7 +208,7 @@ class Ncurses(ModuleBuilder):
         return self.cfg_version("6.5")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -219,7 +219,7 @@ class Ncurses(ModuleBuilder):
             yield "--without-manpages"
             yield "--without-progs"
             yield "--without-tests"
-            yield f"--with-pkg-config-libdir={self.deps_lib}/pkgconfig"
+            yield f"--with-pkg-config-libdir={self.deps_lib_dir}/pkgconfig"
             yield "--enable-pc-files"
             yield "--with-debug=no"
             yield "--with-gpm=no"
@@ -265,7 +265,7 @@ class Readline(ModuleBuilder):
         return self.cfg_version("8.2.13")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -309,7 +309,7 @@ class Sqlite(ModuleBuilder):
         return self.cfg_version("3.47.0")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -346,7 +346,7 @@ class Uuid(ModuleBuilder):
         return self.cfg_version("1.0.3")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -376,7 +376,7 @@ class Xz(ModuleBuilder):
         return self.cfg_version("5.6.3")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:
@@ -419,7 +419,7 @@ class Zlib(ModuleBuilder):
         return self.cfg_version("1.3.1")
 
     def c_configure_args(self):
-        if config_args := self.cfg_configure(self.deps_lib):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
             yield config_args
 
         else:

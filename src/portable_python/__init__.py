@@ -497,10 +497,10 @@ class ModuleBuilder:
             url_template = Template(config_url)
             return url_template.substitute(version=version)
 
-    def cfg_configure(self, deps_lib):
+    def cfg_configure(self, deps_lib_dir, deps_lib64_dir):
         if configure := PPG.config.get_value("%s-configure" % self.m_name):
             configure_template = Template(configure)
-            return configure_template.substitute(deps_lib=deps_lib)
+            return configure_template.substitute(lib_dir=deps_lib_dir, lib64_dir=deps_lib64_dir)
 
     def cfg_patches(self):
         return PPG.config.get_value("%s-patches" % self.m_name)
@@ -521,8 +521,19 @@ class ModuleBuilder:
         return self.setup.folders.deps
 
     @property
-    def deps_lib(self):
+    def deps_lib_dir(self):
         return self.deps / "lib"
+
+    @property
+    def deps_lib64_dir(self):
+        return self.deps / "lib64"
+
+    @property
+    def deps_lib_dirs(self):
+        lib_dirs = [self.deps_lib_dir]
+        if self.deps_lib64_dir.exists():
+            lib_dirs.append(self.deps_lib64_dir)
+        return lib_dirs
 
     def xenv_CPATH(self):
         folder = self.deps / "include"
@@ -536,7 +547,7 @@ class ModuleBuilder:
 
     def xenv_LDFLAGS(self):
         if self.modules.selected:
-            yield f"-L{self.deps_lib}"
+            yield from (f"-L{lib_dir}" for lib_dir in self.deps_lib_dirs)
 
     def xenv_PATH(self):
         yield f"{self.deps}/bin"
@@ -550,7 +561,7 @@ class ModuleBuilder:
     def xenv_PKG_CONFIG_PATH(self):
         yield from os.environ.get("PKG_CONFIG_PATH", "").split(":")
         if self.modules.selected:
-            yield f"{self.deps_lib}/pkgconfig"
+            yield from (f"{lib_dir}/pkgconfig" for lib_dir in self.deps_lib_dirs)
 
     def _do_run(self, program, *args, fatal=True, env=None):
         return runez.run(program, *args, passthrough=self._log_handler, stdout=None, stderr=None, fatal=fatal, env=env)
@@ -771,10 +782,12 @@ class PythonBuilder(ModuleBuilder):
         # Some libs get funky permissions for some reason
         super()._prepare()
         self.setup.ensure_clean_folder(self.install_folder)
-        for path in runez.ls_dir(self.deps_lib):
-            if not path.name.endswith(".la"):
-                expected = 0o755 if path.is_dir() else 0o644
-                current = path.stat().st_mode & 0o777
-                if current != expected:
-                    LOG.info("Corrected permissions for %s (was %s)", runez.short(path), oct(current))
-                    path.chmod(expected)
+
+        for lib_dir in self.deps_lib_dirs:
+            for path in runez.ls_dir(lib_dir):
+                if not path.name.endswith(".la"):
+                    expected = 0o755 if path.is_dir() else 0o644
+                    current = path.stat().st_mode & 0o777
+                    if current != expected:
+                        LOG.info("Corrected permissions for %s (was %s)", runez.short(path), oct(current))
+                        path.chmod(expected)

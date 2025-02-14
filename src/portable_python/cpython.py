@@ -110,7 +110,7 @@ class Cpython(PythonBuilder):
         return f"https://www.python.org/ftp/python/{self.version.main}/Python-{self.version}.tar.xz"
 
     def xenv_LDFLAGS_NODIST(self):
-        yield f"-L{self.deps_lib}"
+        yield from (f"-L{lib_dir}" for lib_dir in self.deps_lib_dirs)
         if PPG.target.is_linux:
             yield "-Wl,-z,origin"
             # rpath intentionally long to give 'patchelf' some room
@@ -142,7 +142,7 @@ class Cpython(PythonBuilder):
 
         if not self.has_configure_opt("--with-system-ffi"):
             if self.active_module(LibFFI):
-                yield f"LIBFFI_INCLUDEDIR={self.deps_lib}"
+                yield f"LIBFFI_INCLUDEDIR={self.deps_lib_dir}"
                 yield "--with-system-ffi=no"
 
             else:
@@ -166,7 +166,11 @@ class Cpython(PythonBuilder):
             # TODO: this doesn't seem to be enough, on macos cpython's ./configure still picks up the shared macos tcl/tk libs
             version = Version(tkinter.version)
             yield f"--with-tcltk-includes=-I{self.deps}/include"
-            yield f"--with-tcltk-libs=-L{self.deps_lib} -ltcl{version.mm} -ltk{version.mm}"
+
+            lib_dir_flags = " ".join(f"-L{lib_dir}" for lib_dir in self.deps_lib_dirs)
+            yield f"--with-tcltk-libs={lib_dir_flags}"
+            yield f"-ltcl{version.mm}"
+            yield f"-ltk{version.mm}"
 
     @runez.cached_property
     def prefix_lib_folder(self):
