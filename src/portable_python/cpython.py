@@ -8,8 +8,8 @@ import yaml
 from runez.pyenv import Version
 
 from portable_python import LOG, patch_file, patch_folder, PPG, PythonBuilder
-from portable_python.external.tkinter import TkInter
 from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib
+from portable_python.external.xtkinter import TkInter
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
 # https://github.com/docker-library/python/issues/160
@@ -232,7 +232,7 @@ class Cpython(PythonBuilder):
 
                 self.run_python(cmd)
 
-            self.run_python("-mpip", "install", *runez.flattened(additional))
+            self.run_python("-mpip", "install", "--no-cache-dir", "--upgrade", *runez.flattened(additional))
 
         runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
         PPG.config.ensure_main_file_symlinks(self)
