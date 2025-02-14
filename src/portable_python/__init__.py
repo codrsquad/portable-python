@@ -497,10 +497,10 @@ class ModuleBuilder:
             url_template = Template(config_url)
             return url_template.substitute(version=version)
 
-    def cfg_configure(self, deps_lib):
+    def cfg_configure(self, deps_lib_dir, deps_lib64_dir):
         if configure := PPG.config.get_value("%s-configure" % self.m_name):
             configure_template = Template(configure)
-            return configure_template.substitute(deps_lib=deps_lib)
+            return configure_template.substitute(lib_dir=deps_lib_dir, lib64_dir=deps_lib64_dir)
 
     def cfg_patches(self):
         return PPG.config.get_value("%s-patches" % self.m_name)
