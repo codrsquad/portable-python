@@ -219,7 +219,7 @@ class Ncurses(ModuleBuilder):
             yield "--without-manpages"
             yield "--without-progs"
             yield "--without-tests"
-            yield f"--with-pkg-config-libdir={self.deps_lib}/pkgconfig"
+            yield f"--with-pkg-config-libdir={self.deps_lib_dir}/pkgconfig"
             yield "--enable-pc-files"
             yield "--with-debug=no"
             yield "--with-gpm=no"
