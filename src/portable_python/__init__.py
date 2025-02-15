@@ -507,6 +507,9 @@ class ModuleBuilder:
             url_expanded = os.path.expandvars(url_subbed)
             return url_expanded
 
+    def cfg_src_suffix(self):
+        return PPG.config.get_value("%s-src-suffix" % self.m_name)
+
     def cfg_configure(self, deps_lib_dir, deps_lib64_dir):
         if configure := PPG.config.get_value("%s-configure" % self.m_name):
             configure_template = Template(configure)
@@ -642,9 +645,11 @@ class ModuleBuilder:
                         self._finalize()
                         return
 
-                if ".tar.gz" not in self.url and ".zip" not in self.url:
-                    # TODO: add self.cfg_src_extension to remove assumption of .tar.gz
-                    basename = f"{self.m_name}-{self.version}.tar.gz"
+                # Some src_url don't end in file extension, such as with redirects
+                # Github releases asset endpoint is this way .../releases/assets/48151
+                if self.url.endswith(".zip", ".tar.gz"):
+                    suffix = self.cfg_src_suffix() or ".tar.gz"
+                    basename = f"{self.m_name}-{self.version}.{suffix}"
                 else:
                     # Split on '#' for urls that include a checksum, such as #sha256=... fragment
                     basename = runez.basename(self.url, extension_marker="#")
