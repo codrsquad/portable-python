@@ -494,12 +494,18 @@ class ModuleBuilder:
 
     def cfg_http_headers(self):
         if config_http_headers := PPG.config.get_value("%s-http-headers" % self.m_name):
-            return config_http_headers
+            expanded_http_headers = {}
+            for header_dict in config_http_headers:
+                for key, value in header_dict.items():
+                    expanded_http_headers[os.path.expandvars(key)] = os.path.expandvars(value)
+            return expanded_http_headers
 
     def cfg_url(self, version):
         if config_url := PPG.config.get_value("%s-url" % self.m_name):
             url_template = Template(config_url)
-            return url_template.substitute(version=version)
+            url_subbed = url_template.substitute(version=version)
+            url_expanded = os.path.expandvars(url_subbed)
+            return url_expanded
 
     def cfg_configure(self, deps_lib_dir, deps_lib64_dir):
         if configure := PPG.config.get_value("%s-configure" % self.m_name):
@@ -636,8 +642,13 @@ class ModuleBuilder:
                         self._finalize()
                         return
 
-                # Split on '#' for urls that include a checksum, such as #sha256=... fragment
-                basename = runez.basename(self.url, extension_marker="#")
+                if ".tar.gz" not in self.url and ".zip" not in self.url:
+                    # TODO: add self.cfg_src_extension to remove assumption of .tar.gz
+                    basename = f"{self.m_name}-{self.version}.tar.gz"
+                else:
+                    # Split on '#' for urls that include a checksum, such as #sha256=... fragment
+                    basename = runez.basename(self.url, extension_marker="#")
+
                 path = self.setup.folders.sources / basename
                 if not path.exists():
                     proxies = {}
@@ -648,13 +659,7 @@ class ModuleBuilder:
                     if https_proxy:
                         proxies["https"] = https_proxy
 
-                    expanded_url = os.path.expandvars(self.url)
-                    expanded_http_headers = {}
-                    if headers := self.cfg_http_headers():
-                        for header_dict in headers:
-                            for key, value in header_dict.items():
-                                expanded_http_headers[os.path.expandvars(key)] = os.path.expandvars(value)
-                    RestClient().download(expanded_url, path, proxies=proxies, headers=expanded_http_headers)
+                    RestClient().download(self.url, path, proxies=proxies, headers=self.headers)
 
                 runez.decompress(path, self.m_src_build, simplify=True)
 
