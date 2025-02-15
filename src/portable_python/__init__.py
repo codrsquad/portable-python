@@ -647,7 +647,7 @@ class ModuleBuilder:
 
                 # Some src_url don't end in file extension, such as with redirects
                 # Github releases asset endpoint is this way .../releases/assets/48151
-                if self.url.endswith(".zip", ".tar.gz"):
+                if not self.url.endswith(".zip", ".tar.gz"):
                     suffix = self.cfg_src_suffix() or ".tar.gz"
                     basename = f"{self.m_name}-{self.version}.{suffix}"
                 else:
