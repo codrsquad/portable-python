@@ -37,6 +37,7 @@ cpython-additional-packages:
 #
 # The .tar.gz in projects public releases has additional files not present the tarball of the git tag
 # uuid-url: https://my-github-enterprise/api/v3/repos/opensource/libuuid/releases/assets/48151
+# uuid-src-suffix: .tar.gz
 # uuid-http-headers:
 #  - Authorization: Bearer ${GITHUB_TOKEN}
 #    Accept: application/octet-stream
