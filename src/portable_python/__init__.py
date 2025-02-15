@@ -504,8 +504,7 @@ class ModuleBuilder:
         if config_url := PPG.config.get_value("%s-url" % self.m_name):
             url_template = Template(config_url)
             url_subbed = url_template.substitute(version=version)
-            url_expanded = os.path.expandvars(url_subbed)
-            return url_expanded
+            return os.path.expandvars(url_subbed)
 
     def cfg_src_suffix(self):
         return PPG.config.get_value("%s-src-suffix" % self.m_name)
@@ -522,6 +521,16 @@ class ModuleBuilder:
     def url(self):
         """Url of source tarball, if any"""
         return ""
+
+    @property
+    def headers(self):
+        """Headers for connecting to source url, if any"""
+        return self.cfg_http_headers()
+
+    @property
+    def src_suffix(self):
+        """Suffix of src archive for when URL doesn't end in the file extension"""
+        return self.cfg_src_suffix()
 
     @property
     def version(self):
@@ -645,10 +654,10 @@ class ModuleBuilder:
                         self._finalize()
                         return
 
-                # Some src_url don't end in file extension, such as with redirects
+                # Some URL's may not end in file extension, such as with redirects.
                 # Github releases asset endpoint is this way .../releases/assets/48151
-                if not self.url.endswith(".zip", ".tar.gz"):
-                    suffix = self.cfg_src_suffix() or ".tar.gz"
+                if not self.url.endswith((".zip", ".tar.gz")):
+                    suffix = self.src_suffix or ".tar.gz"
                     basename = f"{self.m_name}-{self.version}.{suffix}"
                 else:
                     # Split on '#' for urls that include a checksum, such as #sha256=... fragment
