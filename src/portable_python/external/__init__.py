@@ -6,7 +6,7 @@ class GettextTiny(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://github.com/sabotage-linux/gettext-tiny/archive/refs/tags/v{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://github.com/sabotage-linux/gettext-tiny/archive/refs/tags/v{self.version}.tar.gz"
 
     @property
     def version(self):

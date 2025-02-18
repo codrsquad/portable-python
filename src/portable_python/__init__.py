@@ -492,10 +492,23 @@ class ModuleBuilder:
     def cfg_version(self, default):
         return PPG.config.get_value("%s-version" % self.m_name) or default
 
+    def cfg_http_headers(self):
+        if config_http_headers := PPG.config.get_value("%s-http-headers" % self.m_name):
+            expanded_http_headers = {}
+            for header_dict in config_http_headers:
+                for key, value in header_dict.items():
+                    expanded_http_headers[os.path.expandvars(key)] = os.path.expandvars(value)
+
+            return expanded_http_headers
+
     def cfg_url(self, version):
         if config_url := PPG.config.get_value("%s-url" % self.m_name):
             url_template = Template(config_url)
-            return url_template.substitute(version=version)
+            url_subbed = url_template.substitute(version=version)
+            return os.path.expandvars(url_subbed)
+
+    def cfg_src_suffix(self):
+        return PPG.config.get_value("%s-src-suffix" % self.m_name)
 
     def cfg_configure(self, deps_lib_dir, deps_lib64_dir):
         if configure := PPG.config.get_value("%s-configure" % self.m_name):
@@ -509,6 +522,16 @@ class ModuleBuilder:
     def url(self):
         """Url of source tarball, if any"""
         return ""
+
+    @property
+    def headers(self):
+        """Headers for connecting to source url, if any"""
+        return self.cfg_http_headers()
+
+    @property
+    def src_suffix(self):
+        """Suffix of src archive for when URL doesn't end in the file extension"""
+        return self.cfg_src_suffix()
 
     @property
     def version(self):
@@ -632,8 +655,16 @@ class ModuleBuilder:
                         self._finalize()
                         return
 
+                # Some URL's may not end in file extension, such as with redirects.
+                # Github releases asset endpoint is this way .../releases/assets/48151
+
                 # Split on '#' for urls that include a checksum, such as #sha256=... fragment
                 basename = runez.basename(self.url, extension_marker="#")
+                if not basename.endswith((".zip", ".tar.gz")):
+                    suffix = self.src_suffix or ".tar.gz"
+                    suffix = ".%s" % (suffix.strip("."))  # Ensure it starts with a dot (in case config forgot leading dot)
+                    basename = f"{self.m_name}-{self.version}{suffix}"
+
                 path = self.setup.folders.sources / basename
                 if not path.exists():
                     proxies = {}
@@ -643,7 +674,8 @@ class ModuleBuilder:
                     https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
                     if https_proxy:
                         proxies["https"] = https_proxy
-                    RestClient().download(self.url, path, proxies=proxies)
+
+                    RestClient().download(self.url, path, proxies=proxies, headers=self.headers)
 
                 runez.decompress(path, self.m_src_build, simplify=True)
 

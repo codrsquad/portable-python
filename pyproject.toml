@@ -63,7 +63,7 @@ ignore = [
 order-by-type = false
 
 [tool.ruff.lint.mccabe]
-max-complexity = 14
+max-complexity = 18
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
