@@ -12,8 +12,8 @@ def test_config(cli):
     # Exercise custom url in config
     cli.run("-ntmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mbzip2")
     assert cli.succeeded
-    assert "Would download https://my-enterprise/.../assets/bzip2/123" in cli.logged
-    assert "Would untar build/sources/bzip2-1.2.3.tar.gz -> build/components/bzip2" in cli.logged
+    assert "Would download https://my-enterprise/.../assets/bzip2/123#sha256=123...def\n" in cli.logged
+    assert "Would untar build/sources/bzip2-1.2.3.tar.gz -> build/components/bzip2\n" in cli.logged
 
     cli.run("-ntmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mnone")
     assert cli.succeeded
