@@ -40,3 +40,11 @@ cpython-pep668-externally-managed:
 
 cpython-configure:
   - --enable-shared
+
+# Exercise custom url
+bzip2-url: https://my-enterprise/.../assets/bzip2/123
+bzip2-version: 1.2.3
+bzip2-src-suffix: tar.gz  # Forgot leading dot on purpose
+bzip2-http-headers:
+  - Authorization: Bearer foo
+    Accept: application/octet-stream

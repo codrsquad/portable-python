@@ -9,8 +9,15 @@ def test_config(cli):
     with pytest.raises(runez.system.AbortException):
         PPG.config.parsed_yaml("a: b\ninvalid line", "testing")
 
+    # Exercise custom url in config
+    cli.run("-ntmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mbzip2")
+    assert cli.succeeded
+    assert "Would download https://my-enterprise/.../assets/bzip2/123" in cli.logged
+    assert "Would untar build/sources/bzip2-1.2.3.tar.gz -> build/components/bzip2" in cli.logged
+
     cli.run("-ntmacos-arm64", "-c", cli.tests_path("sample-config1.yml"), "build", "3.9.7", "-mnone")
     assert cli.succeeded
+
     assert " -mpip install --no-cache-dir --upgrade my-additional-package" in cli.logged
     assert "env MACOSX_DEPLOYMENT_TARGET=12" in cli.logged  # Comes from more specific macos-arm64.yml
     assert " -> dist/cpython-3.9.7-macos-arm64.tar.xz" in cli.logged  # Comes from macos.yml (not defined in macos-arm64.yml)

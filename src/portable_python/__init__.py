@@ -498,6 +498,7 @@ class ModuleBuilder:
             for header_dict in config_http_headers:
                 for key, value in header_dict.items():
                     expanded_http_headers[os.path.expandvars(key)] = os.path.expandvars(value)
+
             return expanded_http_headers
 
     def cfg_url(self, version):
@@ -656,12 +657,13 @@ class ModuleBuilder:
 
                 # Some URL's may not end in file extension, such as with redirects.
                 # Github releases asset endpoint is this way .../releases/assets/48151
-                if not self.url.endswith((".zip", ".tar.gz")):
+
+                # Split on '#' for urls that include a checksum, such as #sha256=... fragment
+                basename = runez.basename(self.url, extension_marker="#")
+                if not basename.endswith((".zip", ".tar.gz")):
                     suffix = self.src_suffix or ".tar.gz"
-                    basename = f"{self.m_name}-{self.version}.{suffix}"
-                else:
-                    # Split on '#' for urls that include a checksum, such as #sha256=... fragment
-                    basename = runez.basename(self.url, extension_marker="#")
+                    suffix = ".%s" % (suffix.strip("."))  # Ensure it starts with a dot (in case config forgot leading dot)
+                    basename = f"{self.m_name}-{self.version}{suffix}"
 
                 path = self.setup.folders.sources / basename
                 if not path.exists():
