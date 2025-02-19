@@ -1,16 +1,11 @@
-# How to create a dev venv
+# Local development
 
-If you have tox, you can run: `tox -re venv`, that will get you a `.venv/`
-ready to go.
-
-If you don't have tox, you can run this (any python 3.6+ will do):
+Create a dev venv:
 
 ```shell
-rm -rf .venv
-/usr/bin/python3 -mvenv .venv
-.venv/bin/pip install -U pip
-.venv/bin/pip install -r requirements.txt -r tests/requirements.txt
-.venv/bin/pip install -e .
+uv venv
+uv pip install -r requirements.txt -r tests/requirements.txt
+uv pip install -e .
 ```
 
 You can then run `portable-python` from that venv:
@@ -24,10 +19,8 @@ You can then run `portable-python` from that venv:
 # Run the tests
 
 If you have tox, just run: `tox` to run all the tests. You can also run:
-- `tox -e py39` to run with just one python version
+- `tox -e py313` to run with just one python version
 - `tox -e style` to check PEP8 formatting
-- `tox -r` if you changed any `requirements.txt` (`-r` is short for `--recreate`)
-- `tox -re py39` to recreate and run `py39` only
 - etc
 
 If you don't have tox, you can run the tests with: `.venv/bin/pytest tests/`
@@ -49,7 +42,7 @@ You can easily run `portable-python` in a debugger.
 In PyCharm for example, you would simply browse to `.venv/bin/portable-python`
 then right-click and select "Debug portable-python".
 You can then edit the build/run configuration in PyCharm, add some "Parameters" to it,
-like for example `build-report 3.10.5`, and then set breakpoints wherever you like.
+like for example `build-report 3.13.2`, and then set breakpoints wherever you like.
 
 There is a `--dryrun` mode that can come in very handy for rapid iterations.
 
@@ -71,5 +64,5 @@ docker run -it -v./:/src/ portable-python-jammy /bin/bash
 Now inside docker, you run a build:
 
 ```shell
-portable-python build 3.11.4
+portable-python build 3.13.2
 ```

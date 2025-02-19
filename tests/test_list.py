@@ -7,7 +7,7 @@ REST_CLIENT = RestClient()
 GH_CPYTHON_SAMPLE = """
 [
 {"ref": "refs/tags/v3.9.7"},
-{"ref": "refs/tags/v3.8.12"},
+{"ref": "refs/tags/v3.13.3"},
 {"ref": "refs/tags/v3.5.10"}
 ]
 """
@@ -15,7 +15,7 @@ GH_CPYTHON_SAMPLE = """
 PYTHON_ORG_SAMPLE = """
 <a href="3.9.5/">3.9.5/</a>
 <a href="3.9.6/">3.9.6/</a>
-<a href="3.8.11/">3.9.11/</a>
+<a href="3.13.2/">3.13.2/</a>
 <a href="3.5.10/">3.5.10/</a>
 """
 
@@ -34,12 +34,12 @@ def test_list(cli, monkeypatch):
     assert setup.python_spec.version == PPG.cpython.latest
 
     cp = CPythonFamily()
-    assert str(cp.latest) == "3.9.6"
+    assert str(cp.latest) == "3.13.2"
 
     monkeypatch.setattr(PPG.cpython, "_versions", None)
     cli.run("list")
     assert cli.succeeded
-    assert cli.logged.stdout.contents().strip() == "cpython:\n  3.9: 3.9.6\n  3.8: 3.8.11"
+    assert cli.logged.stdout.contents().strip() == "cpython:\n  3.13: 3.13.2\n  3.9: 3.9.6"
 
     cli.run("list", "--json")
     assert cli.succeeded
@@ -52,4 +52,4 @@ def test_list(cli, monkeypatch):
     monkeypatch.setattr(PPG.cpython, "_versions", None)
     cli.run("-c", cli.tests_path("sample-config1.yml"), "list")
     assert cli.succeeded
-    assert cli.logged.stdout.contents().strip() == "cpython:\n  3.9: 3.9.7\n  3.8: 3.8.12"
+    assert cli.logged.stdout.contents().strip() == "cpython:\n  3.13: 3.13.3\n  3.9: 3.9.7"
