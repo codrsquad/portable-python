@@ -7,7 +7,7 @@ setup(
     author="Zoran Simic zoran@simicweb.com",
     keywords="python, portable, binary",
     url="https://github.com/codrsquad/portable-python",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     entry_points={
         "console_scripts": [
             "portable-python = portable_python.__main__:main",
@@ -22,7 +22,6 @@ setup(
         "Operating System :: Unix",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

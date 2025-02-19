@@ -74,7 +74,7 @@ class VersionFamily:
 class CPythonFamily(VersionFamily):
     """Implementation for cpython"""
 
-    min_version = "3.7"  # Earliest non-EOL known to compile well
+    min_version = "3.9"  # Earliest non-EOL known to compile well
 
     @runez.cached_property
     def client(self):
