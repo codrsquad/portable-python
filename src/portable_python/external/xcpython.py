@@ -80,11 +80,11 @@ class Gdbm(ModuleBuilder):
 
     @property
     def url(self):
-        return self.cfg_url(self.version) or f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://ftpmirror.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
 
     @property
     def version(self):
-        return self.cfg_version("1.24")
+        return self.cfg_version("1.26")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -129,7 +129,7 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.4.6")
+        return self.cfg_version("3.4.8")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -176,7 +176,7 @@ class Openssl(ModuleBuilder):
     def version(self):
         # See https://endoflife.date/openssl
         # This default here picks the most conservative longest supported version
-        return self.cfg_version("3.0.15")
+        return self.cfg_version("3.0.17")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -258,7 +258,7 @@ class Readline(ModuleBuilder):
 
     @property
     def url(self):
-        return self.cfg_url(self.version) or f"https://ftp.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"http://ftpmirror.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
 
     @property
     def version(self):
@@ -306,7 +306,7 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.47.0")
+        return self.cfg_version("3.50.4")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -373,7 +373,7 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("5.6.3")
+        return self.cfg_version("5.8.1")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
