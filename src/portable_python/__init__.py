@@ -680,6 +680,16 @@ class ModuleBuilder:
                 runez.decompress(path, self.m_src_build, simplify=True)
 
                 env_vars = self._get_env_vars()
+                if not PPG.config.get_value("allow-homebrew"):
+                    # Remove any mention of /opt/homebrew from PATH (reduce chances of dynamic links to homebrew)
+                    path_env_var = env_vars.get("PATH")
+                    if path_env_var:
+                        _paths = os.environ.get("PATH", "").split(":")
+                        _revised = [p for p in _paths if not p.startswith("/opt/homebrew")]
+                        if _revised != _paths:
+                            LOG.info("Removed /opt/homebrew mentions from PATH")
+                            env_vars["PATH"] = runez.joined(_revised, delimiter=":")
+
                 prev_env_vars = {}
                 for var_name, value in env_vars.items():
                     LOG.info("env %s=%s", var_name, runez.short(value, size=2048))
