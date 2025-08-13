@@ -93,6 +93,7 @@ class Gdbm(ModuleBuilder):
         else:
             yield "--enable-shared=no"
             yield "--enable-static=yes"
+            yield "--enable-libgdbm-compat"
             yield "--with-pic=yes"
             yield "--disable-nls"
             yield "--disable-dependency-tracking"
@@ -129,7 +130,7 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.4.8")
+        return self.cfg_version("3.5.2")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -313,11 +314,9 @@ class Sqlite(ModuleBuilder):
             yield config_args
 
         else:
-            yield "--enable-shared=no"
-            yield "--enable-static=yes"
+            yield "--disable-shared"
             yield "--disable-tcl"
             yield "--disable-readline"
-            yield "--with-pic=yes"
 
     def _do_linux_compile(self):
         self.run_configure("./configure", self.c_configure_args())
