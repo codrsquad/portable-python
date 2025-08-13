@@ -80,7 +80,7 @@ class Gdbm(ModuleBuilder):
 
     @property
     def url(self):
-        return self.cfg_url(self.version) or f"https://ftp.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://ftpmirror.gnu.org/gnu/gdbm/gdbm-{self.version}.tar.gz"
 
     @property
     def version(self):
@@ -258,7 +258,7 @@ class Readline(ModuleBuilder):
 
     @property
     def url(self):
-        return self.cfg_url(self.version) or f"https://ftp.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"http://ftpmirror.gnu.org/gnu/readline/readline-{self.version}.tar.gz"
 
     @property
     def version(self):

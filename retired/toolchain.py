@@ -6,7 +6,7 @@ class Autoconf(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://ftp.gnu.org/gnu/autoconf/autoconf-{self.version}.tar.xz"
+        return f"https://ftpmirror.gnu.org/gnu/autoconf/autoconf-{self.version}.tar.xz"
 
     @property
     def version(self):
@@ -23,7 +23,7 @@ class Automake(ModuleBuilder):
 
     @property
     def url(self):
-        return f"https://ftp.gnu.org/gnu/automake/automake-{self.version}.tar.xz"
+        return f"https://ftpmirror.gnu.org/gnu/automake/automake-{self.version}.tar.xz"
 
     @property
     def version(self):
