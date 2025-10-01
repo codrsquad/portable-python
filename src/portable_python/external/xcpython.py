@@ -202,7 +202,7 @@ class Ncurses(ModuleBuilder):
 
     @property
     def url(self):
-        return self.cfg_url(self.version) or f"https://ftp.gnu.org/pub/gnu/ncurses/ncurses-{self.version}.tar.gz"
+        return self.cfg_url(self.version) or f"https://ftpmirror.gnu.org/gnu/ncurses/ncurses-{self.version}.tar.gz"
 
     @property
     def version(self):
