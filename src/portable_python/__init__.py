@@ -605,10 +605,12 @@ class ModuleBuilder:
 
     def run_make(self, *args, program="make", cpu_count=None):
         cmd = program.split()
-        if cpu_count and cpu_count < 0:
+        if cpu_count is None:
             available = multiprocessing.cpu_count()
+            # If we can't retrieve the number of cores, leave cpu_count as None
+            # and we'll omit -j below.
             if available and available > 0:
-                cpu_count += available
+                cpu_count = available
 
         if cpu_count and cpu_count > 1:
             cmd.append("-j%s" % cpu_count)
