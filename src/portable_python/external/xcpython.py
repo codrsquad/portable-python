@@ -1,3 +1,4 @@
+import os.path
 from typing import ClassVar
 
 import runez
@@ -428,3 +429,32 @@ class Zlib(ModuleBuilder):
         self.run_configure("./configure", self.c_configure_args())
         self.run_make()
         self.run_make("install")
+
+class Zstd(ModuleBuilder):
+    """
+    """
+
+    m_debian = "!libzstd-dev"
+    m_telltale = "{include}/zstd.h"
+
+    xenv_CFLAGS = "-fPIC"
+
+    def auto_select_reason(self):
+        if self.setup.python_spec.version >= "3.14":
+            return "Required for 3.14 and up"  # Well, "expected" anyway
+
+    @property
+    def url(self):
+        return self.cfg_url(self.version) or f"https://github.com/facebook/zstd/releases/download/v{self.version}/zstd-{self.version}.tar.gz"
+
+    @property
+    def version(self):
+        return self.cfg_version("1.5.7")
+
+    def _do_linux_compile(self):
+        # Notably, this does not build when given a relative path.
+        self.run_make(f"prefix={os.path.abspath(self.deps)}")
+        # the libdir on the resulting .dylib on Mac is wrong, but as long as we
+        # staticly compile this doesn't need a fixup.  I got as far as:
+        # "libdir=\\$(executable_path)/../lib")
+        self.run_make("install", f"prefix={os.path.abspath(self.deps)}")
