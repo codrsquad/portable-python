@@ -441,7 +441,10 @@ class Zstd(ModuleBuilder):
 
     def auto_select_reason(self):
         if self.setup.python_spec.version >= "3.14":
-            return "Required for 3.14 and up"  # Well, "expected" anyway
+            if PPG.target.is_macos:
+                return "Required for 3.14 and up"  # Well, "expected" anyway
+            elif not self.resolved_telltale:
+                return "Required for 3.14 and up"
 
     @property
     def url(self):
