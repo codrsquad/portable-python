@@ -430,8 +430,10 @@ class Zlib(ModuleBuilder):
         self.run_make()
         self.run_make("install")
 
+
 class Zstd(ModuleBuilder):
     """
+    Newer compression format present in most 3.14+ builds
     """
 
     m_debian = "!libzstd-dev"
@@ -443,12 +445,14 @@ class Zstd(ModuleBuilder):
         if self.setup.python_spec.version >= "3.14":
             if PPG.target.is_macos:
                 return "Required for 3.14 and up"  # Well, "expected" anyway
-            elif not self.resolved_telltale:
+            if not self.resolved_telltale:
                 return "Required for 3.14 and up"
 
     @property
     def url(self):
-        return self.cfg_url(self.version) or f"https://github.com/facebook/zstd/releases/download/v{self.version}/zstd-{self.version}.tar.gz"
+        return (
+            self.cfg_url(self.version) or f"https://github.com/facebook/zstd/releases/download/v{self.version}/zstd-{self.version}.tar.gz"
+        )
 
     @property
     def version(self):

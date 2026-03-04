@@ -172,14 +172,17 @@ class Cpython(PythonBuilder):
             yield f"-ltcl{version.mm}"
             yield f"-ltk{version.mm}"
 
-        if self.active_module(Zstd):
-            if self.version >= "3.14" and PPG.target.is_macos:
-                # Normally ./configure will autodetect using pkg-config, but
-                # this doesn't typically work on Mac (the pkg-config binary is
-                # in homebrew, which we omit from path) so we have to provide
-                # some hints about how to staticly include it.
-                yield f"LIBZSTD_CFLAGS=-I{self.deps}/include"
-                yield f"LIBZSTD_LIBS={self.deps_lib_dir}/libzstd.a"
+    def xenv_LIBZSTD_CFLAGS(self):
+        if self.version >= "3.14" and PPG.target.is_macos:
+            # Normally ./configure will autodetect using pkg-config, but
+            # this doesn't typically work on Mac (the pkg-config binary is
+            # in homebrew, which we omit from path) so we have to provide
+            # some hints about how to staticly include it.
+            yield f"-I{self.deps}/include"
+
+    def xenv_LIBZSTD_LIBS(self):
+        if self.version >= "3.14" and PPG.target.is_macos:
+            yield f"{self.deps_lib_dir}/libzstd.a"
 
 
     @runez.cached_property
