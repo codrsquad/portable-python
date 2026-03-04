@@ -184,7 +184,6 @@ class Cpython(PythonBuilder):
         if self.version >= "3.14" and PPG.target.is_macos:
             yield f"{self.deps_lib_dir}/libzstd.a"
 
-
     @runez.cached_property
     def prefix_lib_folder(self):
         """Path to <prefix>/lib/pythonM.m folder"""
