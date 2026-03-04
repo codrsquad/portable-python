@@ -10,6 +10,7 @@ INSIGHTS = {
     "_tkinter": "TCL_VERSION TK_VERSION",
     "_sqlite3": "sqlite_version version",
     "_ssl": "OPENSSL_VERSION",
+    "_zstd": "zstd_version",
     "dbm.gnu": "_GDBM_VERSION",
     "ensurepip": "_PIP_VERSION",
     "pyexpat": "version_info",
