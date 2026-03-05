@@ -465,3 +465,41 @@ class Zstd(ModuleBuilder):
         # staticly compile this doesn't need a fixup.  I got as far as:
         # "libdir=\\$(executable_path)/../lib")
         self.run_make("install", f"prefix={os.path.abspath(self.deps)}")
+
+class Mpdec(ModuleBuilder):
+    """
+    Prevent falling back to bundled libmpdec (deprecated and scheduled for removal in Python 3.16)
+    """
+
+    m_debian = "!libmpdec-dev"
+    m_telltale = "{include}/mpdecimal.h"
+
+    xenv_CFLAGS = "-fPIC"
+
+    def auto_select_reason(self):
+        if self.setup.python_spec.version >= "3.16":
+            if PPG.target.is_macos:
+                return "Required for 3.16 and up"
+            if not self.resolved_telltale:
+                return "Required for 3.16 and up"
+
+    @property
+    def url(self):
+        return self.cfg_url(self.version) or f"https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-{self.version}.tar.gz"
+
+    @property
+    def version(self):
+        return self.cfg_version("4.0.1")
+
+    def c_configure_args(self):
+        if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
+            yield config_args
+
+        else:
+            pass # yield "--static"
+        yield "--disable-cxx"
+
+    def _do_linux_compile(self):
+        self.run_configure("./configure", self.c_configure_args())
+        self.run_make()
+        self.run_make("install")
