@@ -466,6 +466,7 @@ class Zstd(ModuleBuilder):
         # "libdir=\\$(executable_path)/../lib")
         self.run_make("install", f"prefix={os.path.abspath(self.deps)}")
 
+
 class Mpdec(ModuleBuilder):
     """
     Prevent falling back to bundled libmpdec (deprecated and scheduled for removal in Python 3.16)
@@ -496,7 +497,7 @@ class Mpdec(ModuleBuilder):
             yield config_args
 
         else:
-            pass # yield "--static"
+            pass  # yield "--static"
         yield "--disable-cxx"
 
     def _do_linux_compile(self):
