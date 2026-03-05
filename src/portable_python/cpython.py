@@ -8,7 +8,7 @@ import yaml
 from runez.pyenv import Version
 
 from portable_python import LOG, patch_file, patch_folder, PPG, PythonBuilder
-from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Openssl, Readline, Sqlite, Uuid, Xz, Zlib, Zstd
+from portable_python.external.xcpython import Bdb, Bzip2, Gdbm, LibFFI, Mpdec, Openssl, Readline, Sqlite, Uuid, Xz, Zlib, Zstd
 from portable_python.external.xtkinter import TkInter
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
@@ -96,7 +96,7 @@ class Cpython(PythonBuilder):
 
     @classmethod
     def candidate_modules(cls):
-        return [LibFFI, Zlib, Zstd, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid, TkInter]
+        return [LibFFI, Zlib, Zstd, Xz, Bzip2, Readline, Openssl, Sqlite, Bdb, Gdbm, Uuid, TkInter, Mpdec]
 
     @property
     def url(self):
@@ -183,6 +183,18 @@ class Cpython(PythonBuilder):
     def xenv_LIBZSTD_LIBS(self):
         if self.version >= "3.14" and PPG.target.is_macos:
             yield f"{self.deps_lib_dir}/libzstd.a"
+
+    def xenv_LIBMPDEC_CFLAGS(self):
+        if self.version >= "3.14" and PPG.target.is_macos:
+            # Normally ./configure will autodetect using pkg-config, but
+            # this doesn't typically work on Mac (the pkg-config binary is
+            # in homebrew, which we omit from path) so we have to provide
+            # some hints about how to staticly include it.
+            yield f"-I{self.deps}/include"
+
+    def xenv_LIBMPDEC_LIBS(self):
+        if self.version >= "3.14" and PPG.target.is_macos:
+            yield f"{self.deps_lib_dir}/libmpdec.a"
 
     @runez.cached_property
     def prefix_lib_folder(self):
