@@ -5,7 +5,7 @@
 include: +pp-dev.yml
 
 folders:
-  build: "build/{family}-{version}"   # Allows keeping builds per versions, and inspect them in parallel
+  build: "build/{family}-{version}{abi_suffix}"   # Allows keeping builds per versions, and inspect them in parallel
 
 # For quick iteration locally, you can add this to your pp-dev.yml:
 #folders:

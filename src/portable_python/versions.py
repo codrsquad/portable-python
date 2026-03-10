@@ -117,13 +117,13 @@ class CPythonFamily(VersionFamily):
 
 
 class Folders:
-    def __init__(self, config: Config, base=None, family=None, version=None):
+    def __init__(self, config: Config, base=None, family=None, version=None, abi_suffix=None):
         self.config = config
         self.base_folder = runez.resolved_path(base)
         self.family = family
         self.version = Version.from_object(version)
         self.mm = self.version and self.version.mm
-        self.completions = config.completions(family=family, version=version, mm=self.mm)
+        self.completions = config.completions(family=family, version=version, mm=self.mm, abi_suffix=abi_suffix)
         self.build_folder = self._get_path("build")
         self.completions["build"] = self.build_folder
         self.components = self.build_folder / "components"
@@ -197,9 +197,9 @@ class PPG:
         cls.target = cls.config.target
 
     @classmethod
-    def get_folders(cls, base=None, family="cpython", version=None):
+    def get_folders(cls, base=None, family="cpython", version=None, abi_suffix=None):
         config = cls.config or Config()
-        return Folders(config, base=base, family=family, version=version)
+        return Folders(config, base=base, family=family, version=version, abi_suffix=abi_suffix)
 
     @classmethod
     def family(cls, family_name, fatal=True) -> VersionFamily:

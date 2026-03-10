@@ -172,6 +172,9 @@ class Cpython(PythonBuilder):
             yield f"-ltcl{version.mm}"
             yield f"-ltk{version.mm}"
 
+        if self.setup.python_spec.freethreading:
+            yield "--disable-gil"
+
     def xenv_LIBZSTD_CFLAGS(self):
         if self.version >= "3.14" and PPG.target.is_macos:
             # Normally ./configure will autodetect using pkg-config, but
@@ -199,7 +202,7 @@ class Cpython(PythonBuilder):
     @runez.cached_property
     def prefix_lib_folder(self):
         """Path to <prefix>/lib/pythonM.m folder"""
-        return self.install_folder / f"lib/python{self.version.mm}"
+        return self.install_folder / f"lib/python{self.version.mm}{self.setup.python_spec.abi_suffix}"
 
     @runez.cached_property
     def prefix_config_folder(self):
