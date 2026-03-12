@@ -123,7 +123,7 @@ class Folders:
         self.family = family
         self.version = Version.from_object(version)
         self.mm = self.version and self.version.mm
-        self.completions = config.completions(family=family, version=version, mm=self.mm, abi_suffix=abi_suffix)
+        self.completions = config.completions(family=family, version=version, mm=self.mm, abi_suffix=abi_suffix or "")
         self.build_folder = self._get_path("build")
         self.completions["build"] = self.build_folder
         self.components = self.build_folder / "components"
