@@ -222,7 +222,9 @@ class BuildSetup:
             runez.abort("Please provide full desired version: %s is not good enough" % runez.red(python_spec))
 
         self.python_spec = python_spec
-        self.folders = PPG.get_folders(base=os.getcwd(), family=python_spec.family, version=python_spec.version)
+        self.folders = PPG.get_folders(
+            base=os.getcwd(), family=python_spec.family, version=python_spec.version, abi_suffix=python_spec.abi_suffix
+        )
         self.desired_modules = modules
         prefix = self.folders.formatted(prefix)
         self.prefix = prefix
@@ -237,7 +239,9 @@ class BuildSetup:
             self.tarball_name = PPG.target.composed_basename(dest, extension=ext)
 
         else:
-            self.tarball_name = PPG.target.composed_basename(python_spec.family, python_spec.version, extension=ext)
+            self.tarball_name = PPG.target.composed_basename(
+                python_spec.family, python_spec.version, abi_suffix=python_spec.abi_suffix, extension=ext
+            )
 
         builder = PPG.family(python_spec.family).get_builder()
         self.python_builder = builder(self)  # type: PythonBuilder
