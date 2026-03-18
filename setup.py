@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="portable-python",
-    setup_requires="setupmeta",
+    setup_requires=["setupmeta"],
     versioning="dev",
     author="Zoran Simic zoran@simicweb.com",
     keywords="python, portable, binary",

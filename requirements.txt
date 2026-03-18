@@ -1,5 +1,5 @@
-click~=8.0
-pyyaml~=6.0
-requests<3.0
-runez~=5.5
-urllib3~=1.26
+click<9
+pyyaml<7
+requests<3
+runez<6
+urllib3<3
