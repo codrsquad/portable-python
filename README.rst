@@ -9,8 +9,8 @@ Portable python binaries
     :target: https://github.com/codrsquad/portable-python/actions
     :alt: Tested with Github Actions
 
-.. image:: https://codecov.io/gh/codrsquad/portable-python/branch/main/graph/badge.svg
-    :target: https://codecov.io/gh/codrsquad/portable-python
+.. image:: https://coveralls.io/repos/github/codrsquad/portable-python/badge.svg?branch=main
+    :target: https://coveralls.io/github/codrsquad/portable-python?branch=main
     :alt: Test coverage
 
 .. image:: https://img.shields.io/pypi/pyversions/portable-python.svg
