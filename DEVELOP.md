@@ -3,9 +3,7 @@
 Create a dev venv:
 
 ```shell
-uv venv
-uv pip install -r requirements.txt -r tests/requirements.txt
-uv pip install -e .
+uv sync
 ```
 
 You can then run `portable-python` from that venv:
@@ -107,7 +105,7 @@ portable-python build 3.13.2
 
 ## Bump Python Support
 
-1. Update `pyproject.toml` classifiers and `setup.py` `python_requires`
+1. Update `pyproject.toml` classifiers and `requires-python`
 2. Update `.github/workflows/tests.yml` matrix
 3. Update `CPythonFamily.min_version` if needed
 4. Run full test matrix with `tox`

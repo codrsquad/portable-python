@@ -1,6 +1,80 @@
 [build-system]
-requires = ["setuptools", "setupmeta"]
+requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+local_scheme = "dirty-tag"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "portable-python"
+dynamic = ["version"]
+description = "Portable python binaries"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Zoran Simic", email = "zoran@simicweb.com"},
+]
+keywords = ["python", "portable", "binary"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: System :: Software Distribution",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "click<9",
+    "pyyaml<7",
+    "requests<3",
+    "runez<6",
+    "urllib3<3",
+]
+
+[dependency-groups]
+test = [
+    "pytest-cov",
+]
+dev = [
+    { include-group = "test" },
+]
+
+[project.scripts]
+portable-python = "portable_python.__main__:main"
+
+[project.urls]
+Source = "https://github.com/codrsquad/portable-python"
+
+[tool.coverage.run]
+concurrency = ["thread"]
+data_file = ".tox/.coverage"
+patch = ["subprocess"]
+
+[tool.coverage.xml]
+output = ".tox/test-reports/coverage.xml"
+
+[tool.coverage.html]
+directory = ".tox/test-reports/htmlcov"
+
+[tool.pytest.ini_options]
+cache_dir = ".tox/.cache"
 
 [tool.ruff]
 cache-dir = ".tox/.ruff_cache"
