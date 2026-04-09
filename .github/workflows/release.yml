@@ -20,7 +20,7 @@ jobs:
         python-version: "3.14"
 
     - uses: astral-sh/setup-uv@v7
-    - run: uvx --with tox-uv tox -e py,docs,style
+    - run: uvx --with tox-uv tox -e py,style
     - run: uv build
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1

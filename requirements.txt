@@ -1,5 +1,0 @@
-click<9
-pyyaml<7
-requests<3
-runez<6
-urllib3<3

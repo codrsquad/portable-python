@@ -3,9 +3,7 @@
 Create a dev venv:
 
 ```shell
-uv venv
-uv pip install -r requirements.txt -r tests/requirements.txt
-uv pip install -e .
+uv sync
 ```
 
 You can then run `portable-python` from that venv:
@@ -66,3 +64,48 @@ Now inside docker, you run a build:
 ```shell
 portable-python build 3.13.2
 ```
+
+
+# Key Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| click | <9 | CLI framework |
+| pyyaml | <7 | Configuration parsing |
+| requests | <3 | HTTP downloads |
+| runez | <6 | Utilities (file ops, system, logging) |
+| urllib3 | <3 | HTTP transport |
+| pytest-cov | - | Coverage reporting (dev only) |
+
+**runez** is central: provides file ops (`ls_dir`, `touch`, `compress`/`decompress`), system info (platform detection), CLI decorators (`@click.group`), logging, and version handling (`Version`, `PythonSpec`).
+
+
+# Common Tasks
+
+## Add a New External Module
+
+1. Create class in `src/portable_python/external/xcpython.py` extending `ModuleBuilder`
+2. Set `m_name`, `m_telltale`, `m_debian`, `version` property
+3. Implement `url` property (or override `_do_linux_compile()` / `_do_macos_compile()`)
+4. Add to `Cpython.candidate_modules()` if it's a CPython sub-module
+5. Add tests in `tests/test_setup.py`
+
+## Add a New Config Option
+
+1. Update `DEFAULT_CONFIG` in `src/portable_python/config.py`
+2. Use `PPG.config.get_value("key")` to retrieve it in code
+3. Add tests to `tests/test_setup.py`
+
+## Fix a Portability Issue
+
+1. Run `portable-python inspect <PATH>` to diagnose
+2. If lib is being dynamically linked, add to module list or update isolation
+3. Use `LibAutoCorrect.run()` logic (or extend it) to fix paths
+4. Add test case to `tests/test_inspector.py`
+
+## Bump Python Support
+
+1. Update `pyproject.toml` classifiers and `requires-python`
+2. Update `.github/workflows/tests.yml` matrix
+3. Update `CPythonFamily.min_version` if needed
+4. Run full test matrix with `tox`

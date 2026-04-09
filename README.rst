@@ -128,6 +128,64 @@ Note that you can use ``--dryrun`` mode to inspect what would be done without do
     Would tar build/3.9.7 -> dist/cpython-3.9.7-macos-x86_64.tar.gz
 
 
+CLI reference
+-------------
+
+Main entry point::
+
+    portable-python [OPTIONS] COMMAND [ARGS]
+
+**Global options**:
+
+- ``--config PATH``: Config file (default: ``portable-python.yml``)
+- ``--quiet``: Turn off DEBUG logging
+- ``--dryrun`` / ``-n``: Show what would be done
+- ``--target PLATFORM``: Override detected platform (for testing)
+
+
+**build** ``<PYTHON_SPEC>`` - Build a portable Python binary::
+
+    portable-python build 3.13.2 -m openssl,zlib
+
+- ``--modules, -m CSV``: External modules to include
+- ``--prefix, -p PATH``: Use ``--prefix`` (non-portable)
+
+
+**build-report** ``[PYTHON_SPEC]`` - Show module status and what will be compiled:
+
+- ``--modules, -m CSV``: Specific modules to check
+- Validates that modules can be built
+
+
+**inspect** ``<PATH>`` - Check if a Python installation is portable::
+
+    portable-python inspect /usr/bin/python3
+
+- ``--modules, -m MODULES``: Which modules to inspect
+- ``--verbose, -v``: Show full ``.so`` report
+- ``--prefix, -p``: Built with ``--prefix`` (not portable)
+- ``--skip-so, -s``: Don't check all ``.so`` files
+
+
+**list** ``[FAMILY]`` - List available versions (default: cpython)::
+
+    portable-python list cpython
+
+- ``--json``: Output as JSON
+
+
+**diagnostics** - Show system diagnostics
+
+
+**recompress** ``<PATH> <EXT>`` - Re-compress existing binary tarball (for comparing compression sizes)
+
+
+**lib-auto-correct** ``<PATH>`` - Auto-correct exes/libs to use relative paths:
+
+- ``--commit``: Actually perform changes (dryrun by default)
+- ``--prefix, -p PATH``: Expected ``--prefix`` from build
+
+
 Library
 -------
 
