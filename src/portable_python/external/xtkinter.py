@@ -77,6 +77,8 @@ class Tix(ModuleBuilder):
 
     @property
     def version(self):
+        # Effectively dead project, no updates expected
+        # Check https://github.com/python/cpython-source-deps (tix-* tags)
         return self.cfg_version("8.4.3.6")
 
     # noinspection PyPep8Naming
@@ -116,4 +118,7 @@ class TkInter(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("8.6.15")
+        # This is the Tcl/Tk version used by Tcl, Tk, and Tix sub-modules
+        # Staying on 8.6.x branch (9.0+ is a major rewrite)
+        # Check https://www.tcl-lang.org/software/tcltk/8.6.html
+        return self.cfg_version("8.6.17")

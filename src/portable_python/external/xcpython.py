@@ -26,6 +26,8 @@ class Bdb(ModuleBuilder):
 
     @property
     def version(self):
+        # Oracle stopped releasing new versions in May 2020 (18.1.40 was last under AGPL)
+        # Check https://www.oracle.com/database/technologies/related/berkeleydb-downloads.html
         return self.cfg_version("6.2.32")
 
     def c_configure_args(self):
@@ -61,6 +63,8 @@ class Bzip2(ModuleBuilder):
 
     @property
     def version(self):
+        # Last release was 1.0.8 in 2019, project has very infrequent updates
+        # Check https://sourceware.org/bzip2/downloads.html
         return self.cfg_version("1.0.8")
 
     def _do_linux_compile(self):
@@ -85,6 +89,7 @@ class Gdbm(ModuleBuilder):
 
     @property
     def version(self):
+        # Check https://www.gnu.org.ua/software/gdbm/
         return self.cfg_version("1.26")
 
     def c_configure_args(self):
@@ -131,6 +136,7 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
+        # Check https://github.com/libffi/libffi/releases
         return self.cfg_version("3.5.2")
 
     def c_configure_args(self):
@@ -176,9 +182,9 @@ class Openssl(ModuleBuilder):
 
     @property
     def version(self):
-        # See https://endoflife.date/openssl
-        # This default here picks the most conservative longest supported version
-        return self.cfg_version("3.0.17")
+        # 3.5 is LTS, supported until Apr 2030 (3.0 EOL Sept 2026)
+        # Check https://github.com/openssl/openssl/releases and https://endoflife.date/openssl
+        return self.cfg_version("3.5.6")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -207,7 +213,8 @@ class Ncurses(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("6.5")
+        # Check https://invisible-island.net/ncurses/announce.html
+        return self.cfg_version("6.6")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -264,7 +271,9 @@ class Readline(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("8.2.13")
+        # Patched tarballs (e.g. "8.2.13") are available on the GNU FTP when patches accumulate
+        # Check https://ftpmirror.gnu.org/gnu/readline/ for available tarballs
+        return self.cfg_version("8.3")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -308,7 +317,8 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("3.50.4")
+        # Check https://sqlite.org/changes.html (avoid withdrawn releases like 3.52.0)
+        return self.cfg_version("3.51.3")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -343,6 +353,8 @@ class Uuid(ModuleBuilder):
 
     @property
     def version(self):
+        # Standalone libuuid (not util-linux), project is mostly dormant
+        # Check https://sourceforge.net/projects/libuuid/files/
         return self.cfg_version("1.0.3")
 
     def c_configure_args(self):
@@ -373,7 +385,8 @@ class Xz(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("5.8.1")
+        # Check https://github.com/tukaani-project/xz/releases
+        return self.cfg_version("5.8.3")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -416,7 +429,8 @@ class Zlib(ModuleBuilder):
 
     @property
     def version(self):
-        return self.cfg_version("1.3.1")
+        # Check https://zlib.net/ and https://github.com/madler/zlib/releases
+        return self.cfg_version("1.3.2")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -456,6 +470,7 @@ class Zstd(ModuleBuilder):
 
     @property
     def version(self):
+        # Check https://github.com/facebook/zstd/releases
         return self.cfg_version("1.5.7")
 
     def _do_linux_compile(self):
@@ -490,6 +505,7 @@ class Mpdec(ModuleBuilder):
 
     @property
     def version(self):
+        # Check https://www.bytereef.org/mpdecimal/download.html
         return self.cfg_version("4.0.1")
 
     def c_configure_args(self):

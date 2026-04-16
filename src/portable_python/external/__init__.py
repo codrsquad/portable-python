@@ -10,6 +10,7 @@ class GettextTiny(ModuleBuilder):
 
     @property
     def version(self):
+        # Check https://github.com/sabotage-linux/gettext-tiny/releases
         return self.cfg_version("0.3.2")
 
     def _do_linux_compile(self):
