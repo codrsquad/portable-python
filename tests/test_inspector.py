@@ -49,7 +49,7 @@ def test_inspect_python(temp_folder, monkeypatch):
 OTOOL_SAMPLE = """
 .../test-sample.so:
  ....../foo/bar.dylib (compatibility version 8.0.0, current version 8.4.0)
- /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib (compatibility version 5.0.0, current version 5.0.0)
+ /some/path/gdbm/lib/libgdbm_compat.4.dylib (compatibility version 5.0.0, current version 5.0.0)
  @rpath/libssl.45.dylib (compatibility version 46.0.0, current version 46.1.0)
  /usr/lib/libncurses.5.4.dylib (compatibility version 5.4.0, current version 5.4.0)
  /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1281.0.0)
@@ -84,7 +84,7 @@ def test_inspect_lib(logged):
         assert str(info1) == "_dbm*!.so"
         info1.parse_otool(OTOOL_SAMPLE)
         r = info1.represented()
-        assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /usr/local/opt/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
+        assert r == "_dbm*!.so foo/bar.dylib:8.4.0 /some/path/gdbm/lib/libgdbm_compat.4.dylib:5.0.0 ncurses:5.4.0"
         rv = info1.represented(verbose=True)
         assert "[base] @rpath/libssl.45.dylib 46.1.0" in rv
 
