@@ -8,28 +8,17 @@ timestamp: 2026-06-23T00:00:00Z
 
 # lib-auto-correct
 
-Scan a python installation and auto-correct its executables and libraries to reference dependencies by **relative** path. This exercises the [`LibAutoCorrect`](/architecture/python-inspector.md) logic that the build runs internally — handy for iterating on relativization without waiting for a full build.
+Rewrite a python installation's executables and libraries to reference their dependencies by **relative** path — the same [`LibAutoCorrect`](/architecture/python-inspector.md) step the build runs internally, exposed standalone so you can iterate on relativization without a full rebuild. See [static linking](/concepts/static-linking.md) for why it's needed.
 
 ```
 portable-python lib-auto-correct [OPTIONS] PATH
 ```
 
-# Schema
-
-| Argument / Option | Purpose |
-|-------------------|---------|
-| `PATH` (required) | The python installation to scan. |
-| `--commit` | Actually perform the changes. Without it, the command runs in dry-run mode. |
-| `--prefix, -p PATH` | The `--prefix` the program was built with. Defaults to the scanned python's own `sysconfig` prefix. |
-
-By default this is **dry-run**: it shows what it would rewrite. Pass `--commit` to apply the changes. See [static linking](/concepts/static-linking.md) for why relativization is needed.
+It is **dry-run by default** — it shows what it would rewrite; pass `--commit` to actually apply the changes. `--prefix` overrides the build prefix (default: the scanned python's own `sysconfig` prefix).
 
 # Examples
 
 ```shell
-# Preview corrections (dry-run)
-portable-python lib-auto-correct ~/versions/3.13.2
-
-# Apply them
-portable-python lib-auto-correct --commit ~/versions/3.13.2
+portable-python lib-auto-correct ~/versions/3.13.2          # preview (dry-run)
+portable-python lib-auto-correct --commit ~/versions/3.13.2 # apply
 ```

@@ -8,12 +8,10 @@ timestamp: 2026-06-23T00:00:00Z
 
 # diagnostics
 
-Print system diagnostics next to the resolved [configuration](/architecture/config.md), as a two-column table. Useful when a build behaves unexpectedly and you need to confirm which config files and platform are in effect.
+Print system diagnostics next to the resolved [configuration](/architecture/config.md). Reach for it when a build behaves unexpectedly and you want to confirm which config files and target platform are actually in effect.
 
 ```
 portable-python diagnostics
 ```
 
-# Schema
-
-Takes no arguments. The left column comes from `runez.SYS_INFO` (invoker python, platform, etc.); the right column is `PPG.config.represented()` — the merged config and the files it was loaded from.
+It shows the invoker python and platform info on one side, and the merged config — plus the files it was loaded from — on the other.

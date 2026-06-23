@@ -8,20 +8,13 @@ timestamp: 2026-06-23T00:00:00Z
 
 # recompress
 
-Re-compress an existing build (folder or tarball) into a different compression format. Mildly useful for comparing the size trade-offs of different compressions.
+Re-compress an existing build (folder or tarball) into a different format and print the before/after sizes — handy for comparing compression trade-offs. A utility, not part of a normal build.
 
 ```
 portable-python recompress PATH EXT
 ```
 
-# Schema
-
-| Argument | Purpose |
-|----------|---------|
-| `PATH` (required) | An existing folder or tarball. Resolved against the configured base/build/dist/destdir folders if not absolute. |
-| `EXT` (required) | Target compression extension. Constrained to the platform's `supported_compression` choices. |
-
-After re-compressing, the command prints the size of both the source and the result so they can be compared.
+`PATH` is an existing folder or tarball (resolved against the configured build/dist folders if relative); `EXT` is the target compression, limited to the platform's supported formats (`--help` lists them).
 
 # Examples
 

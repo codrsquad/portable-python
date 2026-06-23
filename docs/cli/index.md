@@ -1,22 +1,12 @@
 # CLI
 
-`portable-python` is a single-entry-point CLI built with `click` (via `runez.click`). All commands are defined in `cli.py`.
+`portable-python` is a single-entry-point CLI (built with `click` via `runez.click`); every command lives in `cli.py`.
 
 ```
 portable-python [GLOBAL OPTIONS] COMMAND [ARGS]
 ```
 
-## Global options
-
-| Option | Purpose |
-|--------|---------|
-| `--config, -c PATH` | Config file to use (default: `portable-python.yml`). |
-| `--quiet, -q` | Turn off DEBUG logging. |
-| `--dryrun, -n` | Show what would be done without doing it. |
-| `--target, -t` | Override the detected platform (internal/testing). |
-| `--version` / `--color` | Standard `runez` options. |
-
-The `main` group initializes logging and calls [`PPG.grab_config()`](/architecture/ppg.md) before any subcommand runs.
+Two global options are worth knowing: `--config/-c` (which [config](/configuration/portable-python-yml.md) file to use) and `--dryrun/-n` (print what *would* happen without doing it — the fastest way to understand a build). `portable-python --help` lists the rest. The top-level group loads config (via [`PPG`](/architecture/ppg.md)) before any subcommand runs.
 
 ## Commands
 

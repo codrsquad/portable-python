@@ -8,22 +8,13 @@ timestamp: 2026-06-23T00:00:00Z
 
 # build-report
 
-Show which modules would be compiled for a given spec, and validate that the selection can actually build on this host — without running a build. It prints the [`ModuleCollection.report()`](/architecture/python-builder.md) table and then calls `validate_module_selection()`.
+Show which [modules](/modules/index.md) would be compiled for a spec, and whether the selection can actually build on this host — **without** building. The fastest way to catch a "broken" module before committing to a full compile.
 
 ```
 portable-python build-report [OPTIONS] [PYTHON_SPEC]
 ```
 
-# Schema
-
-| Argument / Option | Purpose |
-|-------------------|---------|
-| `PYTHON_SPEC` (optional) | Version to report on; defaults to the latest known version. |
-| `--modules, -m CSV` | Specific modules to check. |
-
-## What it tells you
-
-For each candidate module the report shows its [telltale](/concepts/telltale-detection.md) status and its `linker_outcome`: whether it will be compiled `static`, linked `shared`, is `absent`, or is `failed` (a combination that cannot build on this host — e.g. a `-`-sigil Debian dev package being present). This is the fastest way to catch a "broken" module before committing to a full build.
+For each candidate module it shows the [telltale](/concepts/telltale-detection.md) status and the linker outcome — `static` (will be compiled), `shared` (system copy used), `absent`, or `failed` (can't build here, e.g. a `-`-sigil Debian dev package is present). `PYTHON_SPEC` defaults to the latest known version.
 
 # Examples
 
