@@ -49,7 +49,7 @@ Replace `{module}` with the lowercased module name (e.g. `openssl`):
 | Key | Purpose |
 |-----|---------|
 | `{module}-version` | Version to build. |
-| `{module}-url` | Source URL (`$version` is substituted). |
+| `{module}-url` | Source URL (`$version` is substituted; may carry a `#sha256=…` fragment, verified on download). |
 | `{module}-src-suffix` | Archive extension when the URL lacks one. |
 | `{module}-configure` | **Replace** the default configure args (`$deps_lib` substituted). |
 | `{module}-http-headers` | Headers for the download (env vars expanded). |

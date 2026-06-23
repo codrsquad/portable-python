@@ -22,4 +22,6 @@ For a portable build, any problem fails the inspection (the report exposes a sin
 
 ## Relativization
 
-The fix lives in `LibAutoCorrect`: it rewrites absolute library references to relative form (`@loader_path` / `$ORIGIN`). It runs **during** the build's finalize step (so the result passes the portable check), and is also exposed standalone as [`lib-auto-correct`](/cli/lib-auto-correct.md) for iterating without a full rebuild.
+The fix lives in `LibAutoCorrect`, which rewrites the absolute library paths (rpaths) baked into binaries so they resolve relative to the install — `patchelf` on Linux (an `$ORIGIN`-relative rpath), `install_name_tool` on macOS (`@rpath` / `@loader_path`). It runs **during** finalize (so the result passes the portable check) and is exposed standalone as [`lib-auto-correct`](/cli/lib-auto-correct.md).
+
+The same step also supports **non-portable** builds: with `--prefix` or `--enable-shared`, it additionally keeps the real prefix's `lib/` in the rpath, so a build pinned to a fixed location still finds its libraries. (CPython is built with a deliberately long rpath — unlike `chrpath`, `patchelf` can set a fresh rpath of any length, leaving room to rewrite it.)
