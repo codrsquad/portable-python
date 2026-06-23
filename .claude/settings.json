@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/portable-python:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(.venv/bin/python scripts/check_okf.py:*)",
+      "Bash(tox:*)"
+    ]
+  }
+}

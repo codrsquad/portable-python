@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Does
 
-portable-python is a CLI tool and Python library for compiling portable CPython binaries from source. Binaries are statically linked so they can be extracted to any folder and used without installation. Supports Linux and macOS (not Windows).
+portable-python is a CLI tool and Python library for compiling portable CPython binaries from source.
+Binaries are statically linked so they can be extracted to any folder and used without installation.
+Supports Linux and macOS (not Windows).
 
 ## Common Commands
 
@@ -16,14 +18,14 @@ tox
 tox -e py313
 
 # Run a single test
-pytest tests/test_build.py::test_build_rc -vv
+.venv/bin/pytest tests/test_build.py::test_build_rc -vv
 
 # Lint check / auto-fix
 tox -e style
 tox -e reformat
 
 # Run tests directly (from venv)
-pytest tests/
+.venv/bin/pytest tests/
 
 # CI uses: uvx --with tox-uv tox -e py
 ```
