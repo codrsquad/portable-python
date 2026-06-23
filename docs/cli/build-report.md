@@ -2,7 +2,6 @@
 type: CLI Command
 title: build-report
 description: Show the status of buildable modules — which will be auto-compiled, which are present on the system, and which would fail — without building anything.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py
 tags: [cli, build, report, command]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -32,7 +31,3 @@ For each candidate module the report shows its [telltale](/concepts/telltale-det
 portable-python build-report 3.13.2
 portable-python build-report 3.13.2 -m openssl,sqlite
 ```
-
-# Citations
-
-[1] [src/portable_python/cli.py — build_report](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py)

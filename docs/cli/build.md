@@ -2,7 +2,6 @@
 type: CLI Command
 title: build
 description: Build a portable (or --prefix) python binary from source for the given version spec.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py
 tags: [cli, build, command]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -42,7 +41,3 @@ portable-python build 3.13.2 --prefix /apps/python3.13
 # See exactly what would happen, without compiling
 portable-python --dryrun build 3.13.2
 ```
-
-# Citations
-
-[1] [src/portable_python/cli.py — build](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py)

@@ -2,7 +2,6 @@
 type: CLI Command
 title: recompress
 description: Re-compress an existing binary tarball or folder into another format, mainly to compare resulting sizes.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py
 tags: [cli, recompress, command]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -29,7 +28,3 @@ After re-compressing, the command prints the size of both the source and the res
 ```shell
 portable-python recompress dist/cpython-3.13.2-linux-x86_64.tar.gz tar.zst
 ```
-
-# Citations
-
-[1] [src/portable_python/cli.py — recompress](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py)

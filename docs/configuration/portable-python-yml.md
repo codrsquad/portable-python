@@ -2,7 +2,6 @@
 type: Configuration
 title: portable-python.yml
 description: The YAML configuration file controlling folders, module selection, configure flags, cleanup, and per-module overrides — with platform-specific sections.
-resource: https://github.com/codrsquad/portable-python/blob/main/portable-python.yml
 tags: [configuration, yaml, config]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -39,7 +38,7 @@ All support path templates: `{build}`, `{family}`, `{version}`, `{abi_suffix}`.
 | `dist` | `dist` | Final tarball folder. |
 | `logs` | `{build}/logs` | Per-component logs. |
 | `sources` | `build/sources` | Downloaded tarball cache. |
-| `ppp-marker` | `/ppp-marker/{version}{abi_suffix}` | In-progress install folder name. |
+| `ppp-marker` | `/ppp-marker/{version}{abi_suffix}` | The [ppp-marker](/concepts/ppp-marker.md) placeholder install prefix. |
 
 See [build layout](/concepts/build-layout.md) for how these map onto disk.
 
@@ -81,9 +80,3 @@ openssl-http-headers:
 macos:
   openssl-configure: --with-terminfo-dirs=/usr/share/terminfo
 ```
-
-# Citations
-
-[1] [portable-python.yml — sample dev config](https://github.com/codrsquad/portable-python/blob/main/portable-python.yml)
-[2] [src/portable_python/config.py — DEFAULT_CONFIG](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/config.py)
-[3] [CONFIGURATION.md](https://github.com/codrsquad/portable-python/blob/main/CONFIGURATION.md)

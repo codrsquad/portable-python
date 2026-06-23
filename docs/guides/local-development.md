@@ -21,7 +21,7 @@ uv sync
 The suite mocks `runez.run()` and builds in `--dryrun` mode, so it asserts the *planned* commands without actually compiling. Target is 100% coverage.
 
 ```shell
-tox                 # all envs (py310-314, coverage, docs, style)
+tox                 # all envs (py310-314, coverage, style)
 tox -e py313        # one python version
 tox -e style        # lint check (ruff)
 tox -e reformat     # auto-fix formatting
@@ -31,6 +31,8 @@ tox -e reformat     # auto-fix formatting
 ```
 
 CI runs `uvx --with tox-uv tox -e py`.
+
+Test fixtures: a `cli` fixture (from runez) drives the CLI, `conftest.py` forbids real HTTP calls (`GlobalHttpCalls.forbid()`), and sample configs for parsing tests live in `tests/sample-config*.yml`.
 
 ## Dryrun mode
 
@@ -55,6 +57,14 @@ docker run -it -v./:/src/ portable-python-jammy /bin/bash
 portable-python build 3.13.2
 ```
 
+## Code style
+
+Ruff handles both linting and formatting — `tox -e style` checks, `tox -e reformat` auto-fixes. The key settings (line length, max McCabe complexity, numpy-style docstrings, and relaxed security `S` rules in tests) live in `pyproject.toml`.
+
+## Documentation
+
+The project's documentation is the OKF knowledge bundle in `docs/` (start at [the bundle index](/index.md)). Validate its structure and cross-links with `scripts/check_okf.py docs`.
+
 ## Key dependencies
 
 | Package | Purpose |
@@ -63,8 +73,3 @@ portable-python build 3.13.2
 | `pyyaml` | [Configuration](/configuration/portable-python-yml.md) parsing. |
 | `requests` / `urllib3` | HTTP downloads. |
 | `runez` | Foundational utilities — file ops, system info, CLI decorators, logging, `Version`/`PythonSpec`. Check `runez` before reimplementing anything. |
-
-# Citations
-
-[1] [DEVELOP.md](https://github.com/codrsquad/portable-python/blob/main/DEVELOP.md)
-[2] [CLAUDE.md — Common Commands, Testing](https://github.com/codrsquad/portable-python/blob/main/CLAUDE.md)

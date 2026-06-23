@@ -2,7 +2,6 @@
 type: Class
 title: ModuleBuilder
 description: Abstract base for everything that gets compiled — external C libraries and CPython itself — providing the common download/configure/make/install flow and environment injection.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py
 tags: [class, abstract, build, module]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -52,8 +51,3 @@ Each `xenv_*` method supplies one environment variable for the compile, pointing
 ## Adding a module
 
 To add a new external module you subclass `ModuleBuilder`, set the `m_*` attributes, implement `url`/`version`, and implement `_do_linux_compile()` (macOS reuses it unless overridden). See the [guide](/guides/add-an-external-module.md).
-
-# Citations
-
-[1] [src/portable_python/__init__.py — ModuleBuilder](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py)
-[2] [src/portable_python/external/xcpython.py — concrete modules](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/external/xcpython.py)

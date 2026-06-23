@@ -33,7 +33,3 @@ See the [`build`](/cli/build.md) command for how to choose.
 ## Validation
 
 Portability is not assumed — it is **verified**. The [`PythonInspector`](/architecture/python-inspector.md) walks every executable and `.so` file, parses their dynamic dependencies (`ldd` on Linux, `otool` on macOS), and classifies each reference as a system library, a relative reference, or a problem. The [`inspect`](/cli/inspect.md) command surfaces this report and fails if a non-portable reference is found.
-
-# Citations
-
-[1] [README.rst — Supported operating systems](https://github.com/codrsquad/portable-python/blob/main/README.rst)

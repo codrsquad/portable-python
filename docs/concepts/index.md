@@ -7,3 +7,4 @@ The domain ideas behind portable-python. Read these to understand *why* the buil
 * [Telltale detection](/concepts/telltale-detection.md) - How the tool decides whether a library must be compiled or already exists.
 * [Folder masking](/concepts/folder-masking.md) - The macOS `/usr/local` RAM-disk mask that prevents accidental dynamic linking.
 * [Build layout](/concepts/build-layout.md) - The `build/` and `dist/` folder structure shared by every component.
+* [ppp-marker prefix](/concepts/ppp-marker.md) - The placeholder install prefix that fills in for `--prefix` and is relativized for portable builds.

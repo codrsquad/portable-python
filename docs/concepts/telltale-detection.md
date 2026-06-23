@@ -47,8 +47,3 @@ On Linux, `m_debian` names the Debian dev package and a leading sigil encodes a 
 | (none) | Used for detection/reporting only. | `libgdbm-dev` |
 
 This is why [`build-report`](/cli/build-report.md) can warn that a module is "broken" on the current host before a build is even attempted.
-
-# Citations
-
-[1] [src/portable_python/versions.py — PPG.find_telltale](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/versions.py)
-[2] [src/portable_python/__init__.py — ModuleBuilder.linker_outcome](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py)

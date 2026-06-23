@@ -59,7 +59,3 @@ portable-python inspect ~/versions/3.13.2
 ```
 
 A clean exit means no non-portable dynamic-library references — see [`inspect`](/cli/inspect.md).
-
-# Citations
-
-[1] [README.rst — Building a portable cpython](https://github.com/codrsquad/portable-python/blob/main/README.rst)

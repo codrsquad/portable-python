@@ -57,8 +57,3 @@ To statically link a new C library into CPython, add a [`ModuleBuilder`](/archit
 - Prefer config flags over source patches — see the [no-patches principle](/overview.md).
 - Use `--dryrun` to confirm the configure/make commands look right before a real build.
 - If the library is only needed when explicitly selected, leave `auto_select_reason()` unset; if a build cannot succeed without it, return a short reason there.
-
-# Citations
-
-[1] [DEVELOP.md — Add a New External Module](https://github.com/codrsquad/portable-python/blob/main/DEVELOP.md)
-[2] [src/portable_python/external/xcpython.py — existing modules](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/external/xcpython.py)

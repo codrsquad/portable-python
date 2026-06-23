@@ -2,14 +2,15 @@
 type: Class
 title: PPG
 description: Global singleton holding shared configuration, the target platform, and the registry of supported python version families.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/versions.py
 tags: [class, global-state, singleton, versions]
 timestamp: 2026-06-23T00:00:00Z
 ---
 
 # PPG
 
-`PPG` is the global state holder for portable-python. Every module reaches shared state — configuration, the target platform, and version families — through `PPG`'s class attributes and classmethods. It is defined in `versions.py`.
+`PPG` ("**P**ortable **P**ython **G**lobals") is the global state holder for portable-python. Every module reaches shared state — configuration, the target platform, and version families — through `PPG`'s class attributes and classmethods. It is defined in `versions.py`.
+
+Like [`ppp-marker`](/concepts/ppp-marker.md), the name is a deliberately uncommon character sequence chosen for searchability: grepping the codebase for `PPG` surfaces only its own usages, with no collisions in upstream CPython source or third-party libraries.
 
 # Schema
 
@@ -36,8 +37,3 @@ A `VersionFamily` (e.g. `CPythonFamily`) knows how to **list available versions*
 ## Why a singleton
 
 The build touches global, process-wide facts: which config file is active, what platform we are targeting, and which python versions exist. Centralizing them in `PPG` avoids threading that state through every constructor, and gives the CLI a single place ([`main`](/cli/index.md)) to initialize it.
-
-# Citations
-
-[1] [src/portable_python/versions.py](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/versions.py)
-[2] [CLAUDE.md — Key classes](https://github.com/codrsquad/portable-python/blob/main/CLAUDE.md)

@@ -2,7 +2,6 @@
 type: Overview
 title: Portable Python Overview
 description: A CLI and library that compiles statically-linked, relocatable CPython binaries from source, and validates their portability.
-resource: https://github.com/codrsquad/portable-python
 tags: [overview, cpython, portability, build]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -61,9 +60,3 @@ Inspect any existing python for portability:
 ```shell
 portable-python inspect /usr/bin/python3
 ```
-
-# Citations
-
-[1] [README.rst](https://github.com/codrsquad/portable-python/blob/main/README.rst) - Project README and guiding principles.
-[2] [ARCHITECTURE.md](https://github.com/codrsquad/portable-python/blob/main/ARCHITECTURE.md) - Class hierarchy and design patterns.
-[3] [CLAUDE.md](https://github.com/codrsquad/portable-python/blob/main/CLAUDE.md) - Repository guidance and architecture summary.

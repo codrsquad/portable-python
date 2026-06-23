@@ -1,7 +1,6 @@
 # Architecture
 
-The core classes and how they collaborate during a build. See [ARCHITECTURE.md](https://github.com/codrsquad/portable-python/blob/main/ARCHITECTURE.md) for the original hierarchy diagram.
-
+The core classes and how they collaborate during a build.
 ## Global state & configuration
 
 * [PPG](/architecture/ppg.md) - Global singleton holding config, target platform, and version families.

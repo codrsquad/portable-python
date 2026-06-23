@@ -28,7 +28,7 @@ build/
         00-portable-python.log
         01-openssl.log
         02-cpython.log
-    ppp-marker/{version}/               # Full installation after build completes
+    ppp-marker/{version}/               # The built python (its baked-in prefix is /ppp-marker/{version})
 dist/
     cpython-3.13.2-macos-arm64.tar.gz   # Ready-to-go portable tarball
 ```
@@ -41,14 +41,9 @@ dist/
 | `components/` | Scratch space where each component's source is unpacked and compiled. |
 | `deps/` | The shared install prefix passed to every external module's `./configure --prefix=build/deps`. CPython finds these via injected env vars — see [static linking](/concepts/static-linking.md). |
 | `logs/` | One log file per component, numbered so they sort in compile order. |
-| `ppp-marker/{version}/` | The completed installation, named via the `ppp-marker` template before compression. |
+| `ppp-marker/{version}/` | The built python installation, under the [ppp-marker](/concepts/ppp-marker.md) prefix. |
 | `dist/` | Final portable tarball(s). |
 
 ## Configurability
 
 All of these paths are templated and overridable in [configuration](/configuration/portable-python-yml.md) under the `folders:` key, using placeholders like `{build}`, `{version}`, and `{abi_suffix}`. The [`Folders`](/architecture/config.md) helper resolves them. For example, the dev config keeps builds per-version with `build: "build/{family}-{version}{abi_suffix}"`.
-
-# Citations
-
-[1] [README.rst — Build folder structure](https://github.com/codrsquad/portable-python/blob/main/README.rst)
-[2] [src/portable_python/config.py — DEFAULT_CONFIG folders](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/config.py)

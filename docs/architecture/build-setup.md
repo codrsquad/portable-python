@@ -2,7 +2,6 @@
 type: Class
 title: BuildSetup
 description: Coordinates the overall compilation — resolves the python spec, prepares folders, builds external modules then CPython, validates, and compresses the result.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py
 tags: [class, build, coordinator]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -45,7 +44,3 @@ setup.compile()
 ## Spec validation
 
 `BuildSetup` insists on a **full** version: a spec like `3.13` is rejected — you must give `3.13.2`. `"latest"` (or empty) resolves to `PPG.cpython.latest`. Invalid specs abort early with a red error.
-
-# Citations
-
-[1] [src/portable_python/__init__.py — BuildSetup](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py)

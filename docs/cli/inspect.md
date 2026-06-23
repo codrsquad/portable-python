@@ -2,7 +2,6 @@
 type: CLI Command
 title: inspect
 description: Inspect a python installation for non-portable dynamic library usage, reporting any references that would break portability.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py
 tags: [cli, inspect, portability, command]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -41,8 +40,3 @@ portable-python inspect -v ~/versions/3.13.2
 # Inspect the interpreter running this CLI
 portable-python inspect invoker
 ```
-
-# Citations
-
-[1] [src/portable_python/cli.py — inspect](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py)
-[2] [src/portable_python/inspector.py — PythonInspector](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/inspector.py)

@@ -8,7 +8,7 @@ timestamp: 2026-06-23T00:00:00Z
 
 # Folder Masking (macOS)
 
-On macOS, `/usr/local` is where Homebrew and other package managers install libraries and headers. If CPython's `configure` discovers those during a build, it may **dynamically link** against them — silently breaking [portability](/concepts/portability.md), because the resulting binary would depend on libraries that won't exist on another machine.
+On macOS, `/usr/local` is historically where Homebrew and other package managers install libraries and headers. If CPython's `configure` discovers those during a build, it may **dynamically link** against them — silently breaking [portability](/concepts/portability.md), because the resulting binary would depend on libraries that won't exist on another machine.
 
 ## The mask
 
@@ -24,8 +24,3 @@ Because it is a RAM disk mounted over the path (not a deletion), the real `/usr/
 ## Scope
 
 This mask applies to **macOS only**. On Linux, isolation is achieved through telltale-driven module selection and the injected `CPATH`/`LDFLAGS` pointing at `build/deps/` first.
-
-# Citations
-
-[1] [src/portable_python/__init__.py — FolderMask, BuildContext](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py)
-[2] [ARCHITECTURE.md — Folder Masking pattern](https://github.com/codrsquad/portable-python/blob/main/ARCHITECTURE.md)

@@ -29,8 +29,3 @@ Static linking is achieved **only** through `configure`/`make` flags — never b
 ## Relativization
 
 Static linking removes runtime library dependencies, but absolute *paths* can still leak into the install (shebang lines, `sysconfig` variables). The [`Cpython`](/architecture/cpython.md) finalize step rewrites these to be relative, and [`LibAutoCorrect`](/architecture/python-inspector.md) rewrites dynamic-library references in binaries to relative form (`@loader_path`/`$ORIGIN` style). Together these make the install relocatable.
-
-# Citations
-
-[1] [src/portable_python/__init__.py — ModuleBuilder.xenv_* methods](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py)
-[2] [src/portable_python/cpython.py — finalize / relativize steps](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cpython.py)

@@ -2,7 +2,6 @@
 type: CLI Command
 title: list
 description: List the latest available versions for a python family (default cpython), optionally as JSON.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py
 tags: [cli, list, versions, command]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -28,8 +27,3 @@ portable-python list [OPTIONS] [FAMILY]
 portable-python list
 portable-python list cpython --json
 ```
-
-# Citations
-
-[1] [src/portable_python/cli.py — list_cmd](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cli.py)
-[2] [src/portable_python/versions.py — CPythonFamily.get_available_versions](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/versions.py)

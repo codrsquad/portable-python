@@ -4,7 +4,8 @@ okf_version: "0.1"
 
 # Portable Python — Knowledge Bundle
 
-A knowledge bundle (in [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) format) describing `portable-python`: a CLI and Python library for compiling statically-linked, relocatable CPython binaries from source.
+A knowledge bundle (in [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) format) describing `portable-python`: a CLI and Python library for
+compiling statically-linked, relocatable CPython binaries from source.
 
 Start with the [Overview](/overview.md), then drill into the area you need.
 
@@ -21,10 +22,9 @@ Start with the [Overview](/overview.md), then drill into the area you need.
 ## Conventions
 
 * Concept IDs are file paths minus `.md` (e.g. `architecture/ppg`).
-* Cross-links are bundle-relative, beginning with `/` (the bundle root is this `docs/` folder).
-* `resource:` frontmatter points to the canonical source file on GitHub when a concept maps to code.
-* Change history lives in [log.md](/log.md).
+* Cross-links are bundle-relative, beginning with `/` (the bundle root is this `docs/` folder).* Change history lives in [log.md](/log.md).
 
-## Relationship to the root-level docs
+## Authority
 
-This bundle is additive. The repository's hand-written `README.rst`, `ARCHITECTURE.md`, `CONFIGURATION.md`, and `DEVELOP.md` remain authoritative for now; this bundle reorganizes and expands that material into discrete, linkable concepts. See [Overview](/overview.md#citations) for pointers back to those files.
+This bundle is the **authoritative** documentation for portable-python's internals, configuration, CLI, and development workflows.
+The repository's `README.rst` remains the project's landing page (install, quick start, motivation).

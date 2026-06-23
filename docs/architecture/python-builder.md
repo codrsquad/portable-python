@@ -2,7 +2,6 @@
 type: Class
 title: PythonBuilder
 description: A ModuleBuilder specialization for python implementations — adds module selection, the python install layout, and helpers to run the freshly built interpreter.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py
 tags: [class, abstract, python, build]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -32,7 +31,3 @@ A `PythonBuilder` owns a `ModuleCollection`, which models the set of candidate e
 - `selected` — only the modules chosen for *this* build (config + `--modules` + auto-selection). This is the list that actually gets compiled.
 - `auto_selected` — modules force-selected because a build can't succeed without them (each module's `auto_select_reason()`).
 - `report()` / `report_rows()` — the human-readable table shown by [`build-report`](/cli/build-report.md).
-
-# Citations
-
-[1] [src/portable_python/__init__.py — PythonBuilder, ModuleCollection](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/__init__.py)

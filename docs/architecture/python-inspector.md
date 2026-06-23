@@ -2,7 +2,6 @@
 type: Class
 title: PythonInspector
 description: Validates the portability of a python installation by parsing the dynamic-library dependencies of every executable and .so, and reporting any non-portable references.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/inspector.py
 tags: [class, inspection, validation, portability]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -40,6 +39,7 @@ if problem:
 | `LibType` | Enum classifying a reference (system, relative/self, problematic, …). |
 | `FullSoReport` | The complete scan and its `get_problem()` verdict. |
 | `LibAutoCorrect` | Rewrites absolute lib references in binaries to **relative** form (`@loader_path` / `$ORIGIN`), making an install relocatable. Exposed via [`lib-auto-correct`](/cli/lib-auto-correct.md). |
+| `Tracker` / `Trackable` | Categorize the found objects (libs, problems) by type and render the detailed reports (`tracking.py`); `SoInfo` and `CLibInfo` are `Trackable`. |
 
 ## How it detects problems
 
@@ -50,8 +50,3 @@ For each binary it lists dynamic dependencies, then classifies every reference:
 - **Absolute, non-system** reference → a portability problem; for a portable build this fails the inspection.
 
 `LibAutoCorrect` is also used **during** the build's finalize step to convert references to relative form before the portable check runs.
-
-# Citations
-
-[1] [src/portable_python/inspector.py](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/inspector.py)
-[2] [src/portable_python/tracking.py — Tracker/Trackable](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/tracking.py)

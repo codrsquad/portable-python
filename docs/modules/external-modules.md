@@ -1,33 +1,34 @@
 ---
 type: Reference
 title: External Modules Reference
-description: The C libraries compiled and statically linked into CPython, with default versions, telltale markers, and Linux build constraints.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/external/xcpython.py
+description: The C libraries compiled and statically linked into CPython, with their telltale markers and Linux build constraints.
 tags: [reference, modules, external, cpython]
 timestamp: 2026-06-23T00:00:00Z
 ---
 
 # External Modules Reference
 
-These are the candidate external modules for CPython, in the order declared by `Cpython.candidate_modules()`. Each is a [`ModuleBuilder`](/architecture/module-builder.md) that compiles a C library statically into the shared `build/deps/` prefix before CPython is built. Default versions are overridable via [config](/configuration/portable-python-yml.md) (e.g. `openssl-version`).
+These are the candidate external modules for CPython, in the order declared by `Cpython.candidate_modules()`. Each is a [`ModuleBuilder`](/architecture/module-builder.md) that compiles a C library statically into the shared `build/deps/` prefix before CPython is built.
+
+Default versions are intentionally **not** listed here, to avoid drifting from the code: each module's default is the `cfg_version()` default in its source class (overridable via the `{module}-version` [config](/configuration/portable-python-yml.md) key). To see the versions that would actually be used for a build, run [`build-report`](/cli/build-report.md).
 
 # Schema
 
-| Module | CPython feature | Default version | Telltale (`{include}/…`) | Linux dev pkg |
-|--------|-----------------|-----------------|--------------------------|----------------|
-| `LibFFI` | `ctypes` | 3.5.2 | `ffi.h`, `ffi/ffi.h` | `!libffi-dev` |
-| `Zlib` | `zlib` | 1.3.2 | `zlib.h` | `!zlib1g-dev` |
-| `Zstd` | compression (zstd) | 1.5.7 | `zstd.h` | `!libzstd-dev` |
-| `Xz` | `lzma` | 5.8.3 | `lzma.h` | — |
-| `Bzip2` | `bz2` | 1.0.8 | `bzlib.h` | — |
-| `Readline` | `readline` | 8.3 | `readline/readline.h` | `-libreadline-dev` |
-| `Openssl` | `ssl`, `hashlib` | 3.5.6 | `openssl/ssl.h` | — |
-| `Sqlite` | `sqlite3` | 3.51.3 | `sqlite3.h` | `+libsqlite3-dev` |
-| `Bdb` | `dbm.ndbm` | 6.2.32 | `dbm.h` | `libgdbm-compat-dev` |
-| `Gdbm` | `dbm.gnu` | 1.26 | `gdbm.h` | `libgdbm-dev` |
-| `Uuid` | `uuid` | 1.0.3 | `uuid/uuid.h` | `+uuid-dev` |
-| `TkInter` | `tkinter` | 8.6.17 | `tk`, `tk.h` | `-tk-dev` |
-| `Mpdec` | `decimal` | 4.0.1 | `mpdecimal.h` | `!libmpdec-dev` |
+| Module | CPython feature | Telltale (`{include}/…`) | Linux dev pkg |
+|--------|-----------------|--------------------------|----------------|
+| `LibFFI` | `ctypes` | `ffi.h`, `ffi/ffi.h` | `!libffi-dev` |
+| `Zlib` | `zlib` | `zlib.h` | `!zlib1g-dev` |
+| `Zstd` | compression (zstd) | `zstd.h` | `!libzstd-dev` |
+| `Xz` | `lzma` | `lzma.h` | — |
+| `Bzip2` | `bz2` | `bzlib.h` | — |
+| `Readline` | `readline` | `readline/readline.h` | `-libreadline-dev` |
+| `Openssl` | `ssl`, `hashlib` | `openssl/ssl.h` | — |
+| `Sqlite` | `sqlite3` | `sqlite3.h` | `+libsqlite3-dev` |
+| `Bdb` | `dbm.ndbm` | `dbm.h` | `libgdbm-compat-dev` |
+| `Gdbm` | `dbm.gnu` | `gdbm.h` | `libgdbm-dev` |
+| `Uuid` | `uuid` | `uuid/uuid.h` | `+uuid-dev` |
+| `TkInter` | `tkinter` | `tk`, `tk.h` | `-tk-dev` |
+| `Mpdec` | `decimal` | `mpdecimal.h` | `!libmpdec-dev` |
 
 ## Linux dev-package sigils
 
@@ -51,9 +52,3 @@ Some modules bundle their own dependencies as sub-modules (their `candidate_modu
 ## Per-module config
 
 Every module honors these config keys (replace `{module}` with the lowercased name, e.g. `openssl`): `{module}-version`, `{module}-url`, `{module}-src-suffix`, `{module}-configure`, `{module}-http-headers`, `{module}-patches`. See [configuration](/configuration/portable-python-yml.md).
-
-# Citations
-
-[1] [src/portable_python/external/xcpython.py](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/external/xcpython.py)
-[2] [src/portable_python/external/xtkinter.py](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/external/xtkinter.py)
-[3] [src/portable_python/cpython.py — Cpython.candidate_modules](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/cpython.py)

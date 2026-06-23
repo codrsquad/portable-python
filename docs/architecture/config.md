@@ -2,7 +2,6 @@
 type: Class
 title: Config & Folders
 description: Config loads and merges YAML configuration with platform-specific overrides; Folders resolves the templated build/dist/sources paths.
-resource: https://github.com/codrsquad/portable-python/blob/main/src/portable_python/config.py
 tags: [class, configuration, folders, yaml]
 timestamp: 2026-06-23T00:00:00Z
 ---
@@ -29,13 +28,15 @@ timestamp: 2026-06-23T00:00:00Z
 | Member | Purpose |
 |--------|---------|
 | `build_folder`, `components`, `deps`, `sources`, `logs`, `dist`, `destdir` | Resolved component paths — see [build layout](/concepts/build-layout.md). |
-| `ppp-marker` | Template for the in-progress install folder name. |
+| `ppp-marker` | The [ppp-marker](/concepts/ppp-marker.md) install prefix; equals `--prefix` for non-portable builds. |
 | `formatted(text)` | Expand `{build}`, `{version}`, `{abi_suffix}`, … placeholders. |
 | `resolved_destdir(relative_path)` | Compose a path under the marker'd destdir. |
 
 ## Precedence & overrides
 
-Configuration merges multiple sources. The built-in `DEFAULT_CONFIG` provides sane defaults; user files (default `portable-python.yml`, plus any `include:`d files) layer on top. Within a file, **platform-specific** sections override generic ones:
+Configuration merges multiple sources. The built-in `DEFAULT_CONFIG` provides sane defaults;
+user files (default `portable-python.yml`, plus any `include:`d files) layer on top.
+Within a file, **platform-specific** sections override generic ones:
 
 ```yaml
 ext: gz            # generic default
@@ -47,9 +48,3 @@ macos:
 ```
 
 `get_value(..., by_platform=True)` returns the most specific match for the current `PPG.target`.
-
-# Citations
-
-[1] [src/portable_python/config.py — Config, DEFAULT_CONFIG](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/config.py)
-[2] [src/portable_python/versions.py — Folders](https://github.com/codrsquad/portable-python/blob/main/src/portable_python/versions.py)
-[3] [CONFIGURATION.md](https://github.com/codrsquad/portable-python/blob/main/CONFIGURATION.md)
