@@ -8,32 +8,14 @@ timestamp: 2026-06-23T00:00:00Z
 
 # PPG
 
-`PPG` ("**P**ortable **P**ython **G**lobals") is the global state holder for portable-python. Every module reaches shared state — configuration, the target platform, and version families — through `PPG`'s class attributes and classmethods. It is defined in `versions.py`.
+`PPG` ("**P**ortable **P**ython **G**lobals") is the global state holder (`versions.py`) — the one place the rest of the code reaches for three process-wide facts: the merged [configuration](/architecture/config.md), the target platform (OS/arch), and the registry of python version families. The CLI's `main` initializes it once; everything else reads from it.
 
-Like [`ppp-marker`](/concepts/ppp-marker.md), the name is a deliberately uncommon character sequence chosen for searchability: grepping the codebase for `PPG` surfaces only its own usages, with no collisions in upstream CPython source or third-party libraries.
-
-# Schema
-
-| Member | Kind | Purpose |
-|--------|------|---------|
-| `config` | attribute (`Config`) | The active merged [configuration](/architecture/config.md). |
-| `target` | attribute (`PlatformId`) | Target OS/arch; drives platform dispatch and telltale expansion. |
-| `families` | attribute (`dict`) | Registry mapping family name → `VersionFamily` (default: `{"cpython": ...}`). |
-| `cpython` | attribute (`CPythonFamily`) | The built-in CPython family implementation. |
-| `grab_config(paths, target)` | classmethod | (Re)load config from the given paths and set `target`. Called by the CLI's `main`. |
-| `get_folders(base, family, version, abi_suffix)` | classmethod | Build a [`Folders`](/architecture/config.md) for a given family/version. |
-| `family(name, fatal=True)` | classmethod | Look up a `VersionFamily` by name. |
-| `find_python(spec)` | classmethod | Resolve a python on `PATH` via a cached `runez` `PythonDepot`. |
-| `find_telltale(*telltales)` | classmethod | Expand `{include}` placeholders against `target.sys_include` and return the first existing path. See [telltale detection](/concepts/telltale-detection.md). |
-
-## Version families
-
-A `VersionFamily` (e.g. `CPythonFamily`) knows how to **list available versions** and **provide a builder**:
-
-- `available_versions` / `latest` — lazily fetched and cached (CPython fetches from `python.org/ftp`, or GitHub tags when `cpython-use-github` is set). This lazy fetch is why [`list`](/cli/list.md) hits the network on first use.
-- `get_builder()` — returns the concrete builder class ([`Cpython`](/architecture/cpython.md) for the cpython family).
-- `min_version` — earliest non-EOL version known to compile well (currently `3.9`).
+Like [`ppp-marker`](/concepts/ppp-marker.md), the name is a deliberately uncommon, greppable token — searching for `PPG` surfaces only its own usages, with no collisions in upstream CPython or third-party source.
 
 ## Why a singleton
 
-The build touches global, process-wide facts: which config file is active, what platform we are targeting, and which python versions exist. Centralizing them in `PPG` avoids threading that state through every constructor, and gives the CLI a single place ([`main`](/cli/index.md)) to initialize it.
+The build depends on global facts — which config is active, what platform we target, which python versions exist — so centralizing them avoids threading that state through every constructor and gives the CLI one initialization point. Shared helpers hang off it too: resolving a python on `PATH`, building [`Folders`](/architecture/config.md) for a version, and expanding [telltale](/concepts/telltale-detection.md) markers against the target's system includes.
+
+## Version families
+
+A `VersionFamily` (e.g. `CPythonFamily`) lists the available versions and hands back the right builder ([`Cpython`](/architecture/cpython.md) for cpython). Versions are fetched lazily and cached — from `python.org/ftp`, or GitHub tags when configured — which is why [`list`](/cli/list.md) hits the network on first use. A family also pins the minimum supported version (non-EOL only).

@@ -2,6 +2,7 @@
 
 ## 2026-06-23
 
+* **Update**: Reshaped the six architecture `type: Class` pages — dropped the `# Schema` member tables (which mirrored code and risked drift) for a condensed mental-model + "worth knowing" framing; the code stays authoritative for the API.
 * **Update**: Removed the `resource:` frontmatter field from all concept files — unrendered, unreferenced by any tooling, and brittle (GitHub URLs). Source is pointed to inline in the prose instead. The bundle now contains no `github.com` repo links.
 * **Update**: Removed the `# Citations` sections from all concept files — they duplicated the `resource:` frontmatter and inline source mentions, and added brittle GitHub-URL boilerplate that nothing referenced. Source pointers now live only in `resource:` and inline prose.
 * **Update**: Inverted the `docs/` ↔ `CLAUDE.md` relationship — `CLAUDE.md` is now a thin pointer into the bundle. Folded the test-harness and code-style notes into [local development](/guides/local-development.md), and removed all back-references to `CLAUDE.md` from `docs/`.

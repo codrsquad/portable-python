@@ -8,46 +8,19 @@ timestamp: 2026-06-23T00:00:00Z
 
 # ModuleBuilder
 
-`ModuleBuilder` is the abstract base for anything compiled by the tool. Both [external C modules](/modules/index.md) and [`PythonBuilder`](/architecture/python-builder.md) (hence [`Cpython`](/architecture/cpython.md)) extend it, so every component shares the same [build layout](/concepts/build-layout.md) and flow.
+The abstract base for everything the tool compiles (`__init__.py`). Both the [external C modules](/modules/index.md) and [`PythonBuilder`](/architecture/python-builder.md) (hence [`Cpython`](/architecture/cpython.md)) extend it, so every component is built the same way and lands in the same [build layout](/concepts/build-layout.md).
 
-# Schema
+## Mental model
 
-## Declarative class attributes
+A subclass is mostly **declarative**: it sets a few `m_*` class attributes (name, [telltale](/concepts/telltale-detection.md) marker, Debian package, include subfolder) and provides a source `url` + `version`. The base class runs the rest of the flow — download → unpack → patch → configure → make → install — into the shared `build/deps/` prefix. Platform differences are isolated to `_do_linux_compile()` / `_do_macos_compile()`, dispatched on [`PPG.target`](/architecture/ppg.md).
 
-| Attribute | Purpose |
-|-----------|---------|
-| `m_name` | Module name (derived from the class name). |
-| `m_telltale` | Marker file(s) indicating the lib is present on the system. See [telltale detection](/concepts/telltale-detection.md). |
-| `m_debian` | Debian dev package, with `!` / `+` / `-` sigils encoding build constraints. |
-| `m_include` | Optional subfolder to add to `CPATH` when active (e.g. `openssl`). |
-| `m_build_cwd` | Optional subfolder (relative to unpacked source) to run configure/make from. |
+Two mechanisms recur everywhere and are worth understanding:
 
-## Source resolution (overridable)
+- **Environment injection** (`xenv_*` methods) — each contributes one variable (CPATH, LDFLAGS, PATH, …) pointing the compiler at `build/deps/`. This is how a statically-built dependency gets found by the next build; see [static linking](/concepts/static-linking.md).
+- **Per-module config overrides** — `cfg_*` helpers read `{module}-version`, `{module}-url`, `{module}-configure`, … from [configuration](/configuration/portable-python-yml.md), so any default can be overridden without code changes.
 
-| Member | Purpose |
-|--------|---------|
-| `url` | Download URL of the source tarball. |
-| `version` | Version to build (default per module, overridable via config). |
-| `headers` / `src_suffix` | HTTP headers and archive suffix when the URL lacks an extension. |
-| `cfg_version`, `cfg_url`, `cfg_configure`, `cfg_patches`, `cfg_http_headers` | Read per-module overrides from [config](/configuration/portable-python-yml.md) (keys like `openssl-version`, `openssl-url`, …). |
+`linker_outcome()` decides, per module and platform, whether it will be linked `static` / `shared`, is `absent`, or would `fail` — the verdict surfaced by [`build-report`](/cli/build-report.md).
 
-## Environment injection (`xenv_*`)
+## Adding one
 
-Each `xenv_*` method supplies one environment variable for the compile, pointing tools at the shared `deps/` prefix — the mechanism behind [static linking](/concepts/static-linking.md):
-
-`xenv_CPATH`, `xenv_LDFLAGS`, `xenv_PATH`, `xenv_LD_LIBRARY_PATH`, `xenv_PKG_CONFIG_PATH`. `_find_all_env_vars()` gathers every `xenv_*` on the instance just before running.
-
-## Build flow
-
-| Method | Role |
-|--------|------|
-| `compile()` | Download → unpack → patch → `_prepare()` → platform compile → `_finalize()`. |
-| `run_configure(program, *args, prefix)` | Run `./configure` with the deps prefix. |
-| `run_make(*args, cpu_count)` | Run `make` (parallelized by CPU count). |
-| `_do_linux_compile()` / `_do_macos_compile()` | Platform-specific compile, dispatched by `PPG.target`. |
-| `linker_outcome(is_selected)` | Decide `static` / `shared` / `absent` / `failed` for this module. |
-| `captured_logs()` | Context manager routing this module's output to its own numbered log file. |
-
-## Adding a module
-
-To add a new external module you subclass `ModuleBuilder`, set the `m_*` attributes, implement `url`/`version`, and implement `_do_linux_compile()` (macOS reuses it unless overridden). See the [guide](/guides/add-an-external-module.md).
+Subclass `ModuleBuilder`, set the `m_*` attributes, implement `url` / `version` and `_do_linux_compile()` — see the [guide](/guides/add-an-external-module.md).

@@ -8,26 +8,18 @@ timestamp: 2026-06-23T00:00:00Z
 
 # PythonBuilder
 
-`PythonBuilder` extends [`ModuleBuilder`](/architecture/module-builder.md) with behavior specific to building a python interpreter. It is still abstract — the concrete implementation is [`Cpython`](/architecture/cpython.md). Defined in `__init__.py`.
+The abstract [`ModuleBuilder`](/architecture/module-builder.md) specialization for building a python interpreter (`__init__.py`); the concrete implementation is [`Cpython`](/architecture/cpython.md).
 
-# Schema
+## What it adds over ModuleBuilder
 
-| Member | Kind | Purpose |
-|--------|------|---------|
-| `modules` | attribute (`ModuleCollection`) | The external modules selected/available for this build. |
-| `selected_modules()` | method | Builds the `ModuleCollection` from candidates + the desired list. |
-| `bin_python` | property | Path to the built interpreter (`.../bin/python`). |
-| `version` | property | The python version being built. |
-| `validate_setup()` | method | Pre-flight checks before compilation begins. |
-| `run_python(*args)` | method | Invoke the freshly built interpreter (used during finalize/validation). |
-| `xenv_LDFLAGS()` | method | Python-specific linker flags layered on the base `ModuleBuilder` behavior. |
-| `_prepare()` | method | Hook run before the platform compile. |
+Beyond the base compile flow, a `PythonBuilder` owns the **module selection** (which [external modules](/modules/index.md) to build) and can **run the freshly-built interpreter** — used during finalize and validation.
 
 ## ModuleCollection
 
-A `PythonBuilder` owns a `ModuleCollection`, which models the set of candidate external modules and resolves which are actually built:
+A `PythonBuilder` owns a `ModuleCollection` that resolves which external modules actually get built — a distinction worth keeping straight:
 
-- `candidates` — every possible module for this builder (from `candidate_modules()`).
-- `selected` — only the modules chosen for *this* build (config + `--modules` + auto-selection). This is the list that actually gets compiled.
-- `auto_selected` — modules force-selected because a build can't succeed without them (each module's `auto_select_reason()`).
-- `report()` / `report_rows()` — the human-readable table shown by [`build-report`](/cli/build-report.md).
+- **candidates** — every module this builder *could* compile.
+- **selected** — the ones chosen for *this* build (config + `--modules` + auto-selection). This is what's actually compiled, not all candidates.
+- **auto-selected** — modules force-included because the build can't succeed without them (each module's `auto_select_reason()`).
+
+It's what [`build-report`](/cli/build-report.md) renders.

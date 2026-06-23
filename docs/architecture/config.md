@@ -8,35 +8,11 @@ timestamp: 2026-06-23T00:00:00Z
 
 # Config & Folders
 
-`Config` (in `config.py`) loads, merges, and queries the YAML [configuration](/configuration/portable-python-yml.md). `Folders` (in `versions.py`) turns templated path settings into concrete filesystem paths. Both are reached through [`PPG`](/architecture/ppg.md).
+`Config` (`config.py`) loads, merges, and queries the YAML [configuration](/configuration/portable-python-yml.md). `Folders` (`versions.py`) turns its templated path settings into concrete filesystem paths. Both are reached through [`PPG`](/architecture/ppg.md).
 
-# Schema
+## Merge & precedence
 
-## Config
-
-| Member | Purpose |
-|--------|---------|
-| `__init__(paths, target)` | Layer the built-in `DEFAULT_CONFIG` under any user config files, for the given target platform. |
-| `get_value(*key, by_platform=True)` | Fetch a config value, honoring platform-specific overrides (most specific wins). |
-| `get_entry(*key, by_platform=True)` | Like `get_value` but returns the raw entry. |
-| `resolved_path(*key)` | Fetch a value and resolve it to a path. |
-| `config_files_report()` / `represented()` | Human-readable summary of which config files are in effect (used by [`diagnostics`](/cli/diagnostics.md)). |
-| `cleanup_globs(...)` / `symlink_duplicates(...)` / `ensure_main_file_symlinks(...)` | Finalize-time file housekeeping in the install. |
-
-## Folders
-
-| Member | Purpose |
-|--------|---------|
-| `build_folder`, `components`, `deps`, `sources`, `logs`, `dist`, `destdir` | Resolved component paths — see [build layout](/concepts/build-layout.md). |
-| `ppp-marker` | The [ppp-marker](/concepts/ppp-marker.md) install prefix; equals `--prefix` for non-portable builds. |
-| `formatted(text)` | Expand `{build}`, `{version}`, `{abi_suffix}`, … placeholders. |
-| `resolved_destdir(relative_path)` | Compose a path under the marker'd destdir. |
-
-## Precedence & overrides
-
-Configuration merges multiple sources. The built-in `DEFAULT_CONFIG` provides sane defaults;
-user files (default `portable-python.yml`, plus any `include:`d files) layer on top.
-Within a file, **platform-specific** sections override generic ones:
+The mental model is layering. A built-in `DEFAULT_CONFIG` provides sane defaults; user files (default `portable-python.yml`, plus any `include:`d files) layer on top. Within a file, **platform-specific** sections override generic ones, and the most specific match for the [target platform](/architecture/ppg.md) wins:
 
 ```yaml
 ext: gz            # generic default
@@ -47,4 +23,8 @@ macos:
     MACOSX_DEPLOYMENT_TARGET: 13
 ```
 
-`get_value(..., by_platform=True)` returns the most specific match for the current `PPG.target`.
+A lookup returns that most-specific value (with the option to ignore platform overrides).
+
+## Folders
+
+`Folders` resolves the templated `folders:` settings (placeholders like `{build}`, `{version}`, `{abi_suffix}`) into the concrete `build/`, `deps/`, `dist/`, … paths every component uses — including the [ppp-marker](/concepts/ppp-marker.md) install prefix. See [build layout](/concepts/build-layout.md) for the resulting tree.
