@@ -18,6 +18,8 @@ Start with the [Overview](/overview.md), then drill into the area you need.
 * [External Modules](/modules/index.md) - The C libraries compiled and statically linked into CPython.
 * [Configuration](/configuration/index.md) - The `portable-python.yml` file, its sections and overrides.
 * [Guides](/guides/index.md) - Playbooks for common tasks: building, extending, local development.
+* [Release process](/release.md) - How to cut a release: changelog highlights, then a version tag.
+* [Changelog](/changelog.md) - High-level release highlights, newest first.
 
 ## Conventions
 

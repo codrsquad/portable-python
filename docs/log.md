@@ -2,6 +2,7 @@
 
 ## 2026-06-23
 
+* **Creation**: Added the [release process](/release.md) playbook and the [changelog](/changelog.md).
 * **Creation**: Added the [bump component versions](/guides/bump-components.md) guide.
 * **Update**: Pulled two verified facts in from the project wiki — the relativization tools (`patchelf` / `install_name_tool`) and `--prefix` / `--enable-shared` support ([PythonInspector](/architecture/python-inspector.md)), and the `#sha256=` download-checksum URL fragment ([configuration](/configuration/portable-python-yml.md)). Skipped the wiki's `sources:` download-url design — it's an unimplemented draft.
 * **Update**: Trimmed the CLI pages — dropped the per-command option tables (which mirror `--help`) for purpose + non-obvious gotchas + examples, pointing at `--help` for the full flag list.
