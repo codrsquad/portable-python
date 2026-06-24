@@ -121,4 +121,4 @@ class TkInter(ModuleBuilder):
         # This is the Tcl/Tk version used by Tcl, Tk, and Tix sub-modules
         # Staying on 8.6.x branch (9.0+ is a major rewrite)
         # Check https://www.tcl-lang.org/software/tcltk/8.6.html
-        return self.cfg_version("8.6.17")
+        return self.cfg_version("8.6.18")

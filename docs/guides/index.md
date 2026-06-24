@@ -4,6 +4,7 @@ Task-oriented playbooks for using and extending portable-python.
 
 * [Build a portable python](/guides/build-a-portable-python.md) - Install the tool, build a binary, and use it.
 * [Add an external module](/guides/add-an-external-module.md) - Add a new C library to the static-link set.
+* [Bump component versions](/guides/bump-components.md) - Update the pinned upstream versions of the external C libraries.
 * [Add a config option](/guides/add-a-config-option.md) - Introduce a new configuration key.
 * [Fix a portability issue](/guides/fix-a-portability-issue.md) - Diagnose and correct a non-portable build.
 * [Bump python support](/guides/bump-python-support.md) - Move the supported CPython version window.

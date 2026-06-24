@@ -22,3 +22,4 @@ The authoritative, self-contained documentation is the OKF knowledge bundle unde
 
 - Check **runez** before reimplementing file / system / CLI / logging / version helpers — see [`docs/guides/local-development.md`](docs/guides/local-development.md).
 - The docs use the OKF format; keep the bundle conformant (`scripts/check_okf.py docs`) when you edit it.
+- As changes land, keep a top section in [`docs/changelog.md`](docs/changelog.md) for the upcoming release — `## Unreleased`, or the next version directly once it's known. Maintain it as PRs come in; it's double-checked at release. Don't fuss over marking released-vs-unreleased (small audience, `git tag` says what's out).

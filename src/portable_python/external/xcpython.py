@@ -183,8 +183,9 @@ class Openssl(ModuleBuilder):
     @property
     def version(self):
         # 3.5 is LTS, supported until Apr 2030 (3.0 EOL Sept 2026)
+        # Stay on the 3.5 LTS line for now: 3.6 / 4.0 not yet verified for cpython builds
         # Check https://github.com/openssl/openssl/releases and https://endoflife.date/openssl
-        return self.cfg_version("3.5.6")
+        return self.cfg_version("3.5.7")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -317,8 +318,8 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        # Check https://sqlite.org/changes.html (avoid withdrawn releases like 3.52.0)
-        return self.cfg_version("3.51.3")
+        # Keep current; check https://sqlite.org/changes.html (avoid withdrawn releases like 3.52.0)
+        return self.cfg_version("3.53.2")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
