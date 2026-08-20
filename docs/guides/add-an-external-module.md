@@ -18,8 +18,8 @@ To statically link a new C library into CPython, add a [`ModuleBuilder`](/archit
    class Mylib(ModuleBuilder):
        """See https://docs.python.org/3/library/mymodule.html"""
 
-       m_telltale = "{include}/mylib.h"     # marker if system already has it
-       m_debian = "+libmylib-dev"           # Linux build constraint (see telltale detection)
+       m_telltale = "{include}/mylib.h"  # marker if system already has it
+       m_debian = "+libmylib-dev"  # Linux build constraint (see telltale detection)
 
        @property
        def url(self):

@@ -18,6 +18,7 @@ Each [`ModuleBuilder`](/architecture/module-builder.md) subclass declares `m_tel
 class Openssl(ModuleBuilder):
     m_telltale = "{include}/openssl/ssl.h"
 
+
 class Sqlite(ModuleBuilder):
     m_telltale = ["{include}/sqlite3.h"]
 ```

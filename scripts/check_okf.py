@@ -24,7 +24,7 @@ import sys
 
 # Matches markdown links ending in .md, with an optional #anchor (external http(s)/mailto links are skipped below)
 LINK_RE = re.compile(r"\]\((?P<target>[^)\s#]+\.md)(?:#[^)]*)?\)")
-TYPE_RE = re.compile(r"^type:\s*(?P<type>\S.*)$", re.M)
+TYPE_RE = re.compile(r"^type:\s*(?P<type>\S.*)$", re.MULTILINE)
 
 
 def frontmatter(text):
