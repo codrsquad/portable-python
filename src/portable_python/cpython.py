@@ -199,6 +199,21 @@ class Cpython(PythonBuilder):
         if self.version >= "3.14" and PPG.target.is_macos:
             yield f"{self.deps_lib_dir}/libmpdec.a"
 
+    def xenv_LIBREADLINE_LIBS(self):
+        if self.version >= "3.12" and self.active_module(Readline):
+            # Since 3.12 (gh-90005), ./configure asks pkg-config how to link the readline module,
+            # and no longer probes for the termcap library that readline needs. It states:
+            # "We now assume that libreadline or readline.pc provide correct linker information".
+            # Our readline is static, and its readline.pc mentions ncurses in 'Requires.private',
+            # which `pkg-config --libs` does not report (only `--libs --static` does). readline
+            # then gets linked without ncurses: it compiles, but fails to import at the end of
+            # the build with "undefined symbol: UP". So state the full static link line ourselves
+            # (same as `pkg-config --static --libs readline`), ./configure honors <LIB>_LIBS for
+            # exactly this purpose (gh-94801).
+            yield f"-L{self.deps_lib_dir}"
+            yield "-lreadline"
+            yield "-lncursesw"
+
     @runez.cached_property
     def prefix_lib_folder(self):
         """Path to <prefix>/lib/pythonM.m folder"""
