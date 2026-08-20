@@ -233,8 +233,7 @@ class CLibInfo(Trackable):
 
         short_name = self.basename
         if not short_name.startswith("libpython"):
-            if short_name.startswith("lib"):
-                short_name = short_name[3:]
+            short_name = short_name.removeprefix("lib")
 
             short_name = short_name.partition(".")[0]
 

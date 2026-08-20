@@ -16,7 +16,7 @@ import os
 import pathlib
 import re
 from string import Template
-from typing import ClassVar, List
+from typing import ClassVar
 
 import runez
 from runez.http import RestClient
@@ -301,9 +301,9 @@ class BuildSetup:
 class ModuleCollection:
     """Models a collection of sub-modules, with auto-detection and reporting as to what is active and why"""
 
-    candidates: List["ModuleBuilder"] = None
+    candidates: list["ModuleBuilder"] = None
     desired: str = None
-    selected: List["ModuleBuilder"] = None
+    selected: list["ModuleBuilder"] = None
 
     def __init__(self, parent_module: "ModuleBuilder", desired=None):
         self.selected = []
