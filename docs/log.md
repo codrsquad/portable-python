@@ -1,5 +1,9 @@
 # Knowledge Bundle Update Log
 
+## 2026-08-20
+
+* **Update**: Bumped SQLite to 3.53.4 and gettext-tiny to 0.3.3, and recorded the stay-put rationale for LibFFI, OpenSSL and Readline in their `version` property comments (per the [bump components playbook](/guides/bump-components.md)).
+
 ## 2026-06-23
 
 * **Creation**: Added the [release process](/release.md) playbook and the [changelog](/changelog.md).

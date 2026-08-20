@@ -136,6 +136,8 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
+        # Stay on 3.5: 3.6, 3.7 and 3.8 all landed Jun-Aug 2026 in quick succession (3.7.0 -> 3.7.1 took 2 days)
+        # python-build-standalone still pins 3.4.8, none of the newer lines are proven for static cpython builds yet
         # Check https://github.com/libffi/libffi/releases
         return self.cfg_version("3.5.2")
 
@@ -183,7 +185,8 @@ class Openssl(ModuleBuilder):
     @property
     def version(self):
         # 3.5 is LTS, supported until Apr 2030 (3.0 EOL Sept 2026)
-        # Stay on the 3.5 LTS line for now: 3.6 / 4.0 not yet verified for cpython builds
+        # Stay on the 3.5 LTS line: 3.6.x and 4.0.x have shipped but are not verified for cpython builds
+        # (python-build-standalone pins 3.5.7 as well)
         # Check https://github.com/openssl/openssl/releases and https://endoflife.date/openssl
         return self.cfg_version("3.5.7")
 
@@ -273,6 +276,7 @@ class Readline(ModuleBuilder):
     @property
     def version(self):
         # Patched tarballs (e.g. "8.2.13") are available on the GNU FTP when patches accumulate
+        # 8.3 has official patches 001-003 pending, not rolled up yet: watch for a readline-8.3.x tarball
         # Check https://ftpmirror.gnu.org/gnu/readline/ for available tarballs
         return self.cfg_version("8.3")
 
@@ -318,8 +322,9 @@ class Sqlite(ModuleBuilder):
 
     @property
     def version(self):
-        # Keep current; check https://sqlite.org/changes.html (avoid withdrawn releases like 3.52.0)
-        return self.cfg_version("3.53.2")
+        # 3.53.x gets frequent fix-only releases, keep current within the line
+        # Check https://sqlite.org/changes.html (avoid withdrawn releases like 3.52.0)
+        return self.cfg_version("3.53.4")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):

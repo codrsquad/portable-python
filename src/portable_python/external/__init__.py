@@ -10,8 +10,9 @@ class GettextTiny(ModuleBuilder):
 
     @property
     def version(self):
+        # Small, dormant project (0.3.3 released Jan 2026), bump freely within the 0.3 line
         # Check https://github.com/sabotage-linux/gettext-tiny/releases
-        return self.cfg_version("0.3.2")
+        return self.cfg_version("0.3.3")
 
     def _do_linux_compile(self):
         self.run_make("LIBINTL=NOOP")
