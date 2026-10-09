@@ -404,11 +404,10 @@ class Cpython(PythonBuilder):
             except UnicodeError:
                 return
 
-        if lines:
-            LOG.info("Auto-corrected shebang for %s" % runez.short(path))
+        if lines and not runez.log.hdry(f"auto-correct shebang for {runez.short(path)}"):
+            LOG.info("Auto-corrected shebang for %s", runez.short(path))
             with open(path, "w") as fh:
-                for line in lines:
-                    fh.write(line)
+                fh.writelines(lines)
 
 
 class RelSysConf:

@@ -2,6 +2,7 @@
 
 ## 2026-10-09
 
+* **Update**: [Configuration](/configuration/portable-python-yml.md): `{module}-configure` substitutes `$lib_dir` and `$lib64_dir` (not `$deps_lib`), and its value is split into separate args.
 * **Creation**: Added the [type checking in v2.1.0](/typecheck-v2.1.0.md) report.
 * **Update**: The changelog moved out of the bundle, to `CHANGELOG.md` at the repo root (shipped in the sdist, like `README.rst`); [release process](/release.md) and the index point there.
 * **Update**: [CI/CD](/guides/ci-cd.md): the `linters` job and the release gate run the type checkers (ty, pyrefly, pyright, mypy, zuban).

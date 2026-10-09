@@ -31,7 +31,7 @@ class Bdb(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -93,7 +93,7 @@ class Gdbm(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -142,7 +142,7 @@ class LibFFI(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -191,7 +191,7 @@ class Openssl(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "-v"
@@ -221,7 +221,7 @@ class Ncurses(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--disable-shared"
@@ -281,7 +281,7 @@ class Readline(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -327,7 +327,7 @@ class Sqlite(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--disable-shared"
@@ -364,7 +364,7 @@ class Uuid(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -395,7 +395,7 @@ class Xz(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -439,7 +439,7 @@ class Zlib(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--static"
@@ -515,7 +515,7 @@ class Mpdec(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             pass  # yield "--static"

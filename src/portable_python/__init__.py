@@ -15,6 +15,7 @@ import multiprocessing
 import os
 import pathlib
 import re
+import shlex
 from collections.abc import Iterable
 from string import Template
 
@@ -33,7 +34,7 @@ def is_binary_file(path):
     return RX_BINARY.match(path.name)
 
 
-def patch_folder(folder, regex, replacement, ignore=None):
+def patch_folder(folder, regex, replacement, ignore=None, dryrun: runez.DryrunSpec = runez.UNSET):
     """Replace all occurrences of 'old_text' by 'new_text' in all files in 'folder'
 
     Parameters
@@ -46,33 +47,53 @@ def patch_folder(folder, regex, replacement, ignore=None):
         Replacement text
     ignore : re.Pattern | None
         Regex stating what to ignore
+    dryrun
+        Optionally override current dryrun setting
     """
     for path in runez.ls_dir(folder):
         if not path.is_symlink() and (not ignore or not ignore.match(path.name)):
             if path.is_dir():
-                patch_folder(path, regex, replacement, ignore=ignore)
+                patch_folder(path, regex, replacement, ignore=ignore, dryrun=dryrun)
 
             elif not is_binary_file(path):
-                patch_file(path, regex, replacement)
+                patch_file(path, regex, replacement, dryrun=dryrun)
 
 
-def patch_file(path, regex, replacement):
+def patch_file(path, regex, replacement, dryrun: runez.DryrunSpec = runez.UNSET):
+    """Replace `regex` with `replacement` in file `path`, if it occurs there"""
+    if not os.path.exists(path):
+        if not runez.log.resolved_dryrun(dryrun):  # Sources to patch are not downloaded in dryrun mode
+            LOG.warning("Can't patch %s: file not found", runez.short(path))
+
+        return
+
+    overview = f"{regex} -> {runez.short(replacement)} in {runez.short(path)}"
     try:
         with open(path) as fh:
             text = fh.read()
 
         new_text = re.sub(regex, replacement, text, flags=re.MULTILINE)
-        if text != new_text:
+        if text != new_text and not runez.log.hdry(f"apply patch: {overview}", dryrun=dryrun):
             with open(path, "w") as fh:
                 fh.write(new_text)
 
-            LOG.info("Patched '%s' in %s", regex, runez.short(path))
+            LOG.info("Patched %s", overview)
 
     except Exception as e:
         with open(path, errors="ignore") as fh:
             text = fh.read()
             if re.search(regex, text):
-                LOG.warning("Can't patch '%s': %s", runez.short(path), e)
+                LOG.warning("Can't patch %s: %s", overview, e)
+
+
+def correct_permissions(path: pathlib.Path, expected: int, dryrun: runez.DryrunSpec = runez.UNSET):
+    """Ensure that `path` has `expected` permissions"""
+    current = path.stat().st_mode & 0o777
+    if current != expected:
+        overview = f"permissions for {runez.short(path)} to {oct(expected)} (was {oct(current)})"
+        if not runez.log.hdry(f"correct {overview}", dryrun=dryrun):
+            LOG.info("Corrected %s", overview)
+            path.chmod(expected)
 
 
 class FolderMask:
@@ -163,7 +184,7 @@ class BuildContext:
                     self.masked_folders.append(mask)
                     mask.mount()
 
-            except BaseException:  # pragma: no cover, ensure cleanup if any folder couldn't be masked
+            except BaseException:  # Ensure cleanup if any folder couldn't be masked
                 self.cleanup()
                 raise
 
@@ -506,10 +527,13 @@ class ModuleBuilder:
     def cfg_src_suffix(self):
         return PPG.config.get_value("%s-src-suffix" % self.m_name)
 
-    def cfg_configure(self, deps_lib_dir, deps_lib64_dir):
+    def cfg_configure(self, deps_lib_dir, deps_lib64_dir) -> list[str] | None:
+        """Configure args from config (`$lib_dir` and `$lib64_dir` substituted), shell-style split into separate args"""
         if configure := PPG.config.get_value("%s-configure" % self.m_name):
-            configure_template = Template(configure)
-            return configure_template.substitute(lib_dir=deps_lib_dir, lib64_dir=deps_lib64_dir)
+            configure = Template(configure).substitute(lib_dir=deps_lib_dir, lib64_dir=deps_lib64_dir)
+            return shlex.split(configure)
+
+        return None
 
     def cfg_patches(self):
         return PPG.config.get_value("%s-patches" % self.m_name)
@@ -721,11 +745,7 @@ class ModuleBuilder:
     def _apply_patches(self):
         if patches := self.cfg_patches():
             for patch in patches:
-                if runez.DRYRUN:
-                    print(f"Would apply patch: {patch}")
-                else:
-                    print(f"Applying patch: {patch}")
-                    patch_file(patch["file"], patch["regex"], patch["replacement"])
+                patch_file(patch["file"], patch["regex"], patch["replacement"])
 
     def _get_env_vars(self):
         """Yield all found env vars, first found wins"""
@@ -826,8 +846,4 @@ class PythonBuilder(ModuleBuilder):
         for lib_dir in self.deps_lib_dirs:
             for path in runez.ls_dir(lib_dir):
                 if not path.name.endswith(".la"):
-                    expected = 0o755 if path.is_dir() else 0o644
-                    current = path.stat().st_mode & 0o777
-                    if current != expected:
-                        LOG.info("Corrected permissions for %s (was %s)", runez.short(path), oct(current))
-                        path.chmod(expected)
+                    correct_permissions(path, 0o755 if path.is_dir() else 0o644)

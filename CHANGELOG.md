@@ -8,6 +8,8 @@
   - With `cpython-use-github: true`, a failed GitHub API call (e.g. rate limiting) crashed with a stack trace
   - A build where `bin/python` could not be found crashed (instead of reporting it) when `cpython-validate-script` or `cpython-additional-packages` was configured
   - Clearer error messages when the latest python version can't be determined, or a python family isn't supported
+  - A `{module}-configure` setting with several options was passed to `./configure` as one single argument
+  - Dry-run (`-n`) could modify files of an existing build (source patches, shebangs, permissions), a configured patch on a missing file is now reported
 - Library use: `BuildSetup()` now takes a `PythonSpec`, get one via `required_python_spec("cpython:3.13.2")` (which validates it, `None` means latest)
 - Tests cover more edge cases
 

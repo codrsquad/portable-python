@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import pytest
 import runez
 
-from portable_python import BuildSetup, ModuleBuilder, required_python_spec
+from portable_python import BuildSetup, correct_permissions, ModuleBuilder, patch_file, required_python_spec
 from portable_python.versions import PPG
 
 
@@ -29,6 +31,28 @@ def test_config(cli):
     assert cli.succeeded
     assert "env MACOSX_DEPLOYMENT_TARGET" not in cli.logged
     assert " -> dist/cpython-3.9.7-linux-x86_64.tar.gz" in cli.logged  # Default .tar.gz
+
+
+def test_module_overrides(cli, monkeypatch):
+    monkeypatch.setenv("HTTP_PROXY", "http://my-proxy:8080")  # Exercise proxy pass-through on downloads
+    monkeypatch.setenv("HTTPS_PROXY", "http://my-proxy:8443")
+    modules = "bdb gdbm libffi mpdec ncurses openssl readline sqlite uuid xz zlib".split()
+    config = [f"{m}-configure: --my-{m}-opt --my-{m}-libs=$lib_dir:$lib64_dir" for m in modules]
+    config.append("cpython-url: https://my-mirror/python-$version.tar.xz")
+    config.append("openssl-version: 1.1.1w")  # Older versions have a different download url scheme
+    config.append("openssl-patches:\n  - file: README\n    regex: foo\n    replacement: bar")
+    config.append("  - file: no-such-file\n    regex: foo\n    replacement: bar")
+    runez.write("pp.yml", "\n".join(config), logger=None)
+    runez.write("README", "Hello foo", logger=None)  # Dryrun doesn't extract sources, so the build stays in this folder
+    cli.run("-n", "-tlinux-x86_64", "-c", "pp.yml", "build", "3.14.4", "-mall")
+    assert cli.succeeded
+    for m in modules:
+        assert f" --my-{m}-opt --my-{m}-libs=build/deps/lib:build/deps/lib64" in cli.logged  # Separate args (not quoted together)
+
+    assert "Would apply patch: foo -> bar in README" in cli.logged
+    assert "no-such-file" not in cli.logged  # Not reported in dryrun mode (sources to patch are not downloaded)
+    assert "Would download https://my-mirror/python-3.14.4.tar.xz" in cli.logged
+    assert "Would download https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz" in cli.logged
 
 
 def test_diagnostics(cli):
@@ -69,6 +93,16 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     outcome, reason = mb.linker_outcome(is_selected=True)
     assert outcome.name == "failed"
     assert reason == "broken, can't compile statically with foo present"
+
+    patch_file("no-such-file", "foo", "bar")  # Not in dryrun mode: a (configured) patch on a missing file is reported
+    assert "Can't patch no-such-file: file not found" in logged.pop()
+
+    lib = Path("libfoo.a")
+    runez.touch(lib, logger=None)
+    lib.chmod(0o755)
+    correct_permissions(lib, 0o644)  # Not in dryrun mode: permissions are effectively corrected
+    assert "Corrected permissions for libfoo.a to 0o644 (was 0o755)" in logged.pop()
+    assert lib.stat().st_mode & 0o777 == 0o644
 
     runez.write("pp.yml", "ext: foo", logger=None)
     PPG.grab_config("pp.yml", target="linux-x86_64")

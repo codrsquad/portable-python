@@ -246,7 +246,7 @@ class SoInfo(Trackable):
         self.is_failed = "_failed" in self.path.name
         self.short_name = "%s*" % self.path.name.partition(".")[0]
         if self.is_failed:
-            self.short_name += "_failed"  # pragma: no cover
+            self.short_name += "_failed"
 
         if program and output:
             func = getattr(self, "parse_%s" % program)
@@ -467,7 +467,7 @@ class PythonInspector:
             report.append(str(table))
             if verbose:
                 report.append(str(self.full_so_report))
-                if self.full_so_report.problematic:  # pragma: no cover (don't have a handy problematic python test case)
+                if self.full_so_report.problematic:
                     report.append(self.full_so_report.problematic.report(verbose=verbose))
                     report.append("\n-- Library users:")
                     for what, users in self.full_so_report.lib_tracker.users.items():
@@ -536,12 +536,12 @@ class FullSoReport:
         self.libpython_so = []
         self.lib_static = []
         for path in find_libs(self.inspector.lib_folder):
-            if path.name.endswith(".a"):  # pragma: no cover
+            if path.name.endswith(".a"):
                 self.lib_static.append(self.inspector.relative_path(path))
                 continue
 
             info = SoInfo(inspector, path)
-            if path.name.startswith("libpython"):  # pragma: no cover (would need to do a full build with libpython.so...)
+            if path.name.startswith("libpython"):
                 self.libpython_so.append(info)
 
             self.lib_tracker.add(info)
@@ -564,7 +564,7 @@ class FullSoReport:
                 if uses_system:
                     return "Uses system libs: %s" % runez.red(runez.joined(uses_system))
 
-        if self.problematic:  # pragma: no cover (don't have a handy problematic python test case)
+        if self.problematic:
             return self.problematic.report()
 
         if not runez.DRYRUN and not self.ok:
