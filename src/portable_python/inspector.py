@@ -1,29 +1,19 @@
 import collections
-import enum
 import json
 import logging
 import os
 import re
+from pathlib import Path
+from typing import Any
 
 import runez
 from runez.render import PrettyTable
 
-from portable_python.tracking import Trackable, Tracker
+from portable_python.tracking import LibType, Trackable, Tracker
 from portable_python.versions import PPG
 
 LOG = logging.getLogger(__name__)
 RX_DYNLIB = re.compile(r"^.*\.(so(\.[0-9.]+)?|dylib)$")
-
-
-class LibType(enum.Enum):
-    """Categorization for dynamic libs, value being the color we want to show them as"""
-
-    base = ""
-    lib_static = "static"
-    libpython_so = "dynamic"
-    missing = "red"
-    other = "brown"
-    system = "blue"
 
 
 class TempChmod:
@@ -140,23 +130,21 @@ class LibAutoCorrect:
 
     @staticmethod
     def _shared_ref_top_level(relative_path):
-        parts = runez.to_path(relative_path).parts
-        if len(parts) > 1:
-            parts = parts[:-1]  # Remove basename
-            for part in parts:
-                yield part
-                if part != "..":
-                    return
+        for part in runez.to_path(relative_path).parts[:-1]:  # Excluding basename
+            yield part
+            if part != "..":
+                return
 
 
 class ModuleInfo:
     _regex = re.compile(r"^(.*?)\s*(\S+/(lib(64)?/.*))$")
 
-    def __init__(self, inspector: "PythonInspector", name: str, payload: dict):
+    def __init__(self, inspector: "PythonInspector", name: str, payload: dict[str, Any]):
         self.inspector = inspector
         self.name = name
         self.payload = payload
-        self.filepath = runez.to_path(payload.get("path"))
+        path = payload.get("path")
+        self.filepath = runez.to_path(path) if path else None
         self.note = payload.get("note")
         self.version = payload.get("version")
         self.version_field = payload.get("version_field")
@@ -202,7 +190,7 @@ class ModuleInfo:
 
 
 class CLibInfo(Trackable):
-    def __init__(self, inspector: "PythonInspector", path: str, version: str, basename: str):
+    def __init__(self, inspector: "PythonInspector", path: str, version: str | None, basename: str | None):
         self.inspector = inspector
         if not basename:
             basename = os.path.basename(path)
@@ -242,10 +230,9 @@ class CLibInfo(Trackable):
     def represented(self, verbose=False):
         tc = self.tracked_category
         if verbose:
-            yield runez.joined("[%s]" % runez.colored(tc.name, color=tc.value), self.relative_path, self.version, delimiter=" ")
+            return runez.joined("[%s]" % runez.colored(tc.name, color=tc.value), self.relative_path, self.version, delimiter=" ")
 
-        else:
-            yield runez.colored(runez.joined(self.short_name, self.version, delimiter=":"), color=tc.value)
+        return runez.colored(runez.joined(self.short_name, self.version, delimiter=":"), color=tc.value)
 
 
 class SoInfo(Trackable):
@@ -254,7 +241,7 @@ class SoInfo(Trackable):
         self.path = runez.to_path(path)
         self.relative_path = inspector.relative_path(self.path)
         self.extension = self.path.name.rpartition(".")[2]
-        self.lib_tracker = Tracker(LibType, ".so")
+        self.lib_tracker = Tracker(".so")
         program, output = self._dot_so_listing(self.path)
         self.is_failed = "_failed" in self.path.name
         self.short_name = "%s*" % self.path.name.partition(".")[0]
@@ -336,7 +323,7 @@ class SoInfo(Trackable):
         info = CLibInfo(self.inspector, path, version, basename)
         self.lib_tracker.add(info)
 
-    def represented(self, verbose=None):
+    def represented(self, verbose=False):
         report = []
         if verbose:
             path = self.inspector.relative_path(self.path)
@@ -354,14 +341,14 @@ class SoInfo(Trackable):
         for tp in types:
             c = self.lib_tracker.category[tp]
             if c.items:
-                r = c.represented(verbose)
+                text = runez.joined(c.represented(verbose), delimiter="\n  " if verbose else delimiter)
                 if verbose:
-                    r = "  %s" % runez.joined(r, delimiter="\n  ")
+                    text = f"  {text}"
 
                 elif tp is LibType.missing:
-                    r = "%s: %s" % (runez.red("missing"), runez.joined(r, delimiter=delimiter))
+                    text = f"{runez.red('missing')}: {text}"
 
-                report.append(r)
+                report.append(text)
 
         return runez.joined(report, delimiter=delimiter)
 
@@ -379,7 +366,7 @@ def find_libs(folder):
             yield from find_libs(path)
 
 
-def get_lib_type(install_folder, path, basename):
+def get_lib_type(install_folder, path, basename) -> LibType:
     if basename.startswith("libpython") and path.startswith(install_folder):
         return LibType.libpython_so
 
@@ -408,14 +395,15 @@ class PythonInspector:
         script = os.path.join(os.path.dirname(__file__), "external/_inspect.py")
         r = runez.run(self.python.executable, script, arg, fatal=False, logger=print if runez.DRYRUN else logging.debug)
         self.output = r.output if r.succeeded else "exit code: %s\n%s" % (r.exit_code, r.full_output)
-        self.payload = None
+        self.payload: dict[str, Any] | None = None
         if self.output and self.output.startswith("{"):
             self.payload = json.loads(self.output)
 
-        self.reported_prefix = self.payload and self.payload.get("prefix")
-        self.srcdir = runez.to_path(self.payload and self.payload.get("srcdir"))
+        payload = self.payload or {}
+        self.reported_prefix = payload.get("prefix")
+        self.srcdir = runez.to_path(payload.get("srcdir"))
         self.lib_folder = _find_parent_subfolder(self.srcdir, "lib")
-        self.install_folder = self.lib_folder and str(self.lib_folder.parent)
+        self.install_folder = str(self.lib_folder.parent) if self.lib_folder else None
 
     def __repr__(self):
         return str(self.python)
@@ -441,7 +429,7 @@ class PythonInspector:
         if self.payload:
             return {k: ModuleInfo(self, k, v) for k, v in self.payload.get("report", {}).items()}
 
-    def relative_path(self, path):
+    def relative_path(self, path) -> str:
         with runez.Anchored(self.install_folder):
             p = runez.short(path, size=4096)
             m = re.match(r"^.*\.\.\./(.*)$", p)
@@ -451,7 +439,7 @@ class PythonInspector:
             return p
 
     def libpython_report(self, items):
-        if not items:
+        if not items or not self.install_folder:  # install_folder is known when there are items (they're found in it)
             return runez.green("-not used-")
 
         rel_paths = [getattr(x, "relative_path", x) for x in items]
@@ -476,12 +464,11 @@ class PythonInspector:
                 table.add_row("lib", runez.short(self.lib_folder))
                 table.add_row("srcdir", runez.short(self.srcdir))
 
-            report.append(table)
+            report.append(str(table))
             if verbose:
-                report.append(self.full_so_report)
+                report.append(str(self.full_so_report))
                 if self.full_so_report.problematic:  # pragma: no cover (don't have a handy problematic python test case)
-                    pb = self.full_so_report.problematic.represented(verbose=verbose)
-                    report.append(runez.joined(pb, delimiter="\n"))
+                    report.append(self.full_so_report.problematic.report(verbose=verbose))
                     report.append("\n-- Library users:")
                     for what, users in self.full_so_report.lib_tracker.users.items():
                         color = what.tracked_category.value or "green"
@@ -489,8 +476,7 @@ class PythonInspector:
                         report.append(runez.short(overview))
 
                 if verbose:
-                    pb = self.full_so_report.ok.represented(verbose=True)
-                    report.append(runez.joined(pb, delimiter="\n"))
+                    report.append(self.full_so_report.ok.report(verbose=True))
 
         report = runez.joined(report or self.output, delimiter="\n")
         return runez.joined(report, delimiter="\n")
@@ -530,21 +516,23 @@ class PythonInspector:
                 return PythonInspector.parsed_version(output.output or output.error)
 
 
-def _find_parent_subfolder(folder, basename):
+def _find_parent_subfolder(folder: Path | None, basename: str) -> Path | None:
     while folder and len(folder.parts) > 1:
         if folder.name == basename:
             return folder
 
         folder = folder.parent
 
+    return None
+
 
 class FullSoReport:
     def __init__(self, inspector: PythonInspector):
         self.inspector = inspector
         self.size = 0
-        self.lib_tracker = Tracker(LibType)
-        self.ok = Tracker(LibType, "OK")
-        self.problematic = Tracker(LibType, "problematic")
+        self.lib_tracker = Tracker()
+        self.ok = Tracker("OK")
+        self.problematic = Tracker("problematic")
         self.libpython_so = []
         self.lib_static = []
         for path in find_libs(self.inspector.lib_folder):
@@ -564,21 +552,22 @@ class FullSoReport:
     def __repr__(self):
         return runez.joined(".so files: %s" % runez.represented_bytesize(self.size), self.problematic, self.ok, delimiter=", ")
 
-    def get_problem(self, portable) -> str:
+    def get_problem(self, portable) -> str | None:
         if portable:
-            allowed = PPG.config.get_value("allowed-system-libs")
+            allowed: str | None = PPG.config.get_value("allowed-system-libs")
             if allowed:
                 # allowed-system-libs needs to be defined for the check to occur (opt-in)
-                allowed = re.compile(allowed)
+                rx_allowed = re.compile(allowed)
                 uses_system = [x.relative_path for x in self.lib_tracker.category[LibType.system].items]
-                if uses_system:
-                    uses_system = [x for x in uses_system if not allowed.match(x)]
+                uses_system = [x for x in uses_system if not rx_allowed.match(x)]
 
                 if uses_system:
                     return "Uses system libs: %s" % runez.red(runez.joined(uses_system))
 
         if self.problematic:  # pragma: no cover (don't have a handy problematic python test case)
-            return runez.joined(self.problematic.represented())
+            return self.problematic.report()
 
         if not runez.DRYRUN and not self.ok:
             return "Internal error: %s" % runez.red("no OK libs found")
+
+        return None

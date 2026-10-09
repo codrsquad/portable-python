@@ -130,6 +130,7 @@ class MockSharedExeRun:
         self.program_handler = getattr(self, "_%s_run" % platform)
         self.prefix = prefix
         self.called = []
+        self.mock = patch("runez.run", side_effect=self)
 
     def _linux_run(self, *args):
         if args[1] == "--print-rpath":
@@ -149,7 +150,6 @@ class MockSharedExeRun:
             return runez.program.RunResult(code=0)
 
     def __enter__(self):
-        self.mock = patch("runez.run", side_effect=self)
         self.mock.start()
         return self
 

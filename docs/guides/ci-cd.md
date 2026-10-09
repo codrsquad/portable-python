@@ -18,13 +18,13 @@ Runs on every push to `main` and every pull request targeting `main`, with `canc
 |-----|--------------|
 | `test` | Matrix over Python `3.10`–`3.14` on `ubuntu-latest` (`fail-fast: false`). Runs `uvx --with tox-uv tox -e py`, then uploads coverage to Coveralls as a **parallel** build, flagged per version. |
 | `coveralls-finish` | After all `test` jobs finish, signals Coveralls that the parallel build is complete. |
-| `linters` | On Python `3.14`, runs `uvx --with tox-uv tox -e style` (ruff check + format diff). |
+| `linters` | On Python `3.14`, runs `uvx --with tox-uv tox -e style,ty,pyrefly,pyright,mypy,zuban` (ruff check + format diff, then the type checkers, see [type checking](/typecheck-v2.1.0.md)). |
 
 ## Release (`release.yml`)
 
 Triggers on pushing a tag matching `v[0-9]*`. The single `publish` job (Python `3.14`, GitHub environment `release`):
 
-1. `uvx --with tox-uv tox -e py,style` — full test + lint gate.
+1. `uvx --with tox-uv tox -e py,style,ty,pyrefly,pyright,mypy,zuban` — full test + lint + type check gate.
 2. `uv build` — build the sdist + wheel.
 3. `pypa/gh-action-pypi-publish` — publish to PyPI via **trusted publishing** (OIDC, `id-token: write` — no API token is stored).
 

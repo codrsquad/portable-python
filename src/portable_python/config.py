@@ -90,8 +90,8 @@ class Config:
 
         self.target = target
         self.default = ConfigSource("default config", self.parsed_yaml(DEFAULT_CONFIG, "default config"))
-        self._sources = []  # type: list[ConfigSource]
-        self.by_path = {}
+        self._sources: list[ConfigSource] = []
+        self.by_path: dict[str, ConfigSource] = {}
         for path in self.paths:
             self.load(path)
 
@@ -228,9 +228,9 @@ class Config:
             matcher = FileMatcher(spec)
             LOG.info("Applying clean-up spec: %s", matcher)
             cleaned = []
-            for dirpath, dirnames, filenames in os.walk(module.install_folder):
+            for root, dirnames, filenames in os.walk(module.install_folder):
                 removed = []
-                dirpath = runez.to_path(dirpath)
+                dirpath = pathlib.Path(root)
                 for name in dirnames:
                     full_path = dirpath / name
                     if matcher.is_match(full_path):
@@ -270,7 +270,7 @@ class Config:
     def real_path(path: pathlib.Path):
         if path and path.exists():
             if path.is_symlink():
-                path = runez.to_path(os.path.realpath(path))
+                path = path.resolve()
 
             return path
 
@@ -325,8 +325,7 @@ class Config:
                 front = True
                 path = path[1:]
 
-            path = runez.resolved_path(path, base=base)
-            path = runez.to_path(path)
+            path = pathlib.Path(runez.resolved_path(path, base=base))
             if path.exists():
                 with open(path) as fh:
                     data = self.parsed_yaml(fh, path)
@@ -368,22 +367,14 @@ class ConfigSource:
         str | int | float | bool | dict | list | None
             Associated value, if any
         """
-        return self._deep_get(self.data, key)
+        value = self.data
+        for k in key if isinstance(key, tuple) else (key,):
+            if not isinstance(value, dict):
+                return None
 
-    def _deep_get(self, data, key):
-        if not key or not isinstance(data, dict):
-            return None
+            value = value.get(k)
 
-        if isinstance(key, tuple):
-            if len(key) > 1:
-                value = self._deep_get(data, key[0])
-                return self._deep_get(value, key[1:])
-
-            key = key[0]
-
-        value = data.get(key)
-        if value is not None:
-            return value
+        return value
 
 
 class FileMatcher:
@@ -395,42 +386,37 @@ class FileMatcher:
     def __repr__(self):
         return runez.joined(self.matches)
 
-    def is_match(self, path: pathlib.Path):
-        for m in self.matches:
-            if m.is_match(path):
-                return path
+    def is_match(self, path: pathlib.Path) -> bool:
+        return any(m.is_match(path) for m in self.matches)
 
 
 class SingleFileMatch:
-    _on_folder = False
-    _rx_basename = None
-    _rx_path = None
-
     def __init__(self, spec: str):
         self.spec = spec
-        if spec.endswith("/"):
-            spec = spec[:-1]
-            self._on_folder = True
-
+        self._on_folder = spec.endswith("/")
+        spec = spec.removesuffix("/")
+        self._rx_path: re.Pattern[str] | None = None
         if "/" in spec:
             # lib/*/config-{python_mm}-\w+/
             path = ".*/%s$" % os.path.dirname(spec).replace("*", ".*").strip("/")
             spec = os.path.basename(spec)
             self._rx_path = re.compile(path)
 
-        self._rx_basename = spec
+        self._basename_glob = spec
 
     def __repr__(self):
         return self.spec
 
-    def is_match(self, path: pathlib.Path):
+    def is_match(self, path: pathlib.Path) -> bool:
         if self._on_folder == path.is_dir():
             if self._rx_path:
                 m = self._rx_path.match(str(path.parent))
                 if not m:
                     return False
 
-            return fnmatch.fnmatch(path.name, self._rx_basename)
+            return fnmatch.fnmatch(path.name, self._basename_glob)
+
+        return False
 
 
 def _find_file_duplicates(seen, folder):

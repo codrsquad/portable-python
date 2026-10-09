@@ -1,6 +1,6 @@
 from runez.http import RestClient
 
-from portable_python import BuildSetup
+from portable_python import BuildSetup, required_python_spec
 from portable_python.versions import CPythonFamily, PPG
 
 REST_CLIENT = RestClient()
@@ -30,7 +30,7 @@ def test_list(cli, monkeypatch):
     # Edge cases
     monkeypatch.setattr(PPG, "config", None)
     PPG.grab_config(target="macos-arm64")
-    setup = BuildSetup()
+    setup = BuildSetup(required_python_spec(None))
     assert setup.python_spec.version == PPG.cpython.latest
 
     cp = CPythonFamily()
@@ -53,3 +53,11 @@ def test_list(cli, monkeypatch):
     cli.run("-c", cli.tests_path("sample-config1.yml"), "list")
     assert cli.succeeded
     assert cli.logged.stdout.contents().strip() == "cpython:\n  3.13: 3.13.3\n  3.9: 3.9.7"
+
+
+@REST_CLIENT.mock({"https://www.python.org/ftp/python/": ""})
+def test_no_versions(cli, monkeypatch):
+    monkeypatch.setattr(PPG.cpython, "_versions", None)  # Simulate python.org not reachable (or listing nothing)
+    cli.run("-n build latest")
+    assert cli.failed
+    assert "Could not determine latest cpython version" in cli.logged

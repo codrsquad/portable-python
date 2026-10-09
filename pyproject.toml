@@ -76,6 +76,18 @@ directory = ".tox/test-reports/htmlcov"
 [tool.pytest.ini_options]
 cache_dir = ".tox/.cache"
 
+[tool.pyright]  # also read by basedpyright (it refuses a pyproject that has both sections)
+pythonVersion = "3.10"
+include = ["src", "tests"]
+
+[tool.mypy]  # also read by zuban
+python_version = "3.10"
+files = ["src", "tests"]
+
+[tool.pyrefly]  # without this section, pyrefly adopts [tool.pyright] (or [tool.mypy])
+python-version = "3.10"
+project-includes = ["src", "tests"]
+
 [tool.ruff]
 cache-dir = ".tox/.ruff_cache"
 line-length = 140

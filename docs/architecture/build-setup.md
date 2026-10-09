@@ -11,9 +11,9 @@ timestamp: 2026-06-23T00:00:00Z
 The build orchestrator (`__init__.py`). The [`build`](/cli/build.md) command — and library users — construct one from a python spec and call `compile()`:
 
 ```python
-from portable_python import BuildSetup
+from portable_python import BuildSetup, required_python_spec
 
-BuildSetup("cpython:3.13.2").compile()
+BuildSetup(required_python_spec("cpython:3.13.2")).compile()
 ```
 
 ## Mental model
@@ -26,4 +26,4 @@ It owns the [`Folders`](/architecture/config.md) (resolved paths) and the python
 
 - **Start reading at `compile()`** — it calls everything else in order.
 - A `--prefix` makes the build **non-portable**; without it the result is relocatable (see [ppp-marker](/concepts/ppp-marker.md) and [portability](/concepts/portability.md)).
-- It requires a full `X.Y.Z` spec — a bare `3.13` is rejected; `"latest"` (or empty) resolves to the newest known version.
+- It takes a `PythonSpec` with a full `X.Y.Z` version: `required_python_spec()` validates that (a bare `3.13` is rejected) and resolves `"latest"` (or empty) to the newest known version.

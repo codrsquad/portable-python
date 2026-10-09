@@ -25,6 +25,7 @@ tox                 # all envs (py310-314, coverage, style)
 tox -e py313        # one python version
 tox -e style        # lint check (ruff)
 tox -e reformat     # auto-fix formatting
+tox -e ty           # a type checker (also: pyrefly, pyright, mypy, basedpyright, zuban)
 
 .venv/bin/pytest tests/                              # directly
 .venv/bin/pytest tests/test_build.py::test_build_rc -vv   # a single test

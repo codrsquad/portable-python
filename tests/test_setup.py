@@ -1,7 +1,7 @@
 import pytest
 import runez
 
-from portable_python import BuildSetup, ModuleBuilder
+from portable_python import BuildSetup, ModuleBuilder, required_python_spec
 from portable_python.versions import PPG
 
 
@@ -39,6 +39,13 @@ def test_diagnostics(cli):
     assert "pp-dev.yml:\na: b\n\nportable-python.yml:\ninclude: +pp-dev.yml" in cli.logged.stdout
 
 
+def test_folder_with_space(cli):
+    runez.write("pp.yml", "folders:\n  build: my build", logger=None)
+    cli.run("-n", "-c", "pp.yml", "build", "3.9.7")
+    assert cli.failed
+    assert "Refusing path with space (escapes too complex with makefiles, shell scripts etc): 'my build'" in cli.logged
+
+
 def test_edge_cases(temp_folder, monkeypatch, logged):
     monkeypatch.setattr(PPG, "config", None)
     PPG.grab_config(runez.DEV.tests_path("sample-incomplete.yml"))
@@ -51,7 +58,7 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     assert str(PPG.cpython) == "cpython"
     assert str(PPG.config) == "1 config source [linux-x86_64]"
 
-    setup = BuildSetup("3.9.6")
+    setup = BuildSetup(required_python_spec("3.9.6"))
     assert str(setup) == "build/cpython-3.9.6"
 
     mb = ModuleBuilder(setup)
@@ -63,12 +70,21 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     assert outcome.name == "failed"
     assert reason == "broken, can't compile statically with foo present"
 
-    sources = getattr(PPG.config, "_sources", None)
-    monkeypatch.setattr(sources[0], "data", {"ext": "foo"})
+    runez.write("pp.yml", "ext: foo", logger=None)
+    PPG.grab_config("pp.yml", target="linux-x86_64")
     assert not logged
     with pytest.raises(runez.system.AbortException):
-        _ = BuildSetup("3.9.6")
+        _ = BuildSetup(required_python_spec("3.9.6"))
     assert "Invalid extension 'foo'" in logged.pop()
+
+
+def test_missing_bin_python(temp_folder, logged):
+    PPG.grab_config(target="linux-x86_64")
+    setup = BuildSetup(required_python_spec("3.9.6"))
+    with pytest.raises(runez.system.AbortException):
+        _ = setup.python_builder.bin_python
+    assert "Can't find bin/python in /" in logged
+    assert "/build/ppp-marker/3.9.6/bin\n" in logged.pop()
 
 
 def test_inspect(cli):

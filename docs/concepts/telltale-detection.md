@@ -12,15 +12,15 @@ Before compiling, the tool must decide, for each candidate [external module](/mo
 
 ## The `m_telltale` attribute
 
-Each [`ModuleBuilder`](/architecture/module-builder.md) subclass declares `m_telltale`, a path (or list of paths) using an `{include}` placeholder that is expanded against the target's system include directories:
+Each [`ModuleBuilder`](/architecture/module-builder.md) subclass declares `m_telltale`, a path (or several, space-separated) using an `{include}` placeholder that is expanded against the target's system include directories:
 
 ```python
 class Openssl(ModuleBuilder):
     m_telltale = "{include}/openssl/ssl.h"
 
 
-class Sqlite(ModuleBuilder):
-    m_telltale = ["{include}/sqlite3.h"]
+class LibFFI(ModuleBuilder):
+    m_telltale = "{include}/ffi.h {include}/ffi/ffi.h"
 ```
 
 `PPG.find_telltale()` expands the placeholder against each `target.sys_include` directory and returns the first existing path, or `None`.

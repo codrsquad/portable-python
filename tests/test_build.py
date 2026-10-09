@@ -4,7 +4,11 @@ import runez
 
 from portable_python.versions import PPG
 
-from .conftest import dummy_tarball
+
+def dummy_tarball(folders, basename, content=None):
+    runez.write("sample/README", content, logger=None)
+    runez.compress("sample", folders.sources / basename, logger=None)
+    runez.delete("sample", logger=None)
 
 
 def test_build_rc(cli):

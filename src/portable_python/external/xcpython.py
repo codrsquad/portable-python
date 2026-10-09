@@ -1,5 +1,4 @@
 import os.path
-from typing import ClassVar
 
 import runez
 
@@ -81,7 +80,7 @@ class Gdbm(ModuleBuilder):
     """
 
     m_debian = "libgdbm-dev"
-    m_telltale: ClassVar[list] = ["{include}/gdbm.h"]
+    m_telltale = "{include}/gdbm.h"
 
     @property
     def url(self):
@@ -124,7 +123,7 @@ class LibFFI(ModuleBuilder):
     """
 
     m_debian = "!libffi-dev"
-    m_telltale: ClassVar[list] = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
+    m_telltale = "{include}/ffi.h {include}/ffi/ffi.h"
 
     xenv_CFLAGS = "-fPIC"
 
@@ -306,7 +305,7 @@ class Sqlite(ModuleBuilder):
     """
 
     m_debian = "+libsqlite3-dev"
-    m_telltale: ClassVar[list] = ["{include}/sqlite3.h"]
+    m_telltale = "{include}/sqlite3.h"
 
     xenv_CFLAGS = "-fPIC"
 
@@ -349,7 +348,7 @@ class Uuid(ModuleBuilder):
 
     m_debian = "+uuid-dev"
     m_include = "uuid"
-    m_telltale: ClassVar[list] = ["{include}/uuid/uuid.h"]
+    m_telltale = "{include}/uuid/uuid.h"
 
     xenv_CFLAGS = "-fPIC"
 
