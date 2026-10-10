@@ -1,16 +1,16 @@
 ---
 type: Report
-title: Type checking in v2.1.0
-description: What introducing 6 type checkers found in v2.0.2, and what v2.1.0 changed in response (bugs, design, minor).
+title: Type checker findings
+description: What introducing multiple type checkers found in v2.0.2, and what v2.1 changed in response (bugs, design, minor).
 tags: [report, type-checking, ci, quality]
 timestamp: 2026-10-09T00:00:00Z
 ---
 
-# Type checking: v2.0.2 → v2.1.0
+# Type checking: v2.0.2 → v2.1
 
-What v2.1.0 changed in response to type checker findings on v2.0.2.
+What v2.1 changed in response to type checker findings on v2.0.2.
 
-| Checker | Version | v2.0.2 | v2.1.0 | Actionable | Bugs | Design | Minor |
+| Checker | Version | v2.0.2 | v2.1 | Actionable | Bugs | Design | Minor |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | ty | 0.0.85 | 51 | 0 | 51 | 0 | 5 | 6 |
 | pyrefly | 1.3.2 | 96 | 0 | 96 | 1 | 6 | 7 |
@@ -19,19 +19,19 @@ What v2.1.0 changed in response to type checker findings on v2.0.2.
 | basedpyright | 1.40.2 | 2,979 | 2,576 | 646 | 1 | 6 | 8 |
 | zuban | 0.10.0 | 38 | 0 | 38 | 2 | 4 | 5 |
 
-- **v2.0.2**, **v2.1.0**: findings on that release's `src/` and `tests/`, both checked with v2.1.0's
+- **v2.0.2**, **v2.1**: findings on that release's `src/` and `tests/`, both checked with v2.1's
   settings (`tox.ini`, `pyproject.toml`). "v2.0.2" is commit `c298694`: v2.0.2 plus the component
   bumps that preceded this work.
-- **Actionable**: v2.0.2 findings resolved by a change in v2.1.0.
+- **Actionable**: v2.0.2 findings resolved by a change in v2.1.
 - **Bugs**, **Design**, **Minor**: how many of the changes listed under [Bug fixes](#bug-fixes),
   [Design](#design) and [Minor](#minor) the checker spotted.
 - basedpyright counts include its warnings: 110 errors + 2,869 warnings on v2.0.2, 5 + 2,571 on
-  v2.1.0. Its 5 remaining errors are import cycles (`__init__` ↔ `versions` ↔ `cpython` ↔
-  `inspector`). basedpyright is available locally (`tox -e basedpyright`) but doesn't gate CI, the
-  other 5 checkers do (see [CI/CD](/guides/ci-cd.md)).
-- v2.1.0's zeros need runez 5.10.1, which fixed an annotation portable-python tripped on (see
+  v2.1. Its 5 remaining errors are import cycles (`__init__` ↔ `versions` ↔ `cpython` ↔
+  `inspector`). basedpyright is available locally (`tox -e basedpyright`), see [CI/CD](/guides/ci-cd.md)
+  for which checkers gate CI.
+- v2.1's zeros need runez 5.10.1, which fixed an annotation portable-python tripped on (see
   [Fixed in runez](#fixed-in-runez)).
-- v2.0.2 had 3 `# type:` comments, v2.1.0 has none.
+- v2.0.2 had 3 `# type:` comments, v2.1 has none.
 
 ## Bug fixes
 

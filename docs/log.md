@@ -3,14 +3,14 @@
 ## 2026-10-09
 
 * **Update**: [Configuration](/configuration/portable-python-yml.md): `{module}-configure` substitutes `$lib_dir` and `$lib64_dir` (not `$deps_lib`), and its value is split into separate args.
-* **Creation**: Added the [type checking in v2.1.0](/typecheck-v2.1.0.md) report.
+* **Creation**: Added the [type checker findings](/typecheck-findings.md) report.
 * **Update**: The changelog moved out of the bundle, to `CHANGELOG.md` at the repo root (shipped in the sdist, like `README.rst`); [release process](/release.md) and the index point there.
-* **Update**: [CI/CD](/guides/ci-cd.md): the `linters` job and the release gate run the type checkers (ty, pyrefly, pyright, mypy, zuban).
+* **Update**: [CI/CD](/guides/ci-cd.md): the `linters` job and the release gate run the type checkers.
 * **Update**: `BuildSetup` takes a `PythonSpec` (via `required_python_spec()`) in [BuildSetup](/architecture/build-setup.md), and `m_telltale` is a space-separated `str` in [telltale detection](/concepts/telltale-detection.md).
 
 ## 2026-10-08
 
-* **Update**: Listed the type checker tox envs (`tox -e ty`, ...) in [local development](/guides/local-development.md).
+* **Update**: Listed the type checker tox envs (`tox -e <typechecker>`) in [local development](/guides/local-development.md).
 
 ## 2026-08-20
 

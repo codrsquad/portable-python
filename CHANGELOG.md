@@ -2,7 +2,7 @@
 
 ## v2.1.0
 
-- portable-python's code is now checked by 5 type checkers (ty, pyrefly, pyright, mypy and zuban) on every change
+- portable-python's code is now checked by multiple type checkers on every change
 - Bumped SQLite to 3.53.4 and gettext-tiny to 0.3.3; re-checked every other component against upstream (all already current, or deliberately held back — see the `version` property comments).
 - Bug fixes:
   - With `cpython-use-github: true`, a failed GitHub API call (e.g. rate limiting) crashed with a stack trace

@@ -19,7 +19,7 @@ Start with the [Overview](/overview.md), then drill into the area you need.
 * [Configuration](/configuration/index.md) - The `portable-python.yml` file, its sections and overrides.
 * [Guides](/guides/index.md) - Playbooks for common tasks: building, extending, local development.
 * [Release process](/release.md) - How to cut a release: changelog highlights, then a version tag.
-* [Type checking in v2.1.0](/typecheck-v2.1.0.md) - What introducing the type checkers found and fixed.
+* [Type checker findings](/typecheck-findings.md) - What introducing the type checkers found and fixed.
 
 ## Conventions
 
