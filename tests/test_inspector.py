@@ -1,6 +1,7 @@
 import builtins
 import os
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import runez
@@ -67,6 +68,31 @@ LDD_SAMPLE = """
 """
 
 
+def test_inspect_problematic(temp_folder):
+    # Simulate an installation where libs have missing dependencies (`ldd` reports some as "not found")
+    PPG.grab_config(target="linux-x86_64")
+    inspector = PythonInspector("invoker")
+    inspector.lib_folder = Path("lib")
+    for name in ("_dbm.so", "_tkinter.cpython-39-x86_64-linux-gnu_failed.so", "libpython3.9.so", "libpython3.9.a"):
+        runez.touch(inspector.lib_folder / name, logger=None)
+
+    with patch("runez.which", side_effect=lambda program: program == "ldd"):
+        with patch("runez.run", return_value=runez.program.RunResult(code=0, output=LDD_SAMPLE)):
+            report = inspector.represented(verbose=True)
+
+    assert "- lib/libpython3.9.a" in report
+    assert "- lib/libpython3.9.so" in report
+    assert "-- 3 problematic\n" in report
+    assert "lib/_tkinter.cpython-39-x86_64-linux-gnu_failed.so\n" in report
+    assert "  [missing] libtinfo.so.5 5\n" in report
+    assert "\n-- Library users:\n" in report
+    assert "\ntinfo 3 users: " in report
+    assert "_tkinter*_failed.so" in report  # Failed modules are marked as such (cpython renames them `*_failed.so`)
+
+    problem = inspector.full_so_report.get_problem(portable=False)
+    assert problem.startswith("\n-- 3 problematic\n")
+
+
 def test_inspect_lib(logged):
     inspector = PythonInspector("invoker")
     with patch("runez.which", return_value="yup"):
@@ -76,7 +102,8 @@ def test_inspect_lib(logged):
         assert not_there.is_problematic
         assert not_there.size == 0
         assert "otool exited with code" in logged.pop()
-        assert inspector.libpython_report([not_there])  # Verify no crash, edge case testing
+        assert inspector.libpython_report([not_there]) == "- /dev/null/foo.platform.so"  # Verify no crash, edge case testing
+        assert inspector.libpython_report([]) == "-not used-"
 
     with patch("runez.which", return_value=None):
         PPG.grab_config(target="macos-x86_64")
@@ -130,6 +157,7 @@ class MockSharedExeRun:
         self.program_handler = getattr(self, "_%s_run" % platform)
         self.prefix = prefix
         self.called = []
+        self.mock = patch("runez.run", side_effect=self)
 
     def _linux_run(self, *args):
         if args[1] == "--print-rpath":
@@ -149,7 +177,6 @@ class MockSharedExeRun:
             return runez.program.RunResult(code=0)
 
     def __enter__(self):
-        self.mock = patch("runez.run", side_effect=self)
         self.mock.start()
         return self
 

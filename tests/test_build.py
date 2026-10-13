@@ -4,7 +4,11 @@ import runez
 
 from portable_python.versions import PPG
 
-from .conftest import dummy_tarball
+
+def dummy_tarball(folders, basename, content=None):
+    runez.write("sample/README", content, logger=None)
+    runez.compress("sample", folders.sources / basename, logger=None)
+    runez.delete("sample", logger=None)
 
 
 def test_build_rc(cli):
@@ -13,6 +17,19 @@ def test_build_rc(cli):
     cli.run("-n", "-tmacos-arm64", "build", f.version, "-mnone")
     assert cli.succeeded
     assert f"Would tar {install_dir} -> dist/cpython-{f.version}-macos-arm64.tar.gz" in cli.logged
+
+
+def test_build_free_threaded(cli):
+    # Recent python on macos: zstd is required, libs that ./configure can't find via pkg-config there are spelled out
+    cli.run("-n", "-tmacos-arm64", "build", "3.14.4t", "-mreadline,tkinter")
+    assert cli.succeeded
+    assert " --enable-aqua=yes" in cli.logged  # tk on macos
+    assert "zstd         1.5.7    static*  [auto-selected] Required for 3.14 and up" in cli.logged
+    assert " --disable-gil" in cli.logged
+    assert "env LIBMPDEC_LIBS=build/deps/lib/libmpdec.a" in cli.logged
+    assert "env LIBREADLINE_LIBS=-Lbuild/deps/lib -lreadline -lncursesw" in cli.logged
+    assert "env LIBZSTD_LIBS=build/deps/lib/libzstd.a" in cli.logged
+    assert "Would tar build/ppp-marker/3.14.4t -> dist/cpython-3.14.4t-macos-arm64.tar.gz" in cli.logged
 
 
 SAMPLE_SYS_CONF = """
@@ -69,10 +86,20 @@ def test_finalization(cli, monkeypatch):
     runez.touch(lib / "site-packages/pip", logger=None)
     _setup_exes(bin_folder)
     runez.touch(lib / "config-3.9/libpython3.9.a", logger=None)
+    pkgconfig = f.resolved_destdir("lib/pkgconfig")
+    runez.write(pkgconfig / "python3.pc", f"prefix=/ppp-marker/{f.version}\n", logger=None)
 
     monkeypatch.setenv("PP_X_DEBUG", "direct-finalize")
     monkeypatch.setenv("SOME_ENV", "some-env-value")
     with patch("runez.run", return_value=runez.program.RunResult(code=0)):
+        # Dryrun on an existing build: reports what finalization would change, without touching anything
+        cli.run("-n", "-tlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "-mbzip2")
+        assert cli.succeeded
+        assert f"Would auto-correct shebang for {bin_folder}/some-exe" in cli.logged
+        assert f"Would apply patch: prefix=/ppp-marker/{f.version} -> prefix=${{pcfiledir}}/../.. in {pkgconfig}/python3.pc" in cli.logged
+        assert list(runez.readlines(bin_folder / "some-exe")) == ["#!.../bin/python3", "hello"]
+        assert list(runez.readlines(pkgconfig / "python3.pc")) == [f"prefix=/ppp-marker/{f.version}"]
+
         cli.run("-tlinux-x86_64", "-c", cli.tests_path("sample-config1.yml"), "build", f.version, "-mbzip2")
         assert cli.succeeded
         manifest = list(runez.readlines(f"build/ppp-marker/{f.version}/.manifest.yml"))
@@ -84,6 +111,9 @@ def test_finalization(cli, monkeypatch):
         assert f"Symlink {bin_folder}/pip{f.mm} <- {bin_folder}/pip" in cli.logged
         assert f"Auto-corrected shebang for {bin_folder}/some-exe" in cli.logged
         assert f"Symlink {lib}/config-3.9/libpython3.9.a <- {lib.parent}/libpython3.9.a" in cli.logged
+        assert f"Patched prefix=/ppp-marker/{f.version} -> prefix=${{pcfiledir}}/../.. in {pkgconfig}/python3.pc" in cli.logged
+
+    assert list(runez.readlines(pkgconfig / "python3.pc")) == ["prefix=${pcfiledir}/../.."]
 
     transformed = "\n".join(runez.readlines(sys_cfg))
     assert transformed.strip() == SAMPLE_SYS_CONF_REL.strip()

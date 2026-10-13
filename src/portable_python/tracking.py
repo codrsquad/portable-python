@@ -1,23 +1,45 @@
+import abc
+import enum
+from collections.abc import Iterator
+
 import runez
 
 
-class Trackable:
-    tracked_category = None
+class LibType(enum.Enum):
+    """Categorization for dynamic libs, value being the color we want to show them as"""
 
-    def __eq__(self, other):
+    base = ""
+    lib_static = "static"
+    libpython_so = "dynamic"
+    missing = "red"
+    other = "brown"
+    system = "blue"
+
+
+class Trackable(abc.ABC):
+    """A file (dynamic lib, .so, ...) that can be tracked by a `Tracker`"""
+
+    relative_path: str
+    tracked_category: LibType  # Set by leaf trackables only, the ones yielded by `__iter__()`
+
+    def __eq__(self, other: object) -> bool:
         return str(self) == str(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(str(self))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator["Trackable"]:
         yield self
+
+    @abc.abstractmethod
+    def represented(self, verbose: bool = False) -> str:
+        """Textual representation, for reports"""
 
 
 class TrackedCollection:
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
-        self.items = []
+        self.items: list[Trackable] = []
 
     def __repr__(self):
         return "%s %s" % (len(self.items), self.name)
@@ -25,50 +47,30 @@ class TrackedCollection:
     def __bool__(self):
         return bool(self.items)
 
-    def add(self, item):
+    def add(self, item: Trackable):
         if item not in self.items:
             self.items.append(item)
 
-    def represented(self, verbose=False):
-        if self.items:
-            for item in self.items:
-                yield item.represented(verbose=verbose)
+    def represented(self, verbose: bool = False) -> Iterator[str]:
+        for item in self.items:
+            yield item.represented(verbose=verbose)
 
 
 class Tracker(TrackedCollection):
-    def __init__(self, enum, name=None):
-        self.kind = enum.__name__.replace("Type", "").lower()
-        super().__init__(name or self.kind)
-        self.enum = enum
-        self.category = {}
-        self.users = {}
-        for x in enum:
-            c = TrackedCollection("%s %s" % (x.name, self.kind))
-            self.category[x] = c
+    def __init__(self, name: str = "lib"):
+        super().__init__(name)
+        self.category = {x: TrackedCollection(f"{x.name} lib") for x in LibType}
+        self.users: dict[Trackable, set[Trackable]] = {}
 
-    def add(self, item):
-        if item not in self.items:
-            self.items.append(item)
-
+    def add(self, item: Trackable):
+        super().add(item)
         for trackable in item:
-            if trackable.tracked_category:
-                c = self.category[trackable.tracked_category]
-                c.add(trackable)
-                if trackable is not item:
-                    u = self.users.get(trackable)
-                    if u is None:
-                        u = set()
-                        self.users[trackable] = u
+            self.category[trackable.tracked_category].add(trackable)
+            if trackable is not item:
+                self.users.setdefault(trackable, set()).add(item)
 
-                    u.add(item)
-
-    def represented(self, verbose=False):
-        report = []
-        if self.items:
-            for item in self.items:
-                report.append(item.represented(verbose))
-
-        report = runez.joined(report, delimiter="\n")
+    def report(self, verbose: bool = False) -> str:
+        report = runez.joined(self.represented(verbose), delimiter="\n")
         if verbose or report:
             report = "\n-- %s\n%s" % (runez.colored(self, "bold"), report)
 

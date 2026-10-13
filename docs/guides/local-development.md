@@ -21,10 +21,11 @@ uv sync
 The suite mocks `runez.run()` and builds in `--dryrun` mode, so it asserts the *planned* commands without actually compiling. Target is 100% coverage.
 
 ```shell
-tox                 # all envs (py310-314, coverage, style)
-tox -e py313        # one python version
-tox -e style        # lint check (ruff)
-tox -e reformat     # auto-fix formatting
+tox                   # all envs (py310-314, coverage, style)
+tox -e py313          # one python version
+tox -e style          # lint check (ruff)
+tox -e reformat       # auto-fix formatting
+tox -e <typechecker>  # one tox env per type checker, see tox.ini
 
 .venv/bin/pytest tests/                              # directly
 .venv/bin/pytest tests/test_build.py::test_build_rc -vv   # a single test

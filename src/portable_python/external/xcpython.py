@@ -1,5 +1,4 @@
 import os.path
-from typing import ClassVar
 
 import runez
 
@@ -32,7 +31,7 @@ class Bdb(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -81,7 +80,7 @@ class Gdbm(ModuleBuilder):
     """
 
     m_debian = "libgdbm-dev"
-    m_telltale: ClassVar[list] = ["{include}/gdbm.h"]
+    m_telltale = "{include}/gdbm.h"
 
     @property
     def url(self):
@@ -94,7 +93,7 @@ class Gdbm(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -124,7 +123,7 @@ class LibFFI(ModuleBuilder):
     """
 
     m_debian = "!libffi-dev"
-    m_telltale: ClassVar[list] = ["{include}/ffi.h", "{include}/ffi/ffi.h"]
+    m_telltale = "{include}/ffi.h {include}/ffi/ffi.h"
 
     xenv_CFLAGS = "-fPIC"
 
@@ -143,7 +142,7 @@ class LibFFI(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -192,7 +191,7 @@ class Openssl(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "-v"
@@ -222,7 +221,7 @@ class Ncurses(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--disable-shared"
@@ -282,7 +281,7 @@ class Readline(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -306,7 +305,7 @@ class Sqlite(ModuleBuilder):
     """
 
     m_debian = "+libsqlite3-dev"
-    m_telltale: ClassVar[list] = ["{include}/sqlite3.h"]
+    m_telltale = "{include}/sqlite3.h"
 
     xenv_CFLAGS = "-fPIC"
 
@@ -328,7 +327,7 @@ class Sqlite(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--disable-shared"
@@ -349,7 +348,7 @@ class Uuid(ModuleBuilder):
 
     m_debian = "+uuid-dev"
     m_include = "uuid"
-    m_telltale: ClassVar[list] = ["{include}/uuid/uuid.h"]
+    m_telltale = "{include}/uuid/uuid.h"
 
     xenv_CFLAGS = "-fPIC"
 
@@ -365,7 +364,7 @@ class Uuid(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -396,7 +395,7 @@ class Xz(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--enable-shared=no"
@@ -440,7 +439,7 @@ class Zlib(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             yield "--static"
@@ -516,7 +515,7 @@ class Mpdec(ModuleBuilder):
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
-            yield config_args
+            yield from config_args
 
         else:
             pass  # yield "--static"

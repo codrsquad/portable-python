@@ -10,9 +10,3 @@ GlobalHttpCalls.forbid()
 runez.log.setup(debug=True, console_format="%(levelname)s %(message)s", locations=None)
 
 ClickRunner.default_main = main
-
-
-def dummy_tarball(folders, basename, content=None):
-    runez.write("sample/README", content, logger=None)
-    runez.compress("sample", folders.sources / basename, logger=None)
-    runez.delete("sample", logger=None)

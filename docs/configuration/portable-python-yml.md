@@ -51,7 +51,7 @@ Replace `{module}` with the lowercased module name (e.g. `openssl`):
 | `{module}-version` | Version to build. |
 | `{module}-url` | Source URL (`$version` is substituted; may carry a `#sha256=…` fragment, verified on download). |
 | `{module}-src-suffix` | Archive extension when the URL lacks one. |
-| `{module}-configure` | **Replace** the default configure args (`$deps_lib` substituted). |
+| `{module}-configure` | **Replace** the default configure args (space-separated, shell-style quoting; `$lib_dir` and `$lib64_dir` substituted). |
 | `{module}-http-headers` | Headers for the download (env vars expanded). |
 | `{module}-patches` | Source patches to apply before compiling. |
 | `{module}-debian` | Debian package name for dependency detection. |

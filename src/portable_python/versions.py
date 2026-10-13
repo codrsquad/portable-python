@@ -4,10 +4,13 @@ Tracking only a handful of most recent (and non-EOL) versions by design.
 Not trying to do historical stuff here, older (or EOL-ed) versions will be removed from the list without notice.
 """
 
+import abc
 import logging
 import os
 import re
-from typing import ClassVar
+from collections.abc import Iterable
+from pathlib import Path
+from typing import ClassVar, TYPE_CHECKING
 
 import runez
 from runez.http import RestClient
@@ -15,12 +18,15 @@ from runez.pyenv import PythonDepot, Version
 
 from portable_python.config import Config
 
+if TYPE_CHECKING:
+    from portable_python import PythonBuilder
 
-class VersionFamily:
+
+class VersionFamily(abc.ABC):
     """Common ancestor for python family implementations"""
 
-    _latest = None
-    _versions = None
+    _latest: Version | None = None
+    _versions: dict[str, Version] | None = None
 
     def __init__(self):
         self.family_name = self.__class__.__name__[:7].lower()
@@ -28,47 +34,38 @@ class VersionFamily:
     def __repr__(self):
         return self.family_name
 
-    def _fetch_versions(self):
+    def _fetch_versions(self) -> dict[str, Version]:
         if self._versions is None:
             self._versions = {}
-            versions = self.get_available_versions()
-            versions = versions and sorted(versions, reverse=True)
-            if versions:
-                self._latest = versions[0]
-                for v in versions:
-                    if v.mm not in self._versions:
-                        self._versions[v.mm] = v
+            versions = sorted(self.get_available_versions(), reverse=True)
+            self._latest = versions[0] if versions else None
+            for v in versions:
+                if v.mm not in self._versions:
+                    self._versions[v.mm] = v
+
+        return self._versions
 
     @property
     def latest(self) -> Version:
         """Latest version for this family"""
         self._fetch_versions()
+        if self._latest is None:
+            runez.abort(f"Could not determine latest {self} version")
+
         return self._latest
 
     @property
-    def available_versions(self):
-        """Supplied by descendant: list of available versions"""
-        self._fetch_versions()
-        return self._versions
+    def available_versions(self) -> dict[str, Version]:
+        """Latest version per major.minor (as supplied by descendant)"""
+        return self._fetch_versions()
 
-    def get_available_versions(self):
-        """
-        Available versions.
+    @abc.abstractmethod
+    def get_available_versions(self) -> Iterable[Version]:
+        """Available versions"""
 
-        Returns
-        -------
-        list[Version]
-        """
-
-    def get_builder(self):
-        """
-        Builder implementation for this family.
-
-        Returns
-        -------
-        portable_python.PythonBuilder
-            Builder implementation for this family
-        """
+    @abc.abstractmethod
+    def get_builder(self) -> type["PythonBuilder"]:
+        """Builder implementation for this family"""
 
 
 class CPythonFamily(VersionFamily):
@@ -80,11 +77,11 @@ class CPythonFamily(VersionFamily):
     def client(self):
         return RestClient()
 
-    def get_available_versions(self):
+    def get_available_versions(self) -> Iterable[Version]:
         """Available versions as per python.org/ftp"""
         if PPG.config.get_value("cpython-use-github"):
             r = self.client.get("https://api.github.com/repos/python/cpython/git/matching-refs/tags/v3.", logger=logging.debug)
-            for item in r:
+            for item in r or ():
                 ref = item.get("ref")
                 if ref and ref.startswith("refs/tags/v"):
                     ref = ref[11:]
@@ -107,10 +104,10 @@ class CPythonFamily(VersionFamily):
                         v = Version(m.group(1))
                         if v.is_valid and v.is_final and self.min_version < v:
                             # For .0 releases, double-check that it's not a release candidate
-                            if v < upcoming or v.patch > 0 or self.client.url_exists(f"{base_url}/{v}/Python-{v}.tar.xz"):
+                            if v < upcoming or v.patch or self.client.url_exists(f"{base_url}/{v}/Python-{v}.tar.xz"):
                                 yield v
 
-    def get_builder(self):
+    def get_builder(self) -> type["PythonBuilder"]:
         from portable_python.cpython import Cpython
 
         return Cpython
@@ -119,20 +116,20 @@ class CPythonFamily(VersionFamily):
 class Folders:
     def __init__(self, config: Config, base=None, family=None, version=None, abi_suffix=None):
         self.config = config
-        self.base_folder = runez.resolved_path(base)
+        self.base_folder = runez.resolved_path(base)  # TODO: revise this so that attributes that are paths, are of type Path
         self.family = family
         self.version = Version.from_object(version)
         self.mm = self.version and self.version.mm
         self.completions = config.completions(family=family, version=version, mm=self.mm, abi_suffix=abi_suffix or "")
-        self.build_folder = self._get_path("build")
-        self.completions["build"] = self.build_folder
+        self.build_folder = self._required_path("build")
+        self.completions["build"] = str(self.build_folder)
         self.components = self.build_folder / "components"
         self.deps = self.build_folder / "deps"
-        self.destdir = self._get_path("destdir")
-        self.dist = self._get_path("dist", required=False)
-        self.logs = self._get_path("logs", required=False)
-        self.ppp_marker = self._get_value("ppp-marker")
-        self.sources = self._get_path("sources")
+        self.destdir = self._required_path("destdir")
+        self.dist = self._get_path("dist")
+        self.logs = self._get_path("logs")
+        self.ppp_marker = self._required_value("ppp-marker")
+        self.sources = self._required_path("sources")
 
     def __repr__(self):
         return runez.short(self.build_folder)
@@ -150,24 +147,36 @@ class Folders:
 
         return folder
 
-    def _get_value(self, key, required=True):
+    def _get_value(self, key) -> str | None:
         value = self.config.get_value("folders", key, by_platform=False)
-        if required and not value:
-            runez.abort("Folder '%s' must be configured" % key)
-
         if value:
             value = os.path.expandvars(value)
             value = self.formatted(value)
 
         return value
 
-    def _get_path(self, key, required=True):
-        path = self._get_value(key, required=required)
-        if path and self.base_folder:
-            path = runez.resolved_path(path, base=self.base_folder)
+    def _required_value(self, key) -> str:
+        value = self._get_value(key)
+        if not value:
+            runez.abort("Folder '%s' must be configured" % key)
 
-        if path:
-            return runez.to_path(path, no_spaces=True)
+        return value
+
+    def _get_path(self, key) -> Path | None:
+        value = self._get_value(key)
+        return self._as_path(value) if value else None
+
+    def _required_path(self, key) -> Path:
+        return self._as_path(self._required_value(key))
+
+    def _as_path(self, value: str) -> Path:
+        if self.base_folder:
+            value = runez.resolved_path(value, base=self.base_folder)
+
+        if " " in value:
+            runez.abort("Refusing path with space (escapes too complex with makefiles, shell scripts etc): '%s'" % runez.short(value))
+
+        return Path(value)
 
 
 class PPG:
@@ -185,7 +194,7 @@ class PPG:
     """
 
     cpython = CPythonFamily()
-    families: ClassVar[dict] = {"cpython": cpython}
+    families: ClassVar[dict[str, VersionFamily]] = {"cpython": cpython}
     config = Config()
     target = config.target
 
@@ -202,10 +211,10 @@ class PPG:
         return Folders(config, base=base, family=family, version=version, abi_suffix=abi_suffix)
 
     @classmethod
-    def family(cls, family_name, fatal=True) -> VersionFamily:
+    def family(cls, family_name) -> VersionFamily:
         fam = cls.families.get(family_name)
-        if fatal and not fam:
-            runez.abort(f"Python family '{family_name}' is not yet supported")
+        if not fam:
+            runez.abort(f"Python family '{runez.red(family_name)}' is not yet supported")
 
         return fam
 
@@ -217,8 +226,8 @@ class PPG:
         return cls._depot.find_python(spec)
 
     @classmethod
-    def find_telltale(cls, *telltales):
-        for tt in runez.flattened(telltales):
+    def find_telltale(cls, telltale: str):
+        for tt in runez.flattened(telltale, split=" "):
             for sys_include in runez.flattened(cls.target.sys_include):
                 path = tt.format(include=sys_include)
                 if os.path.exists(path):

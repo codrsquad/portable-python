@@ -14,13 +14,13 @@ jobs:
       id-token: write  # mandatory for trusted publishing
 
     steps:
-    - uses: actions/checkout@v6
-    - uses: actions/setup-python@v6
+    - uses: actions/checkout@v7
+    - uses: actions/setup-python@v7
       with:
         python-version: "3.14"
 
-    - uses: astral-sh/setup-uv@v7
-    - run: uvx --with tox-uv tox -e py,style
+    - uses: astral-sh/setup-uv@v10.2.0
+    - run: uvx --with tox-uv tox -e py,style,ty,pyrefly,pyright,mypy,zuban
     - run: uv build
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,12 +1,24 @@
 # Knowledge Bundle Update Log
 
+## 2026-10-09
+
+* **Update**: [Configuration](/configuration/portable-python-yml.md): `{module}-configure` substitutes `$lib_dir` and `$lib64_dir` (not `$deps_lib`), and its value is split into separate args.
+* **Creation**: Added the [type checker findings](/typecheck-findings.md) report.
+* **Update**: The changelog moved out of the bundle, to `CHANGELOG.md` at the repo root (shipped in the sdist, like `README.rst`); [release process](/release.md) and the index point there.
+* **Update**: [CI/CD](/guides/ci-cd.md): the `linters` job and the release gate run the type checkers.
+* **Update**: `BuildSetup` takes a `PythonSpec` (via `required_python_spec()`) in [BuildSetup](/architecture/build-setup.md), and `m_telltale` is a space-separated `str` in [telltale detection](/concepts/telltale-detection.md).
+
+## 2026-10-08
+
+* **Update**: Listed the type checker tox envs (`tox -e <typechecker>`) in [local development](/guides/local-development.md).
+
 ## 2026-08-20
 
 * **Update**: Bumped SQLite to 3.53.4 and gettext-tiny to 0.3.3, and recorded the stay-put rationale for LibFFI, OpenSSL and Readline in their `version` property comments (per the [bump components playbook](/guides/bump-components.md)).
 
 ## 2026-06-23
 
-* **Creation**: Added the [release process](/release.md) playbook and the [changelog](/changelog.md).
+* **Creation**: Added the [release process](/release.md) playbook and the changelog.
 * **Creation**: Added the [bump component versions](/guides/bump-components.md) guide.
 * **Update**: Pulled two verified facts in from the project wiki — the relativization tools (`patchelf` / `install_name_tool`) and `--prefix` / `--enable-shared` support ([PythonInspector](/architecture/python-inspector.md)), and the `#sha256=` download-checksum URL fragment ([configuration](/configuration/portable-python-yml.md)). Skipped the wiki's `sources:` download-url design — it's an unimplemented draft.
 * **Update**: Trimmed the CLI pages — dropped the per-command option tables (which mirror `--help`) for purpose + non-obvious gotchas + examples, pointing at `--help` for the full flag list.

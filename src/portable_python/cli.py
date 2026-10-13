@@ -5,7 +5,7 @@ import runez
 from runez.pyenv import PythonSpec
 from runez.render import PrettyTable
 
-from portable_python import BuildSetup, PPG
+from portable_python import BuildSetup, PPG, required_python_spec
 from portable_python.inspector import LibAutoCorrect, PythonInspector
 
 LOG = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def main(config, quiet, target):
 @click.argument("python_spec")
 def build(modules, prefix, python_spec):
     """Build a portable python binary"""
-    setup = BuildSetup(python_spec, modules=modules, prefix=prefix)
+    setup = BuildSetup(required_python_spec(python_spec), modules=modules, prefix=prefix)
     setup.compile()
 
 
@@ -50,7 +50,7 @@ def build(modules, prefix, python_spec):
 @click.argument("python_spec", required=False)
 def build_report(modules, python_spec):
     """Show status of buildable modules, which will be auto-compiled"""
-    setup = BuildSetup(python_spec, modules=modules)
+    setup = BuildSetup(required_python_spec(python_spec), modules=modules)
     print(runez.bold(setup.python_spec))
     report = setup.python_builder.modules.report()
     print(report)
@@ -90,10 +90,7 @@ def inspect(modules, verbose, prefix, skip_so, path):
 @click.argument("family", default="cpython")
 def list_cmd(json, family):
     """List latest versions"""
-    fam = PPG.family(family, fatal=False)
-    if not fam:
-        runez.abort("Python family '%s' is not yet supported" % runez.red(family))
-
+    fam = PPG.family(family)
     if json:
         print(runez.represented_json(fam.available_versions))
         return
@@ -116,6 +113,7 @@ def _find_recompress_source(folders, path):
     candidates = [folders.base_folder, folders.build_folder, folders.dist, folders.destdir]
     for candidate in candidates:
         if candidate:
+            # TODO: `runez.to_path()` can be simplified away when all `folders.` attributes become of type Path
             candidate = runez.to_path(candidate) / path
             if candidate.exists():
                 return candidate.absolute()
@@ -162,8 +160,8 @@ def recompress(path, ext):
     Mildly useful for comparing sizes from different compressions
     """  # noqa: D301
     extension = runez.SYS_INFO.platform_id.canonical_compress_extension(ext)
-    pspec = PythonSpec.from_text(path)
-    folders = PPG.get_folders(base=".", family=pspec and pspec.family, version=pspec and pspec.version)
+    pspec = PythonSpec.from_text(path)  # Best effort: a build folder like `3.9.7` yields a spec, archive names don't
+    folders = PPG.get_folders(base=".", family=pspec.family if pspec else "cpython", version=pspec.version if pspec else None)
     with runez.Anchored(folders.base_folder):
         actual_path = _find_recompress_source(folders, path)
         if not actual_path:
@@ -205,6 +203,4 @@ def lib_auto_correct(commit, prefix, path):
 
 
 if __name__ == "__main__":
-    from portable_python.cli import main
-
     main()

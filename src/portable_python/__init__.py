@@ -2,9 +2,9 @@
 Designed to be used via portable-python CLI.
 Can be used programmatically too, example usage:
 
-    from portable_python import BuildSetup
+    from portable_python import BuildSetup, required_python_spec
 
-    setup = BuildSetup("cpython:3.9.6")
+    setup = BuildSetup(required_python_spec("cpython:3.9.6"))
     setup.compile()
 """
 
@@ -15,8 +15,9 @@ import multiprocessing
 import os
 import pathlib
 import re
+import shlex
+from collections.abc import Iterable
 from string import Template
-from typing import ClassVar
 
 import runez
 from runez.http import RestClient
@@ -33,7 +34,7 @@ def is_binary_file(path):
     return RX_BINARY.match(path.name)
 
 
-def patch_folder(folder, regex, replacement, ignore=None):
+def patch_folder(folder, regex, replacement, ignore=None, dryrun: runez.DryrunSpec = runez.UNSET):
     """Replace all occurrences of 'old_text' by 'new_text' in all files in 'folder'
 
     Parameters
@@ -46,33 +47,53 @@ def patch_folder(folder, regex, replacement, ignore=None):
         Replacement text
     ignore : re.Pattern | None
         Regex stating what to ignore
+    dryrun
+        Optionally override current dryrun setting
     """
     for path in runez.ls_dir(folder):
         if not path.is_symlink() and (not ignore or not ignore.match(path.name)):
             if path.is_dir():
-                patch_folder(path, regex, replacement, ignore=ignore)
+                patch_folder(path, regex, replacement, ignore=ignore, dryrun=dryrun)
 
             elif not is_binary_file(path):
-                patch_file(path, regex, replacement)
+                patch_file(path, regex, replacement, dryrun=dryrun)
 
 
-def patch_file(path, regex, replacement):
+def patch_file(path, regex, replacement, dryrun: runez.DryrunSpec = runez.UNSET):
+    """Replace `regex` with `replacement` in file `path`, if it occurs there"""
+    if not os.path.exists(path):
+        if not runez.log.resolved_dryrun(dryrun):  # Sources to patch are not downloaded in dryrun mode
+            LOG.warning("Can't patch %s: file not found", runez.short(path))
+
+        return
+
+    overview = f"{regex} -> {runez.short(replacement)} in {runez.short(path)}"
     try:
         with open(path) as fh:
             text = fh.read()
 
         new_text = re.sub(regex, replacement, text, flags=re.MULTILINE)
-        if text != new_text:
+        if text != new_text and not runez.log.hdry(f"apply patch: {overview}", dryrun=dryrun):
             with open(path, "w") as fh:
                 fh.write(new_text)
 
-            LOG.info("Patched '%s' in %s", regex, runez.short(path))
+            LOG.info("Patched %s", overview)
 
     except Exception as e:
         with open(path, errors="ignore") as fh:
             text = fh.read()
             if re.search(regex, text):
-                LOG.warning("Can't patch '%s': %s", runez.short(path), e)
+                LOG.warning("Can't patch %s: %s", overview, e)
+
+
+def correct_permissions(path: pathlib.Path, expected: int, dryrun: runez.DryrunSpec = runez.UNSET):
+    """Ensure that `path` has `expected` permissions"""
+    current = path.stat().st_mode & 0o777
+    if current != expected:
+        overview = f"permissions for {runez.short(path)} to {oct(expected)} (was {oct(current)})"
+        if not runez.log.hdry(f"correct {overview}", dryrun=dryrun):
+            LOG.info("Corrected %s", overview)
+            path.chmod(expected)
 
 
 class FolderMask:
@@ -147,9 +168,6 @@ class BuildContext:
 
         return v
 
-    def __repr__(self):
-        return self.isolate_usr_local or "none"
-
     def __enter__(self):
         runez.Anchored.add(self.setup.folders.base_folder)
         if self.isolate_usr_local == "mount-shadow":
@@ -166,7 +184,7 @@ class BuildContext:
                     self.masked_folders.append(mask)
                     mask.mount()
 
-            except BaseException:  # pragma: no cover, ensure cleanup if any folder couldn't be masked
+            except BaseException:  # Ensure cleanup if any folder couldn't be masked
                 self.cleanup()
                 raise
 
@@ -189,6 +207,18 @@ class BuildContext:
         runez.Anchored.pop(self.setup.folders.base_folder)
 
 
+def required_python_spec(text: str | None) -> PythonSpec:
+    """Python to build, with a full version (aborts with a clear message otherwise), default: latest cpython"""
+    spec = PythonSpec.from_object(PPG.cpython.latest if not text or text == "latest" else text)
+    if not spec:
+        runez.abort("Invalid python spec: %s" % runez.red(text))
+
+    if spec.version.given_components_count < 3:
+        runez.abort("Please provide full desired version: %s is not good enough" % runez.red(spec))
+
+    return spec
+
+
 class BuildSetup:
     """
     Drives the compilation, external modules first, then the target python itself.
@@ -198,33 +228,22 @@ class BuildSetup:
     # Internal, used to ensure files under {logs}/ folder sort alphabetically in the same order they were compiled
     log_counter = 0
 
-    def __init__(self, python_spec=None, modules=None, prefix=None):
+    def __init__(self, python_spec: PythonSpec, modules: str | None = None, prefix: str | None = None):
         """
         Parameters
         ----------
-        python_spec : str | PythonSpec | None
-            Python to build (family and version)
-        modules : str | None
+        python_spec
+            Python to build (family and full version), see `required_python_spec()`
+        modules
             Modules to build (default: from config)
-        prefix : str | None
+        prefix
             --prefix to use
         """
-        if not python_spec or python_spec == "latest":
-            python_spec = PPG.cpython.latest
-
-        if not isinstance(python_spec, PythonSpec):
-            ps = PythonSpec.from_object(python_spec)
-            runez.abort_if(not ps, "Invalid python spec: %s" % runez.red(python_spec))
-            python_spec = ps
-
-        runez.abort_if(not python_spec.version or not python_spec.version.is_valid, "Invalid python spec: %s" % runez.red(python_spec))
-        if len(python_spec.version.given_components) < 3:
-            runez.abort("Please provide full desired version: %s is not good enough" % runez.red(python_spec))
-
         self.python_spec = python_spec
         self.folders = PPG.get_folders(
             base=os.getcwd(), family=python_spec.family, version=python_spec.version, abi_suffix=python_spec.abi_suffix
         )
+        self.build_context: BuildContext | None = None  # Set during compile()
         self.desired_modules = modules
         prefix = self.folders.formatted(prefix)
         self.prefix = prefix
@@ -244,7 +263,7 @@ class BuildSetup:
             )
 
         builder = PPG.family(python_spec.family).get_builder()
-        self.python_builder = builder(self)  # type: PythonBuilder
+        self.python_builder = builder(self)
 
     def __repr__(self):
         return str(self.folders)
@@ -301,41 +320,35 @@ class BuildSetup:
 class ModuleCollection:
     """Models a collection of sub-modules, with auto-detection and reporting as to what is active and why"""
 
-    candidates: list["ModuleBuilder"] = None
-    desired: str = None
-    selected: list["ModuleBuilder"] = None
-
-    def __init__(self, parent_module: "ModuleBuilder", desired=None):
-        self.selected = []
-        self.auto_selected = {}
-        self.candidates = []
+    def __init__(self, parent_module: "ModuleBuilder", desired: str | None = None):
+        self.selected: list[ModuleBuilder] = []
+        self.auto_selected: dict[str, str] = {}
+        self.candidates: list[ModuleBuilder] = []
         self.desired = desired
-        self.module_by_name = {}  # type: dict[str, ModuleBuilder]
-        candidates = parent_module.candidate_modules()
-        if candidates:
-            for module in candidates:
-                module = module(parent_module)
-                self.candidates.append(module)
-                self.module_by_name[module.m_name] = module
+        self.module_by_name: dict[str, ModuleBuilder] = {}
+        for module_class in parent_module.candidate_modules():
+            module = module_class(parent_module)
+            self.candidates.append(module)
+            self.module_by_name[module.m_name] = module
 
         if desired == "all":
             self.selected = self.candidates
             return
 
-        desired = [] if desired == "none" else runez.flattened(desired, split=True)
-        desired = runez.flattened(desired, split=",")
-        unknown = [x for x in desired if x not in self.module_by_name]
+        names = [] if desired == "none" else runez.flattened(desired, split=True)
+        names = runez.flattened(names, split=",")
+        unknown = [x for x in names if x not in self.module_by_name]
         if unknown:
             runez.abort("Unknown modules: %s" % runez.joined(unknown, delimiter=", ", stringify=runez.red))
 
         for candidate in self.candidates:
-            if candidate.m_name not in desired:
+            if candidate.m_name not in names:
                 reason = candidate.auto_select_reason()
                 if reason:
                     self.auto_selected[candidate.m_name] = reason
 
-        desired.extend(self.auto_selected.keys())
-        self.selected = [self.module_by_name[x] for x in desired]
+        names.extend(self.auto_selected.keys())
+        self.selected = [self.module_by_name[x] for x in names]
 
     def __repr__(self):
         return "selected: %s (%s)" % (self.desired, runez.plural(self.selected, "module"))
@@ -402,13 +415,13 @@ class LinkerOutcome(enum.Enum):
 class ModuleBuilder:
     """Common behavior for all external (typically C) modules to be compiled"""
 
-    m_build_cwd: str = None  # Optional: relative (to unpacked source) folder where to run configure/make from
-    m_debian = None
-    m_include: str = None  # Optional: subfolder to automatically list in CPATH when this module is active
-    m_telltale: ClassVar[list]  # Optional: list of files that, if present, indicate this module is installed
+    m_build_cwd: str | None = None  # Optional: relative (to unpacked source) folder where to run configure/make from
+    m_debian: str | None = None  # Optional: debian package, prefixed with "!": required, "+": required if selected, "-": prevents static
+    m_include: str | None = None  # Optional: subfolder to automatically list in CPATH when this module is active
+    m_telltale: str = ""  # Optional: file(s) that, if present, indicate this module is installed (space separated)
 
     setup: BuildSetup
-    parent_module: "ModuleBuilder" = None
+    parent_module: "ModuleBuilder | None" = None
     _log_handler = None
 
     def __init__(self, parent_module):
@@ -434,13 +447,14 @@ class ModuleBuilder:
         return "%s:%s" % (self.m_name, self.version)
 
     @classmethod
-    def candidate_modules(cls) -> list:
+    def candidate_modules(cls) -> Iterable[type["ModuleBuilder"]]:
         """All possible candidate external modules for this builder"""
+        return []
 
     def selected_modules(self):
         return ModuleCollection(self, desired="all")
 
-    def auto_select_reason(self):
+    def auto_select_reason(self) -> str | None:
         """
         If this module must be selected (build can't succeed without), descendant should return short explanation why
         """
@@ -480,11 +494,10 @@ class ModuleBuilder:
         return "no %s" % self.m_telltale
 
     def _find_telltale(self):
-        telltales = getattr(self, "m_telltale", runez.UNSET)
-        if telltales is runez.UNSET:
-            return telltales
+        if not self.m_telltale:
+            return runez.UNSET  # Sub-modules don't have a telltale
 
-        return PPG.find_telltale(telltales)
+        return PPG.find_telltale(self.m_telltale)
 
     def active_module(self, name):
         return self.modules.active_module(name)
@@ -514,16 +527,19 @@ class ModuleBuilder:
     def cfg_src_suffix(self):
         return PPG.config.get_value("%s-src-suffix" % self.m_name)
 
-    def cfg_configure(self, deps_lib_dir, deps_lib64_dir):
+    def cfg_configure(self, deps_lib_dir, deps_lib64_dir) -> list[str] | None:
+        """Configure args from config (`$lib_dir` and `$lib64_dir` substituted), shell-style split into separate args"""
         if configure := PPG.config.get_value("%s-configure" % self.m_name):
-            configure_template = Template(configure)
-            return configure_template.substitute(lib_dir=deps_lib_dir, lib64_dir=deps_lib64_dir)
+            configure = Template(configure).substitute(lib_dir=deps_lib_dir, lib64_dir=deps_lib64_dir)
+            return shlex.split(configure)
+
+        return None
 
     def cfg_patches(self):
         return PPG.config.get_value("%s-patches" % self.m_name)
 
     @property
-    def url(self):
+    def url(self) -> str:
         """Url of source tarball, if any"""
         return ""
 
@@ -607,7 +623,7 @@ class ModuleBuilder:
         cmd = runez.flattened(*program, prefix, *args)
         return self._do_run(*cmd)
 
-    def run_make(self, *args, program="make", cpu_count=None):
+    def run_make(self, *args, program: str = "make", cpu_count: int | None = None):
         cmd = program.split()
         if cpu_count is None:
             available = multiprocessing.cpu_count()
@@ -729,11 +745,7 @@ class ModuleBuilder:
     def _apply_patches(self):
         if patches := self.cfg_patches():
             for patch in patches:
-                if runez.DRYRUN:
-                    print(f"Would apply patch: {patch}")
-                else:
-                    print(f"Applying patch: {patch}")
-                    patch_file(patch["file"], patch["regex"], patch["replacement"])
+                patch_file(patch["file"], patch["regex"], patch["replacement"])
 
     def _get_env_vars(self):
         """Yield all found env vars, first found wins"""
@@ -782,7 +794,7 @@ class ModuleBuilder:
 
 
 class PythonBuilder(ModuleBuilder):
-    _bin_python: pathlib.Path = None
+    _bin_python: pathlib.Path | None = None
 
     def __init__(self, parent_module):
         super().__init__(parent_module)
@@ -799,15 +811,14 @@ class PythonBuilder(ModuleBuilder):
         return ModuleCollection(self, desired=desired)
 
     @property
-    def bin_python(self):
-        """
-        Returns
-        -------
-            pathlib.Path | None
-                Path to freshly compiled bin/python, real file (not symlink)
-        """
+    def bin_python(self) -> pathlib.Path:
+        """Path to freshly compiled bin/python, real file (not symlink)"""
         if self._bin_python is None:
-            self._bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version)
+            bin_python = PPG.config.find_main_file(self.bin_folder / "python", self.version)
+            if not bin_python:
+                runez.abort(f"Can't find bin/python in {self.bin_folder}")
+
+            self._bin_python = bin_python
 
         return self._bin_python
 
@@ -817,6 +828,7 @@ class PythonBuilder(ModuleBuilder):
 
     def xenv_LDFLAGS(self):
         """Python builder does not reuse the common setting"""
+        yield from ()
 
     def run_python(self, *args):
         """Run python command, using the freshly compiled python binary"""
@@ -834,8 +846,4 @@ class PythonBuilder(ModuleBuilder):
         for lib_dir in self.deps_lib_dirs:
             for path in runez.ls_dir(lib_dir):
                 if not path.name.endswith(".la"):
-                    expected = 0o755 if path.is_dir() else 0o644
-                    current = path.stat().st_mode & 0o777
-                    if current != expected:
-                        LOG.info("Corrected permissions for %s (was %s)", runez.short(path), oct(current))
-                        path.chmod(expected)
+                    correct_permissions(path, 0o755 if path.is_dir() else 0o644)

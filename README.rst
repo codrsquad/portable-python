@@ -193,9 +193,9 @@ Portable Python can be used as a python library to invoke builds, or inspect an 
 
 Invoke a build from python code::
 
-    from portable_python import BuildSetup
+    from portable_python import BuildSetup, required_python_spec
 
-    setup = BuildSetup("cpython:3.9.7")
+    setup = BuildSetup(required_python_spec("cpython:3.9.7"))
     setup.compile()
 
 

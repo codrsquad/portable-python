@@ -5,8 +5,6 @@ It is also unclear what version to use, which build docs to follow etc.
 Contributions are welcome!
 """
 
-from typing import ClassVar
-
 import runez
 
 from portable_python import ModuleBuilder, PPG
@@ -27,7 +25,7 @@ class Tcl(ModuleBuilder):
 
     def _prepare(self):
         for path in runez.ls_dir(self.m_src_build / "pkgs"):
-            if path.name.startswith(("sqlite", "tdbc")):  # pragma: no cover, tcl/tk is "best effort"
+            if path.name.startswith(("sqlite", "tdbc")):
                 # Remove packages we don't care about and can pull in unwanted symbols
                 runez.delete(path)
 
@@ -55,7 +53,7 @@ class Tk(ModuleBuilder):
         yield "--enable-threads"
         yield f"--with-tcl={self.deps_lib_dir}"
         yield "--without-x"
-        if PPG.target.is_macos:  # pragma: no cover, tcl/tk is "best effort"
+        if PPG.target.is_macos:
             yield "--enable-aqua=yes"
 
     def _do_linux_compile(self):
@@ -110,7 +108,7 @@ class TkInter(ModuleBuilder):
     """
 
     m_debian = "-tk-dev"
-    m_telltale: ClassVar[list] = ["{include}/tk", "{include}/tk.h"]
+    m_telltale = "{include}/tk {include}/tk.h"
 
     @classmethod
     def candidate_modules(cls):

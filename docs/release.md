@@ -22,7 +22,7 @@ Review what changed since the last release:
 git diff <last-tag>..main        # e.g. git diff v2.0.0..main
 ```
 
-Summarize the **highlights** in [`changelog.md`](/changelog.md) — short and high-level. It should
+Summarize the **highlights** in `CHANGELOG.md` (at the repo root) — short and high-level. It should
 give a reader a rough idea of the main changes since the last release, not a blow-by-blow; skip the
 details.
 

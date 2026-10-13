@@ -79,7 +79,7 @@ class Cpython(PythonBuilder):
                 "host-platform": runez.SYS_INFO.platform_info,
                 "ldd-version": PythonInspector.tool_version("ldd"),
                 "portable-python-version": runez.get_version(__package__),
-                "special-context": bc.isolate_usr_local and bc,
+                "special-context": bc.isolate_usr_local if bc else None,
             },
         )
         additional = PPG.config.get_value("manifest", "additional-info")
@@ -280,7 +280,6 @@ class Cpython(PythonBuilder):
 
             self.run_python("-mpip", "install", "--no-cache-dir", "--upgrade", *runez.flattened(additional))
 
-        runez.abort_if(not runez.DRYRUN and not self.bin_python, f"Can't find bin/python in {self.bin_folder}")
         PPG.config.ensure_main_file_symlinks(self)
         if not self.setup.prefix:
             self._relativize_sysconfig()
@@ -305,7 +304,7 @@ class Cpython(PythonBuilder):
 
         info_path = PPG.config.get_value("manifest", "inspection-report")
         if info_path:
-            with runez.colors.ActivateColors(enable=False):
+            with runez.ActivateColors(enable=False):
                 py_inspector = PythonInspector(self.install_folder, modules="all")
                 contents = "%s\n" % py_inspector.represented(verbose=True)
                 runez.write(self.install_folder / info_path, contents)
@@ -405,11 +404,10 @@ class Cpython(PythonBuilder):
             except UnicodeError:
                 return
 
-        if lines:
-            LOG.info("Auto-corrected shebang for %s" % runez.short(path))
+        if lines and not runez.log.hdry(f"auto-correct shebang for {runez.short(path)}"):
+            LOG.info("Auto-corrected shebang for %s", runez.short(path))
             with open(path, "w") as fh:
-                for line in lines:
-                    fh.write(line)
+                fh.writelines(lines)
 
 
 class RelSysConf:

@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import pytest
 import runez
 
-from portable_python import BuildSetup, ModuleBuilder
+from portable_python import BuildSetup, correct_permissions, ModuleBuilder, patch_file, required_python_spec
 from portable_python.versions import PPG
 
 
@@ -31,12 +33,41 @@ def test_config(cli):
     assert " -> dist/cpython-3.9.7-linux-x86_64.tar.gz" in cli.logged  # Default .tar.gz
 
 
+def test_module_overrides(cli, monkeypatch):
+    monkeypatch.setenv("HTTP_PROXY", "http://my-proxy:8080")  # Exercise proxy pass-through on downloads
+    monkeypatch.setenv("HTTPS_PROXY", "http://my-proxy:8443")
+    modules = "bdb gdbm libffi mpdec ncurses openssl readline sqlite uuid xz zlib".split()
+    config = [f"{m}-configure: --my-{m}-opt --my-{m}-libs=$lib_dir:$lib64_dir" for m in modules]
+    config.append("cpython-url: https://my-mirror/python-$version.tar.xz")
+    config.append("openssl-version: 1.1.1w")  # Older versions have a different download url scheme
+    config.append("openssl-patches:\n  - file: README\n    regex: foo\n    replacement: bar")
+    config.append("  - file: no-such-file\n    regex: foo\n    replacement: bar")
+    runez.write("pp.yml", "\n".join(config), logger=None)
+    runez.write("README", "Hello foo", logger=None)  # Dryrun doesn't extract sources, so the build stays in this folder
+    cli.run("-n", "-tlinux-x86_64", "-c", "pp.yml", "build", "3.14.4", "-mall")
+    assert cli.succeeded
+    for m in modules:
+        assert f" --my-{m}-opt --my-{m}-libs=build/deps/lib:build/deps/lib64" in cli.logged  # Separate args (not quoted together)
+
+    assert "Would apply patch: foo -> bar in README" in cli.logged
+    assert "no-such-file" not in cli.logged  # Not reported in dryrun mode (sources to patch are not downloaded)
+    assert "Would download https://my-mirror/python-3.14.4.tar.xz" in cli.logged
+    assert "Would download https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz" in cli.logged
+
+
 def test_diagnostics(cli):
     runez.write("pp-dev.yml", "a: b", logger=None)
     runez.write("portable-python.yml", "include: +pp-dev.yml", logger=None)
     cli.run("diagnostics")
     assert cli.succeeded
     assert "pp-dev.yml:\na: b\n\nportable-python.yml:\ninclude: +pp-dev.yml" in cli.logged.stdout
+
+
+def test_folder_with_space(cli):
+    runez.write("pp.yml", "folders:\n  build: my build", logger=None)
+    cli.run("-n", "-c", "pp.yml", "build", "3.9.7")
+    assert cli.failed
+    assert "Refusing path with space (escapes too complex with makefiles, shell scripts etc): 'my build'" in cli.logged
 
 
 def test_edge_cases(temp_folder, monkeypatch, logged):
@@ -51,7 +82,7 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     assert str(PPG.cpython) == "cpython"
     assert str(PPG.config) == "1 config source [linux-x86_64]"
 
-    setup = BuildSetup("3.9.6")
+    setup = BuildSetup(required_python_spec("3.9.6"))
     assert str(setup) == "build/cpython-3.9.6"
 
     mb = ModuleBuilder(setup)
@@ -63,12 +94,31 @@ def test_edge_cases(temp_folder, monkeypatch, logged):
     assert outcome.name == "failed"
     assert reason == "broken, can't compile statically with foo present"
 
-    sources = getattr(PPG.config, "_sources", None)
-    monkeypatch.setattr(sources[0], "data", {"ext": "foo"})
+    patch_file("no-such-file", "foo", "bar")  # Not in dryrun mode: a (configured) patch on a missing file is reported
+    assert "Can't patch no-such-file: file not found" in logged.pop()
+
+    lib = Path("libfoo.a")
+    runez.touch(lib, logger=None)
+    lib.chmod(0o755)
+    correct_permissions(lib, 0o644)  # Not in dryrun mode: permissions are effectively corrected
+    assert "Corrected permissions for libfoo.a to 0o644 (was 0o755)" in logged.pop()
+    assert lib.stat().st_mode & 0o777 == 0o644
+
+    runez.write("pp.yml", "ext: foo", logger=None)
+    PPG.grab_config("pp.yml", target="linux-x86_64")
     assert not logged
     with pytest.raises(runez.system.AbortException):
-        _ = BuildSetup("3.9.6")
+        _ = BuildSetup(required_python_spec("3.9.6"))
     assert "Invalid extension 'foo'" in logged.pop()
+
+
+def test_missing_bin_python(temp_folder, logged):
+    PPG.grab_config(target="linux-x86_64")
+    setup = BuildSetup(required_python_spec("3.9.6"))
+    with pytest.raises(runez.system.AbortException):
+        _ = setup.python_builder.bin_python
+    assert "Can't find bin/python in /" in logged
+    assert "/build/ppp-marker/3.9.6/bin\n" in logged.pop()
 
 
 def test_inspect(cli):
