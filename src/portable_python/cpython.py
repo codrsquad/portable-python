@@ -339,7 +339,7 @@ class Cpython(PythonBuilder):
 
     def _relativize_shebangs(self):
         """Autocorrect shebangs in bin/ folder, making them relative to the location of the python executable"""
-        for folder in (self.bin_folder, self.prefix_config_folder):
+        for folder in filter(None, (self.bin_folder, self.prefix_config_folder)):
             for path in runez.ls_dir(folder):
                 if path != self.bin_python and runez.is_executable(path) and not path.is_symlink():
                     self._relativize_shebang_file(path)

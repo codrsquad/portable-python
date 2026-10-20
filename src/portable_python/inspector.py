@@ -153,7 +153,7 @@ class ModuleInfo:
         return runez.short(self.filepath)
 
     @runez.cached_property
-    def additional_info(self):
+    def additional_info(self) -> "SoInfo | str | None":
         path = self.filepath
         if path:
             if is_dyn_lib(path):
@@ -180,7 +180,7 @@ class ModuleInfo:
                 version = runez.bold(version)
 
         info = self.additional_info
-        if hasattr(info, "represented"):
+        if isinstance(info, SoInfo):
             info = info.represented()
 
         else:

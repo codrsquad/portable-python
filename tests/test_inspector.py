@@ -26,7 +26,9 @@ def test_inspect_python(temp_folder, monkeypatch):
     PPG.grab_config("foo.yml")
     inspector = PythonInspector("invoker")
     assert str(inspector)
-    assert str(inspector.module_info["_ctypes"])
+    module_info = inspector.module_info
+    assert module_info
+    assert str(module_info["_ctypes"])
     r = inspector.full_so_report
     assert r.ok
 
@@ -44,6 +46,7 @@ def test_inspect_python(temp_folder, monkeypatch):
     PPG.grab_config(target="linux-x86_64")
     monkeypatch.setitem(PPG.config.default.data, "linux", {"allowed-system-libs": "/foo"})
     problem = r.get_problem(True)
+    assert problem
     assert problem.startswith("Uses system libs:")
 
 
@@ -90,6 +93,7 @@ def test_inspect_problematic(temp_folder):
     assert "_tkinter*_failed.so" in report  # Failed modules are marked as such (cpython renames them `*_failed.so`)
 
     problem = inspector.full_so_report.get_problem(portable=False)
+    assert problem
     assert problem.startswith("\n-- 3 problematic\n")
 
 
