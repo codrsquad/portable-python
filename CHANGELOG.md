@@ -3,8 +3,9 @@
 ## v2.1.0
 
 - portable-python's code is now checked by multiple type checkers on every change
-- Bumped OpenSSL to 3.5.9, SQLite to 3.53.4, xz to 5.8.4 and gettext-tiny to 0.3.3; re-checked every other component against upstream (all already current, or deliberately held back — see the `version` property comments).
+- Bumped OpenSSL to 3.5.9, SQLite to 3.53.4, xz to 5.8.4, libffi to 3.8.0 and gettext-tiny to 0.3.3; re-checked every other component against upstream (all already current, or deliberately held back — see the `version` property comments).
 - Bug fixes:
+  - Python 3.15 builds silently lacked `_decimal` (cpython no longer falls back to its bundled libmpdec), `mpdec` is now auto-selected for 3.14+ (3.14 otherwise uses its deprecated bundled libmpdec 2.5.1)
   - With `cpython-use-github: true`, a failed GitHub API call (e.g. rate limiting) crashed with a stack trace
   - A build where `bin/python` could not be found crashed (instead of reporting it) when `cpython-validate-script` or `cpython-additional-packages` was configured
   - Clearer error messages when the latest python version can't be determined, or a python family isn't supported

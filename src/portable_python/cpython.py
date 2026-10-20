@@ -188,7 +188,7 @@ class Cpython(PythonBuilder):
             yield f"{self.deps_lib_dir}/libzstd.a"
 
     def xenv_LIBMPDEC_CFLAGS(self):
-        if self.version >= "3.14" and PPG.target.is_macos:
+        if self.version >= "3.14" and PPG.target.is_macos and self.active_module(Mpdec):
             # Normally ./configure will autodetect using pkg-config, but
             # this doesn't typically work on Mac (the pkg-config binary is
             # in homebrew, which we omit from path) so we have to provide
@@ -196,7 +196,7 @@ class Cpython(PythonBuilder):
             yield f"-I{self.deps}/include"
 
     def xenv_LIBMPDEC_LIBS(self):
-        if self.version >= "3.14" and PPG.target.is_macos:
+        if self.version >= "3.14" and PPG.target.is_macos and self.active_module(Mpdec):
             yield f"{self.deps_lib_dir}/libmpdec.a"
 
     def xenv_LIBREADLINE_LIBS(self):

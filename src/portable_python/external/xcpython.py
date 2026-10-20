@@ -135,10 +135,9 @@ class LibFFI(ModuleBuilder):
 
     @property
     def version(self):
-        # Stay on 3.5: 3.6, 3.7 and 3.8 all landed Jun-Aug 2026 in quick succession (3.7.0 -> 3.7.1 took 2 days)
-        # python-build-standalone still pins 3.4.8, none of the newer lines are proven for static cpython builds yet
+        # python-build-standalone moved from 3.4.8 straight to 3.8.0 in Oct 2026 (their PR #1302), follow their lead
         # Check https://github.com/libffi/libffi/releases
-        return self.cfg_version("3.5.2")
+        return self.cfg_version("3.8.0")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -489,7 +488,8 @@ class Zstd(ModuleBuilder):
 
 class Mpdec(ModuleBuilder):
     """
-    Prevent falling back to bundled libmpdec (deprecated and scheduled for removal in Python 3.16)
+    Since 3.15 (gh-115119), cpython no longer falls back to its bundled libmpdec: without one, `_decimal` is silently skipped
+    3.14 still falls back, but to a deprecated (and older) bundled copy, so we build it there too
     """
 
     m_debian = "!libmpdec-dev"
@@ -498,11 +498,11 @@ class Mpdec(ModuleBuilder):
     xenv_CFLAGS = "-fPIC"
 
     def auto_select_reason(self):
-        if self.setup.python_spec.version >= "3.16":
+        if self.setup.python_spec.version >= "3.14":
             if PPG.target.is_macos:
-                return "Required for 3.16 and up"
+                return "Required for 3.14 and up"
             if not self.resolved_telltale:
-                return "Required for 3.16 and up"
+                return "Required for 3.14 and up"
 
     @property
     def url(self):
@@ -518,7 +518,8 @@ class Mpdec(ModuleBuilder):
             yield from config_args
 
         else:
-            pass  # yield "--static"
+            yield "--disable-shared"
+
         yield "--disable-cxx"
 
     def _do_linux_compile(self):
