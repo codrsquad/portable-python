@@ -26,7 +26,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: astral-sh/setup-uv@v10.2.0
+    - uses: astral-sh/setup-uv@v10.3.0
     - run: uvx --with tox-uv tox -e py
 
     - uses: coverallsapp/github-action@v2
@@ -55,5 +55,5 @@ jobs:
       with:
         python-version: "3.14"
 
-    - uses: astral-sh/setup-uv@v10.2.0
+    - uses: astral-sh/setup-uv@v10.3.0
     - run: uvx --with tox-uv tox -e style,ty,pyrefly,pyright,mypy,zuban

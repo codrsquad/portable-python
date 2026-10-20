@@ -19,7 +19,7 @@ jobs:
       with:
         python-version: "3.14"
 
-    - uses: astral-sh/setup-uv@v10.2.0
+    - uses: astral-sh/setup-uv@v10.3.0
     - run: uvx --with tox-uv tox -e py,style,ty,pyrefly,pyright,mypy,zuban
     - run: uv build
     - name: Publish to PyPI
