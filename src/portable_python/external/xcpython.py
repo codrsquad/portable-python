@@ -185,9 +185,9 @@ class Openssl(ModuleBuilder):
     def version(self):
         # 3.5 is LTS, supported until Apr 2030 (3.0 EOL Sept 2026)
         # Stay on the 3.5 LTS line: 3.6.x and 4.0.x have shipped but are not verified for cpython builds
-        # (python-build-standalone pins 3.5.7 as well)
+        # (python-build-standalone pins 3.5.x as well)
         # Check https://github.com/openssl/openssl/releases and https://endoflife.date/openssl
-        return self.cfg_version("3.5.7")
+        return self.cfg_version("3.5.9")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
@@ -391,7 +391,7 @@ class Xz(ModuleBuilder):
     @property
     def version(self):
         # Check https://github.com/tukaani-project/xz/releases
-        return self.cfg_version("5.8.3")
+        return self.cfg_version("5.8.4")
 
     def c_configure_args(self):
         if config_args := self.cfg_configure(self.deps_lib_dir, self.deps_lib64_dir):
